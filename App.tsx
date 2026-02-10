@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'reac
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { Analytics } from './pages/Analytics';
+import { Jobs } from './pages/Jobs';
 import { ResumeScreener } from './pages/ResumeScreener';
 import { InterviewLobby } from './pages/InterviewLobby';
 import { InterviewRoom } from './pages/InterviewRoom';
@@ -30,12 +31,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/jobs" element={<Jobs />} />
           <Route path="/resume-screener" element={<ResumeScreener />} />
           <Route path="/interview-lobby" element={<InterviewLobby />} />
           <Route path="/interview/room" element={<InterviewRoom />} />
           
           {/* Placeholders for links not fully implemented in this demo */}
-          <Route path="/jobs" element={<Dashboard />} />
           <Route path="/candidates" element={<Dashboard />} />
           <Route path="/settings" element={<Dashboard />} />
           

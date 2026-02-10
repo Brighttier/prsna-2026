@@ -1,8 +1,13 @@
 import React from 'react';
 
-export const Card = ({ children, className = '' }: { children?: React.ReactNode, className?: string }) => {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export const Card: React.FC<CardProps> = ({ children, className = '', ...props }) => {
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-300 ${className}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-300 ${className}`} {...props}>
       {children}
     </div>
   );
