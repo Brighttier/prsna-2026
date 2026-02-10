@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
-import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, XCircle, Clock, Mail, MessageSquare, Star, ChevronDown, User, Briefcase, X, MapPin, Linkedin, Github, Download, Sparkles, BrainCircuit, Code, Calendar, Phone, Paperclip, ChevronRight, PlayCircle, AlertCircle, Video } from 'lucide-react';
+import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, XCircle, Clock, Mail, MessageSquare, Star, ChevronDown, User, Briefcase, X, MapPin, Linkedin, Github, Download, Sparkles, BrainCircuit, Code, Calendar, Phone, Paperclip, ChevronRight, PlayCircle, AlertCircle, Video, ShieldCheck, VideoOff } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Candidate } from '../types';
 
@@ -16,6 +15,12 @@ interface Experience {
   logo?: string;
 }
 
+interface TranscriptEntry {
+  speaker: 'Lumina' | 'Candidate';
+  text: string;
+  timestamp: string;
+}
+
 interface InterviewSession {
   id: string;
   date: string;
@@ -23,6 +28,8 @@ interface InterviewSession {
   score: number;
   sentiment: 'Positive' | 'Neutral' | 'Negative';
   summary: string;
+  transcript?: TranscriptEntry[];
+  videoUrl?: string;
 }
 
 // Extended Candidate Type for Mock Data
@@ -84,7 +91,25 @@ const MOCK_CANDIDATES: ExtendedCandidate[] = [
       communicationScore: 90
     },
     interviews: [
-      { id: 'i1', date: 'Oct 24, 2023', type: 'Lumina Screening', score: 8.5, sentiment: 'Positive', summary: 'Candidate demonstrated deep knowledge of React lifecycle and hooks. Communication was clear and concise.' }
+      { 
+        id: 'i1', 
+        date: 'Oct 24, 2023', 
+        type: 'Lumina Screening', 
+        score: 8.5, 
+        sentiment: 'Positive', 
+        summary: 'Candidate demonstrated deep knowledge of React lifecycle and hooks. Communication was clear and concise.',
+        videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4', // Sample video for demo
+        transcript: [
+            { speaker: 'Lumina', text: "Hello Sarah. I've reviewed your resume and I'm impressed by your work at TechFlow. Could you walk me through the 'FlowUI' design system you established? specifically the challenges in adoption.", timestamp: "00:05" },
+            { speaker: 'Candidate', text: "Absolutely. When I joined, we had three different teams using disparate component libraries. Consistency was a nightmare. I initiated FlowUI by auditing our most used patterns. The biggest challenge wasn't code, it was convincing the designers to standardize their tokens. I set up regular syncs and built a documentation site using Storybook which really helped adoption.", timestamp: "00:18" },
+            { speaker: 'Lumina', text: "That's a classic friction point. How did you handle versioning? Did you use a monorepo approach?", timestamp: "00:45" },
+            { speaker: 'Candidate', text: "Yes, we moved to an Nx monorepo. We used semantic versioning for the core package. Breaking changes were strictly gated behind major versions, and we provided codemods to help teams upgrade.", timestamp: "00:58" },
+            { speaker: 'Lumina', text: "Smart move. Let's shift to performance. You mentioned improving TTI by 40%. What was the single most impactful change?", timestamp: "01:20" },
+            { speaker: 'Candidate', text: "Code splitting. We were shipping a massive bundle. I implemented route-based splitting using React.lazy and Suspense, and also lazy-loaded heavy dashboard widgets.", timestamp: "01:35" },
+             { speaker: 'Lumina', text: "Excellent. Can you explain a scenario where `useMemo` would be detrimental to performance?", timestamp: "02:10" },
+             { speaker: 'Candidate', text: "Sure. If the calculation inside useMemo is inexpensive, like simple string concatenation or basic arithmetic, the overhead of memory allocation and dependency array comparison actually costs more than just recomputing the value.", timestamp: "02:22" }
+        ]
+      }
     ]
   },
   {
@@ -120,14 +145,117 @@ const MOCK_CANDIDATES: ExtendedCandidate[] = [
   },
 ];
 
-// --- CANDIDATE PROFILE DRAWER COMPONENT ---
+// --- COMPONENTS ---
+
+const TranscriptModal = ({ session, onClose }: { session: InterviewSession, onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden animate-fade-in-up">
+                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div>
+                        <h3 className="font-bold text-lg text-slate-900">Interview Transcript</h3>
+                        <p className="text-xs text-slate-500 font-medium">{session.type} • {session.date}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                    {session.transcript?.map((entry, i) => (
+                        <div key={i} className={`flex gap-4 ${entry.speaker === 'Candidate' ? 'flex-row-reverse' : ''}`}>
+                            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold shadow-sm border border-slate-100 ${entry.speaker === 'Lumina' ? 'bg-brand-100 text-brand-700' : 'bg-white text-slate-600'}`}>
+                                {entry.speaker === 'Lumina' ? 'AI' : 'C'}
+                            </div>
+                            <div className={`flex flex-col ${entry.speaker === 'Candidate' ? 'items-end' : 'items-start'} max-w-[80%]`}>
+                                <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                                    entry.speaker === 'Candidate' 
+                                        ? 'bg-slate-800 text-white rounded-tr-none' 
+                                        : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
+                                }`}>
+                                    {entry.text}
+                                </div>
+                                <span className="text-[10px] text-slate-400 mt-1.5 px-2 font-medium">{entry.timestamp} • {entry.speaker}</span>
+                            </div>
+                        </div>
+                    ))}
+                    {!session.transcript && (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                            <MessageSquare className="w-12 h-12 mb-3 opacity-20" />
+                            <p>Transcript not available for this session.</p>
+                        </div>
+                    )}
+                </div>
+                <div className="p-4 border-t border-slate-100 bg-white flex justify-end gap-3">
+                     <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-200">
+                        <Download className="w-4 h-4" /> Export PDF
+                    </button>
+                    <button onClick={onClose} className="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-fade-in">
+            <div className="bg-black rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center p-4 bg-slate-900 text-white border-b border-slate-800">
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 bg-brand-900/50 rounded-lg flex items-center justify-center text-brand-500">
+                          <PlayCircle className="w-5 h-5" />
+                       </div>
+                       <div>
+                          <h3 className="font-bold text-lg leading-tight">{session.type}</h3>
+                          <p className="text-xs text-slate-400 font-mono">ID: {session.id} • {session.date}</p>
+                       </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="flex-1 bg-black relative flex items-center justify-center min-h-[400px]">
+                    {session.videoUrl ? (
+                        <video 
+                            src={session.videoUrl} 
+                            controls 
+                            className="w-full h-full max-h-[70vh] object-contain"
+                            autoPlay
+                        >
+                            Your browser does not support the video tag.
+                        </video>
+                    ) : (
+                        <div className="flex flex-col items-center text-slate-500">
+                             <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+                                <VideoOff className="w-8 h-8 opacity-50" />
+                             </div>
+                             <p>Recording unavailable</p>
+                        </div>
+                    )}
+                </div>
+                <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center">
+                    <div className="flex gap-4 text-sm text-slate-400">
+                        <span className="flex items-center gap-2"><Clock className="w-4 h-4"/> Duration: 45:30</span>
+                        <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4"/> AI Analysis Verified</span>
+                    </div>
+                    <button className="text-brand-400 hover:text-brand-300 text-sm font-bold flex items-center gap-2">
+                        <Download className="w-4 h-4" /> Download MP4
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 const CandidateProfileDrawer = ({ candidate, onClose }: { candidate: ExtendedCandidate | null, onClose: () => void }) => {
   const [activeTab, setActiveTab] = useState<'resume' | 'analysis' | 'interviews'>('resume');
+  const [transcriptSession, setTranscriptSession] = useState<InterviewSession | null>(null);
+  const [recordingSession, setRecordingSession] = useState<InterviewSession | null>(null);
 
   if (!candidate) return null;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex justify-end">
        {/* Backdrop */}
        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
@@ -272,7 +400,7 @@ const CandidateProfileDrawer = ({ candidate, onClose }: { candidate: ExtendedCan
                             <Card key={exp.id} className="p-6 flex gap-4">
                                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 flex-shrink-0 font-bold text-xl">
                                   {exp.company.charAt(0)}
-                               </div>
+                                </div>
                                <div>
                                   <h4 className="font-bold text-slate-900">{exp.role}</h4>
                                   <div className="text-sm text-slate-500 font-medium mb-2">{exp.company} • {exp.duration}</div>
@@ -406,8 +534,8 @@ const CandidateProfileDrawer = ({ candidate, onClose }: { candidate: ExtendedCan
                                <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Executive Summary</h5>
                                <p className="text-sm text-slate-700 leading-relaxed mb-4">{interview.summary}</p>
                                <div className="flex gap-3">
-                                  <button className="text-xs font-bold text-brand-600 hover:underline flex items-center gap-1">View Full Transcript <ChevronRight className="w-3 h-3"/></button>
-                                  <button className="text-xs font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1">Watch Recording <ChevronRight className="w-3 h-3"/></button>
+                                  <button onClick={() => setTranscriptSession(interview)} className="text-xs font-bold text-brand-600 hover:underline flex items-center gap-1">View Full Transcript <ChevronRight className="w-3 h-3"/></button>
+                                  <button onClick={() => setRecordingSession(interview)} className="text-xs font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1">Watch Recording <ChevronRight className="w-3 h-3"/></button>
                                </div>
                             </div>
                          </Card>
@@ -436,6 +564,11 @@ const CandidateProfileDrawer = ({ candidate, onClose }: { candidate: ExtendedCan
           </div>
        </div>
     </div>
+    {/* TRANSCRIPT MODAL OVERLAY */}
+    {transcriptSession && <TranscriptModal session={transcriptSession} onClose={() => setTranscriptSession(null)} />}
+    {/* RECORDING MODAL OVERLAY */}
+    {recordingSession && <RecordingModal session={recordingSession} onClose={() => setRecordingSession(null)} />}
+    </>
   );
 };
 
