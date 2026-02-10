@@ -1,15 +1,16 @@
+
 import React from 'react';
-import { LayoutDashboard, Briefcase, Users, FileText, Video, BarChart2, Settings, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, FileText, Video, BarChart2, Settings, UserCheck, ShieldAlert } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
-const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
+const NavItem = ({ to, icon: Icon, label, active, extraClass = '' }: { to: string, icon: any, label: string, active: boolean, extraClass?: string }) => (
   <Link 
     to={to} 
     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
       active 
         ? 'bg-brand-50 text-brand-700 font-medium' 
         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-    }`}
+    } ${extraClass}`}
   >
     <Icon className={`w-5 h-5 ${active ? 'text-brand-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
     <span>{label}</span>
@@ -45,6 +46,18 @@ export const Sidebar = () => {
         <div className="px-4 mt-8 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin</div>
         <NavItem to="/settings" icon={Settings} label="Settings" active={p === '/settings'} />
       </nav>
+
+      {/* Super Admin Section */}
+      <div className="px-3 pb-4">
+         <div className="border-t border-slate-100 my-2"></div>
+         <NavItem 
+            to="/platform-admin" 
+            icon={ShieldAlert} 
+            label="Super Admin" 
+            active={p === '/platform-admin'} 
+            extraClass={p === '/platform-admin' ? 'bg-indigo-50 !text-indigo-700' : 'hover:bg-indigo-50 hover:!text-indigo-700'}
+         />
+      </div>
 
       <div className="p-4 border-t border-slate-100">
         <div className="flex items-center gap-3">

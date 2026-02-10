@@ -11,6 +11,7 @@ import { ResumeScreener } from './pages/ResumeScreener';
 import { InterviewLobby } from './pages/InterviewLobby';
 import { InterviewRoom } from './pages/InterviewRoom';
 import { Settings } from './pages/Settings';
+import { PlatformAdmin } from './pages/PlatformAdmin';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/interview-lobby" element={<InterviewLobby />} />
           <Route path="/interview/room" element={<InterviewRoom />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/platform-admin" element={<PlatformAdmin />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

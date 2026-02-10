@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar } from 'lucide-react';
+import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
 
 // Duplicated Mock Data for simplicity in this full-page view context
@@ -272,6 +272,26 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
+    const getHighlightColor = (type: string) => {
+        switch (type) {
+            case 'Flag': return 'bg-amber-500 text-amber-500';
+            case 'Positive': return 'bg-emerald-500 text-emerald-500';
+            case 'Negative': return 'bg-red-500 text-red-500';
+            case 'Insight': return 'bg-blue-500 text-blue-500';
+            default: return 'bg-slate-400 text-slate-400';
+        }
+    };
+
+    const getHighlightIcon = (type: string) => {
+        switch (type) {
+            case 'Flag': return <Flag className="w-3 h-3" />;
+            case 'Positive': return <CheckCircle className="w-3 h-3" />;
+            case 'Negative': return <XCircle className="w-3 h-3" />;
+            case 'Insight': return <BrainCircuit className="w-3 h-3" />;
+            default: return <div className="w-2 h-2 rounded-full bg-current" />;
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
             <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl h-[85vh] flex overflow-hidden animate-fade-in-up border border-slate-800">
@@ -325,6 +345,15 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
                              }}
                         >
                             <div className="absolute top-0 left-0 bottom-0 bg-brand-500 rounded-full" style={{ width: `${(currentTime / duration) * 100}%` }}></div>
+                            <div className="absolute top-1/2 -mt-1.5 h-3 w-3 bg-white rounded-full shadow opacity-0 group-hover/timeline:opacity-100 transition-opacity" style={{ left: `${(currentTime / duration) * 100}%`, transform: 'translateX(-50%)' }}></div>
+                            {session.videoHighlights?.map((h) => (
+                                <div 
+                                    key={h.id}
+                                    className={`absolute top-1/2 -mt-1 h-2 w-2 rounded-full ${getHighlightColor(h.type).split(' ')[0]} z-10 transform -translate-x-1/2 ring-1 ring-black/50 group/marker transition-transform hover:scale-150`}
+                                    style={{ left: `${(h.timestamp / duration) * 100}%` }}
+                                    title={h.text}
+                                ></div>
+                            ))}
                         </div>
 
                         <div className="flex justify-between items-center text-white">
@@ -345,6 +374,48 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col">
+                    <div className="p-4 border-b border-slate-800 bg-slate-900 z-10">
+                        <h4 className="font-bold text-white flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-brand-400" /> AI Highlights
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1">Jump to key moments detected by Lumina.</p>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                        {session.videoHighlights?.map((h) => {
+                            const isActive = currentTime >= h.timestamp && currentTime < h.timestamp + 5;
+                            return (
+                                <button 
+                                    key={h.id}
+                                    onClick={() => handleSeek(h.timestamp)}
+                                    className={`w-full text-left p-3 rounded-xl border transition-all flex gap-3 group relative ${
+                                        isActive 
+                                            ? 'bg-slate-800 border-slate-700 shadow-md' 
+                                            : 'bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800'
+                                    }`}
+                                >
+                                    <div className="absolute left-[19px] top-8 bottom-[-20px] w-px bg-slate-800 group-last:hidden"></div>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 border border-slate-800 ${getHighlightColor(h.type)} bg-opacity-10`}>
+                                        {getHighlightIcon(h.type)}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${getHighlightColor(h.type).split(' ')[1]}`}>
+                                                {h.type}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-slate-500">{formatTime(h.timestamp)}</span>
+                                        </div>
+                                        <p className={`text-xs leading-relaxed ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                                            {h.text}
+                                        </p>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

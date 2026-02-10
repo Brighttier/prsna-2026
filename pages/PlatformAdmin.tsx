@@ -1,0 +1,278 @@
+
+import React, { useState } from 'react';
+import { Card } from '../components/Card';
+import { Activity, Server, ShieldAlert, Zap, DollarSign, Users, Power, RefreshCw, AlertTriangle, Search, Lock, Unlock, BarChart2, Globe, Cpu } from 'lucide-react';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  BarChart, Bar, Cell 
+} from 'recharts';
+
+// --- MOCK DATA ---
+
+const API_USAGE_DATA = [
+  { time: '00:00', tokens: 120000, cost: 0.45 },
+  { time: '04:00', tokens: 80000, cost: 0.30 },
+  { time: '08:00', tokens: 450000, cost: 1.80 },
+  { time: '12:00', tokens: 980000, cost: 3.92 },
+  { time: '16:00', tokens: 850000, cost: 3.40 },
+  { time: '20:00', tokens: 300000, cost: 1.20 },
+  { time: '23:59', tokens: 150000, cost: 0.60 },
+];
+
+const TENANTS = [
+  { id: '1', name: 'Acme Corp', plan: 'Enterprise', users: 12, apiUsage: 'High', status: 'Active', spend: '$450.00' },
+  { id: '2', name: 'TechFlow Inc', plan: 'Pro', users: 5, apiUsage: 'Medium', status: 'Active', spend: '$120.00' },
+  { id: '3', name: 'StartUp Hustle', plan: 'Starter', users: 2, apiUsage: 'Low', status: 'Suspended', spend: '$25.00' },
+  { id: '4', name: 'Global Logistics', plan: 'Enterprise', users: 45, apiUsage: 'Critical', status: 'Active', spend: '$1,200.00' },
+  { id: '5', name: 'Designify', plan: 'Pro', users: 8, apiUsage: 'Medium', status: 'Active', spend: '$145.00' },
+];
+
+const SERVICE_STATUS = [
+  { name: 'Resume Parser (Gemini 2.0 Flash)', status: 'Operational', latency: '450ms', errorRate: '0.01%' },
+  { name: 'Lumina Live (Gemini Live API)', status: 'High Load', latency: '120ms', errorRate: '0.5%' },
+  { name: 'Vector DB (Pinecone)', status: 'Operational', latency: '20ms', errorRate: '0.00%' },
+  { name: 'Sage HR Sync', status: 'Operational', latency: '800ms', errorRate: '0.1%' },
+];
+
+export const PlatformAdmin = () => {
+  // State for Kill Switches
+  const [killSwitches, setKillSwitches] = useState({
+    global: false,
+    resume: false,
+    interview: false
+  });
+
+  const toggleKillSwitch = (key: keyof typeof killSwitches) => {
+    setKillSwitches(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <div className="space-y-8 animate-fade-in-up">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <ShieldAlert className="w-8 h-8 text-indigo-600" />
+            Platform Admin
+          </h1>
+          <p className="text-slate-500 mt-1">Monitor infrastructure, manage tenants, and control API limits.</p>
+        </div>
+        <div className="flex items-center gap-3">
+           <span className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
+              <Activity className="w-3 h-3" /> System Healthy
+           </span>
+           <button className="bg-white border border-slate-200 text-slate-700 p-2 rounded-lg hover:bg-slate-50">
+              <RefreshCw className="w-5 h-5" />
+           </button>
+        </div>
+      </div>
+
+      {/* --- EMERGENCY CONTROLS (KILL SWITCHES) --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         {/* Global Kill Switch */}
+         <Card className={`p-6 border-l-4 ${killSwitches.global ? 'border-l-red-600 bg-red-50' : 'border-l-slate-300'}`}>
+            <div className="flex justify-between items-start mb-4">
+               <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                     <Power className="w-5 h-5 text-red-600" /> Global API Kill Switch
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">Immediately cuts connection to Google Gemini for ALL tenants.</p>
+               </div>
+               <div className="relative inline-flex items-center cursor-pointer" onClick={() => toggleKillSwitch('global')}>
+                  <input type="checkbox" className="sr-only peer" checked={killSwitches.global} readOnly />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+               </div>
+            </div>
+            {killSwitches.global && (
+               <div className="flex items-center gap-2 text-red-700 font-bold text-sm bg-red-100 p-2 rounded">
+                  <AlertTriangle className="w-4 h-4" /> SYSTEM LOCKDOWN ACTIVE
+               </div>
+            )}
+         </Card>
+
+         {/* Feature Specific Switches */}
+         <Card className="p-6 col-span-2">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Feature Circuit Breakers</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className={`p-4 border rounded-xl flex justify-between items-center transition-colors ${killSwitches.resume ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div>
+                     <div className="font-bold text-slate-900 flex items-center gap-2">Resume Screener <span className="text-[10px] font-mono bg-slate-200 px-1 rounded">Gemini 2.0 Flash</span></div>
+                     <div className="text-xs text-slate-500">Parsing & Vectorization</div>
+                  </div>
+                  <button 
+                     onClick={() => toggleKillSwitch('resume')}
+                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${killSwitches.resume ? 'bg-orange-600 text-white border-orange-700' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}
+                  >
+                     {killSwitches.resume ? 'DISABLED' : 'DISABLE'}
+                  </button>
+               </div>
+
+               <div className={`p-4 border rounded-xl flex justify-between items-center transition-colors ${killSwitches.interview ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div>
+                     <div className="font-bold text-slate-900 flex items-center gap-2">Lumina Interview <span className="text-[10px] font-mono bg-slate-200 px-1 rounded">Multimodal Live</span></div>
+                     <div className="text-xs text-slate-500">Real-time Audio/Video</div>
+                  </div>
+                  <button 
+                     onClick={() => toggleKillSwitch('interview')}
+                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${killSwitches.interview ? 'bg-orange-600 text-white border-orange-700' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}
+                  >
+                     {killSwitches.interview ? 'DISABLED' : 'DISABLE'}
+                  </button>
+               </div>
+            </div>
+         </Card>
+      </div>
+
+      {/* --- ANALYTICS ROW --- */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+         {/* Token Usage Chart */}
+         <div className="xl:col-span-2">
+            <Card className="p-6">
+               <div className="flex justify-between items-center mb-6">
+                  <div>
+                     <h3 className="text-lg font-bold text-slate-900">Token Consumption</h3>
+                     <p className="text-sm text-slate-500">Real-time usage across all tenants (Last 24h).</p>
+                  </div>
+                  <div className="text-right">
+                     <div className="text-2xl font-bold text-slate-900">2.4M</div>
+                     <div className="text-xs text-emerald-600 font-medium">+12% vs yesterday</div>
+                  </div>
+               </div>
+               <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <AreaChart data={API_USAGE_DATA}>
+                        <defs>
+                           <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                              <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                           </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} tickFormatter={(value) => `${value/1000}k`} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="tokens" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorTokens)" />
+                     </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </Card>
+         </div>
+
+         {/* Cost & Quota Card */}
+         <div className="space-y-6">
+            <Card className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+               <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                     <DollarSign className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div>
+                     <h3 className="text-lg font-bold">Month-to-Date Cost</h3>
+                     <p className="text-slate-400 text-sm">Estimated Google Cloud spend</p>
+                  </div>
+               </div>
+               <div className="text-4xl font-bold mb-2">$1,245.80</div>
+               <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+                  <div className="bg-emerald-500 h-full rounded-full" style={{width: '65%'}}></div>
+               </div>
+               <div className="flex justify-between text-xs text-slate-400">
+                  <span>Current</span>
+                  <span>Budget: $2,000.00</span>
+               </div>
+            </Card>
+
+            <Card className="p-6">
+               <h3 className="font-bold text-slate-900 mb-4">Service Status</h3>
+               <div className="space-y-4">
+                  {SERVICE_STATUS.map((s, i) => (
+                     <div key={i} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                           <div className={`w-2 h-2 rounded-full ${s.status === 'Operational' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
+                           <span className="font-medium text-slate-700">{s.name}</span>
+                        </div>
+                        <div className="text-slate-500 font-mono text-xs">{s.latency}</div>
+                     </div>
+                  ))}
+               </div>
+            </Card>
+         </div>
+      </div>
+
+      {/* --- TENANT DIRECTORY --- */}
+      <Card className="overflow-hidden">
+         <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+               <h3 className="text-lg font-bold text-slate-900">Tenant Directory</h3>
+               <p className="text-slate-500 text-sm">Manage companies and subscription tiers.</p>
+            </div>
+            <div className="relative">
+               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+               <input 
+                  placeholder="Search tenants..." 
+                  className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-64"
+               />
+            </div>
+         </div>
+         <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+               <thead className="bg-slate-50 text-slate-500 font-medium">
+                  <tr>
+                     <th className="px-6 py-4">Company</th>
+                     <th className="px-6 py-4">Plan Tier</th>
+                     <th className="px-6 py-4">Users</th>
+                     <th className="px-6 py-4">API Usage</th>
+                     <th className="px-6 py-4">Est. Spend</th>
+                     <th className="px-6 py-4">Status</th>
+                     <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-100">
+                  {TENANTS.map((tenant) => (
+                     <tr key={tenant.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 font-bold text-slate-900">{tenant.name}</td>
+                        <td className="px-6 py-4">
+                           <span className={`px-2 py-1 rounded text-xs font-bold border ${
+                              tenant.plan === 'Enterprise' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 
+                              tenant.plan === 'Pro' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                           }`}>
+                              {tenant.plan}
+                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600">{tenant.users}</td>
+                        <td className="px-6 py-4">
+                           <span className={`flex items-center gap-1.5 ${
+                              tenant.apiUsage === 'Critical' ? 'text-red-600 font-bold' : 
+                              tenant.apiUsage === 'High' ? 'text-orange-600 font-medium' : 'text-slate-600'
+                           }`}>
+                              {tenant.apiUsage === 'Critical' && <AlertTriangle className="w-3 h-3"/>}
+                              {tenant.apiUsage}
+                           </span>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-slate-600">{tenant.spend}</td>
+                        <td className="px-6 py-4">
+                           {tenant.status === 'Active' ? (
+                              <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                                 <CheckCircleIcon className="w-3 h-3" /> Active
+                              </span>
+                           ) : (
+                              <span className="flex items-center gap-1.5 text-red-600 font-medium">
+                                 <Lock className="w-3 h-3" /> Suspended
+                              </span>
+                           )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                           <button className="text-slate-400 hover:text-slate-600 font-medium">Manage</button>
+                        </td>
+                     </tr>
+                  ))}
+               </tbody>
+            </table>
+         </div>
+      </Card>
+    </div>
+  );
+};
+
+// Helper Icon for status
+const CheckCircleIcon = ({className}: {className?: string}) => (
+   <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+);
