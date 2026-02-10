@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield } from 'lucide-react';
+import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown } from 'lucide-react';
 
 const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => void }) => {
   const tabs = [
@@ -50,6 +50,12 @@ export const Settings = () => {
   const [sageToken, setSageToken] = useState('sage_live_89234789234...');
   const [intensity, setIntensity] = useState(30);
 
+  // --- INVITE MODAL STATE ---
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('Recruiter');
+  const [isInviting, setIsInviting] = useState(false);
+
   const handleSave = () => {
     setLoading(true);
     setTimeout(() => {
@@ -57,6 +63,19 @@ export const Settings = () => {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     }, 800);
+  };
+
+  const handleSendInvite = (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsInviting(true);
+      // Mock API call
+      setTimeout(() => {
+          setIsInviting(false);
+          setShowInviteModal(false);
+          setInviteEmail('');
+          setInviteRole('Recruiter');
+          // Ideally trigger a toast here
+      }, 1500);
   };
 
   // --- STYLING HELPERS ---
@@ -520,7 +539,12 @@ export const Settings = () => {
            <Card>
               <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                  <h2 className="text-lg font-bold text-slate-900">Team Members</h2>
-                 <button className="text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800">Invite Member</button>
+                 <button 
+                    onClick={() => setShowInviteModal(true)}
+                    className="text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+                 >
+                    <Mail className="w-4 h-4" /> Invite Member
+                 </button>
               </div>
               <table className="w-full text-left text-sm">
                  <thead className="bg-slate-50 text-slate-500 font-medium">
@@ -552,6 +576,79 @@ export const Settings = () => {
                  </tbody>
               </table>
            </Card>
+      )}
+
+      {/* --- INVITE MODAL --- */}
+      {showInviteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
+                  <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                      <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
+                      <button 
+                          onClick={() => setShowInviteModal(false)}
+                          className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
+                      >
+                          <X className="w-5 h-5" />
+                      </button>
+                  </div>
+                  
+                  <form onSubmit={handleSendInvite} className="p-6 space-y-5">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+                          <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                              <input 
+                                  type="email" 
+                                  required
+                                  value={inviteEmail}
+                                  onChange={(e) => setInviteEmail(e.target.value)}
+                                  placeholder="colleague@acme.com"
+                                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                              />
+                          </div>
+                      </div>
+
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Role & Permissions</label>
+                          <div className="relative">
+                              <select 
+                                  value={inviteRole}
+                                  onChange={(e) => setInviteRole(e.target.value)}
+                                  className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none cursor-pointer"
+                              >
+                                  <option value="Admin">Admin (Full Access)</option>
+                                  <option value="Recruiter">Recruiter (Manage Jobs & Candidates)</option>
+                                  <option value="Viewer">Viewer (Read Only)</option>
+                              </select>
+                              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">
+                              {inviteRole === 'Admin' && "Can manage billing, team members, and all settings."}
+                              {inviteRole === 'Recruiter' && "Can create jobs, invite candidates, and conduct interviews."}
+                              {inviteRole === 'Viewer' && "Can view job listings and candidate profiles but cannot edit."}
+                          </p>
+                      </div>
+
+                      <div className="pt-2 flex gap-3">
+                          <button 
+                              type="button"
+                              onClick={() => setShowInviteModal(false)}
+                              className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+                          >
+                              Cancel
+                          </button>
+                          <button 
+                              type="submit"
+                              disabled={isInviting || !inviteEmail}
+                              className="flex-1 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                              {isInviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                              {isInviting ? 'Sending...' : 'Send Invite'}
+                          </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
       )}
     </div>
   );
