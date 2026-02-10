@@ -69,6 +69,11 @@ export interface CaseStudyConfig {
   documents?: string[]; // URLs to mock docs
 }
 
+export interface KnowledgeBaseConfig {
+  content: string; // The raw text or extracted text from file
+  fileName?: string;
+}
+
 export interface AssessmentModule {
   id: string;
   name: string;
@@ -78,8 +83,13 @@ export interface AssessmentModule {
   estimatedDuration: number; // in minutes
   tags: string[];
   itemsCount: number;
-  // Content based on type
+  
+  // Question Bank Specific
+  sourceMode?: 'manual' | 'knowledgeBase'; // New field to determine logic
   questions?: Question[];
+  knowledgeBase?: KnowledgeBaseConfig;
+
+  // Other Types
   codingConfig?: CodingConfig;
   caseStudyConfig?: CaseStudyConfig;
 }

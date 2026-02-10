@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2, List, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2, List, FileText, CheckCircle, AlertCircle, UploadCloud, BookOpen, Sparkles, BrainCircuit } from 'lucide-react';
 import { AssessmentModule, AssessmentType, Question } from '../types';
 
 // Mock Assessment Data
 const MOCK_ASSESSMENTS: AssessmentModule[] = [
-  { id: '1', name: 'React Core Concepts', type: 'QuestionBank', description: 'Hooks, Lifecycle, and Virtual DOM deep dive.', difficulty: 'Mid', estimatedDuration: 15, tags: ['React', 'Frontend'], itemsCount: 12 },
+  { id: '1', name: 'React Core Concepts', type: 'QuestionBank', description: 'Hooks, Lifecycle, and Virtual DOM deep dive.', difficulty: 'Mid', estimatedDuration: 15, tags: ['React', 'Frontend'], itemsCount: 12, sourceMode: 'manual' },
   { id: '2', name: 'System Design: Scalable Feed', type: 'SystemDesign', description: 'Design a Twitter-like feed architecture.', difficulty: 'Senior', estimatedDuration: 30, tags: ['Architecture', 'Backend'], itemsCount: 1 },
   { id: '3', name: 'JS Algorithms: Arrays', type: 'CodingChallenge', description: 'Array manipulation and optimization tasks.', difficulty: 'Mid', estimatedDuration: 20, tags: ['Algorithms', 'JS'], itemsCount: 3 },
-  { id: '4', name: 'Cultural Fit: Leadership', type: 'QuestionBank', description: 'Assessing ownership and conflict resolution.', difficulty: 'Senior', estimatedDuration: 10, tags: ['Soft Skills'], itemsCount: 8 },
+  { id: '4', name: 'Cultural Fit: Leadership', type: 'QuestionBank', description: 'Assessing ownership and conflict resolution.', difficulty: 'Senior', estimatedDuration: 10, tags: ['Soft Skills'], itemsCount: 8, sourceMode: 'manual' },
   { id: '5', name: 'Marketing Strategy Case', type: 'SystemDesign', description: 'Analyze campaign metrics and propose ROI improvements.', difficulty: 'Senior', estimatedDuration: 25, tags: ['Marketing', 'Analytics'], itemsCount: 1 },
-  { id: '6', name: 'Customer Support Escalation', type: 'SystemDesign', description: 'Handling angry enterprise clients.', difficulty: 'Mid', estimatedDuration: 15, tags: ['Support', 'Soft Skills'], itemsCount: 1 },
+  { id: '6', name: 'Company Values & Policy', type: 'QuestionBank', description: 'Dynamic questions based on the employee handbook.', difficulty: 'Junior', estimatedDuration: 15, tags: ['HR', 'Onboarding'], itemsCount: 1, sourceMode: 'knowledgeBase' },
 ];
 
 const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => void }) => {
@@ -80,7 +80,9 @@ export const Settings = () => {
     difficulty: 'Mid',
     estimatedDuration: 15,
     tags: [],
+    sourceMode: 'manual',
     questions: [],
+    knowledgeBase: { content: '', fileName: '' },
     codingConfig: {
       language: 'javascript',
       problemStatement: '',
@@ -95,6 +97,9 @@ export const Settings = () => {
   
   // Helper for Question Bank
   const [currentQuestion, setCurrentQuestion] = useState({ text: '', criteria: '' });
+  // Helper for Knowledge Base Preview
+  const [kbPreviewQuestions, setKbPreviewQuestions] = useState<string[]>([]);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   // Helper for Tags
   const [tagInput, setTagInput] = useState('');
 
@@ -120,6 +125,22 @@ export const Settings = () => {
     setCurrentQuestion({ text: '', criteria: '' });
   };
 
+  const generateKbPreview = () => {
+     if(!newModule.knowledgeBase?.content) return;
+     setIsGeneratingPreview(true);
+     setKbPreviewQuestions([]);
+     
+     // Simulate AI Generation
+     setTimeout(() => {
+        setKbPreviewQuestions([
+           "Can you explain how the proposed caching strategy in section 3.2 handles race conditions?",
+           "Based on the project constraints, why would you choose NoSQL over SQL for the user session data?",
+           "The documentation mentions 'eventual consistency' for the inventory system. How would you handle a user checkout during a sync delay?"
+        ]);
+        setIsGeneratingPreview(false);
+     }, 1500);
+  };
+
   const handlePublishModule = () => {
     // Save logic here
     setAssessments(prev => [...prev, {
@@ -130,11 +151,13 @@ export const Settings = () => {
       difficulty: newModule.difficulty || 'Mid',
       estimatedDuration: newModule.estimatedDuration || 15,
       tags: newModule.tags || [],
-      itemsCount: newModule.type === 'QuestionBank' ? (newModule.questions?.length || 0) : 1
+      sourceMode: newModule.sourceMode,
+      itemsCount: newModule.type === 'QuestionBank' ? (newModule.sourceMode === 'knowledgeBase' ? 1 : (newModule.questions?.length || 0)) : 1,
+      knowledgeBase: newModule.knowledgeBase // Save the KB
     }]);
     setShowCreateModule(false);
     setModuleStep(1);
-    setNewModule({ name: '', type: 'QuestionBank', difficulty: 'Mid', estimatedDuration: 15, tags: [], questions: [] });
+    setNewModule({ name: '', type: 'QuestionBank', difficulty: 'Mid', estimatedDuration: 15, tags: [], questions: [], sourceMode: 'manual', knowledgeBase: {content: '', fileName: ''} });
   };
 
   const addTag = (e: React.KeyboardEvent) => {
@@ -232,11 +255,11 @@ export const Settings = () => {
                  <Card key={mod.id} className="p-6 hover:border-brand-300 transition-colors group cursor-pointer relative">
                     <div className="flex justify-between items-start mb-4">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                           mod.type === 'QuestionBank' ? 'bg-blue-100 text-blue-600' :
+                           mod.type === 'QuestionBank' ? (mod.sourceMode === 'knowledgeBase' ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600') :
                            mod.type === 'CodingChallenge' ? 'bg-purple-100 text-purple-600' :
                            'bg-orange-100 text-orange-600'
                         }`}>
-                           {mod.type === 'QuestionBank' && <FileQuestion className="w-5 h-5" />}
+                           {mod.type === 'QuestionBank' && (mod.sourceMode === 'knowledgeBase' ? <BrainCircuit className="w-5 h-5" /> : <FileQuestion className="w-5 h-5" />)}
                            {mod.type === 'CodingChallenge' && <Terminal className="w-5 h-5" />}
                            {mod.type === 'SystemDesign' && <LayoutTemplate className="w-5 h-5" />}
                         </div>
@@ -255,13 +278,18 @@ export const Settings = () => {
                              {tag}
                           </span>
                        ))}
+                       {mod.sourceMode === 'knowledgeBase' && (
+                          <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase rounded border border-indigo-100 flex items-center gap-1">
+                             <BrainCircuit className="w-3 h-3"/> AI Driven
+                          </span>
+                       )}
                     </div>
 
                     <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-500">
                         <span className="flex items-center gap-1">
                            <Zap className="w-3 h-3 text-brand-500" /> {mod.difficulty}
                         </span>
-                        <span>{mod.itemsCount} Items • {mod.estimatedDuration}m</span>
+                        <span>{mod.sourceMode === 'knowledgeBase' ? 'Dynamic' : `${mod.itemsCount} Items`} • {mod.estimatedDuration}m</span>
                     </div>
                  </Card>
               ))}
@@ -394,58 +422,161 @@ export const Settings = () => {
                            {/* TYPE: QUESTION BANK */}
                            {newModule.type === 'QuestionBank' && (
                               <div className="space-y-6">
-                                 <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex gap-3">
-                                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                                    <div>
-                                       <p className="text-sm font-bold text-blue-800">AI Evaluation Guide</p>
-                                       <p className="text-xs text-blue-600 mt-1">Lumina uses the "Evaluation Criteria" to score candidate responses. Be specific about what constitutes a good answer (keywords, STAR method, specific technologies).</p>
-                                    </div>
+                                 {/* Source Mode Toggle */}
+                                 <div className="flex bg-slate-100 p-1 rounded-lg w-full max-w-md">
+                                    <button 
+                                        onClick={() => setNewModule({...newModule, sourceMode: 'manual'})}
+                                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 ${newModule.sourceMode === 'manual' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        <List className="w-4 h-4"/> Manual Entry
+                                    </button>
+                                    <button 
+                                        onClick={() => setNewModule({...newModule, sourceMode: 'knowledgeBase'})}
+                                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 ${newModule.sourceMode === 'knowledgeBase' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        <BookOpen className="w-4 h-4"/> Knowledge Base
+                                    </button>
                                  </div>
 
-                                 <div className="space-y-4">
-                                    {newModule.questions?.map((q, i) => (
-                                       <div key={q.id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow relative group">
-                                          <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             <button onClick={() => setNewModule(prev => ({...prev, questions: prev.questions?.filter(x => x.id !== q.id)}))} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
-                                          </div>
-                                          <div className="flex gap-3">
-                                             <div className="w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</div>
-                                             <div className="flex-1">
-                                                <h4 className="font-bold text-slate-900">{q.text}</h4>
-                                                <p className="text-sm text-slate-500 mt-2 bg-slate-50 p-2 rounded border border-slate-100 italic">
-                                                   <span className="font-semibold text-slate-600 not-italic">Criteria: </span> 
-                                                   {q.aiEvaluationCriteria || 'No criteria specified.'}
-                                                </p>
-                                             </div>
-                                          </div>
-                                       </div>
-                                    ))}
-                                 </div>
+                                 {/* MODE: MANUAL */}
+                                 {newModule.sourceMode === 'manual' && (
+                                    <>
+                                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex gap-3">
+                                            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                                            <div>
+                                            <p className="text-sm font-bold text-blue-800">AI Evaluation Guide</p>
+                                            <p className="text-xs text-blue-600 mt-1">Lumina uses the "Evaluation Criteria" to score candidate responses. Be specific about what constitutes a good answer.</p>
+                                            </div>
+                                        </div>
 
-                                 <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                    <h4 className="font-bold text-slate-900 mb-4">Add New Question</h4>
-                                    <div className="space-y-4">
-                                       <input 
-                                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                                          placeholder="Enter the question text..."
-                                          value={currentQuestion.text}
-                                          onChange={(e) => setCurrentQuestion({...currentQuestion, text: e.target.value})}
-                                       />
-                                       <textarea 
-                                          className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
-                                          placeholder="Evaluation Criteria (e.g. 'Look for mention of State vs Props, Virtual DOM efficiency')"
-                                          value={currentQuestion.criteria}
-                                          onChange={(e) => setCurrentQuestion({...currentQuestion, criteria: e.target.value})}
-                                       />
-                                       <button 
-                                          onClick={handleAddQuestion}
-                                          className="bg-brand-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-brand-700 disabled:opacity-50"
-                                          disabled={!currentQuestion.text}
-                                       >
-                                          Add Question
-                                       </button>
-                                    </div>
-                                 </div>
+                                        <div className="space-y-4">
+                                            {newModule.questions?.map((q, i) => (
+                                            <div key={q.id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow relative group">
+                                                <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => setNewModule(prev => ({...prev, questions: prev.questions?.filter(x => x.id !== q.id)}))} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    <div className="w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</div>
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-slate-900">{q.text}</h4>
+                                                        <p className="text-sm text-slate-500 mt-2 bg-slate-50 p-2 rounded border border-slate-100 italic">
+                                                        <span className="font-semibold text-slate-600 not-italic">Criteria: </span> 
+                                                        {q.aiEvaluationCriteria || 'No criteria specified.'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                            <h4 className="font-bold text-slate-900 mb-4">Add New Question</h4>
+                                            <div className="space-y-4">
+                                            <input 
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                                                placeholder="Enter the question text..."
+                                                value={currentQuestion.text}
+                                                onChange={(e) => setCurrentQuestion({...currentQuestion, text: e.target.value})}
+                                            />
+                                            <textarea 
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
+                                                placeholder="Evaluation Criteria (e.g. 'Look for mention of State vs Props, Virtual DOM efficiency')"
+                                                value={currentQuestion.criteria}
+                                                onChange={(e) => setCurrentQuestion({...currentQuestion, criteria: e.target.value})}
+                                            />
+                                            <button 
+                                                onClick={handleAddQuestion}
+                                                className="bg-brand-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-brand-700 disabled:opacity-50"
+                                                disabled={!currentQuestion.text}
+                                            >
+                                                Add Question
+                                            </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                 )}
+
+                                 {/* MODE: KNOWLEDGE BASE */}
+                                 {newModule.sourceMode === 'knowledgeBase' && (
+                                     <div className="space-y-8 animate-fade-in-up">
+                                         <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg flex gap-3">
+                                            <Sparkles className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                                            <div>
+                                            <p className="text-sm font-bold text-indigo-800">Dynamic AI Generation</p>
+                                            <p className="text-xs text-indigo-600 mt-1">Lumina will analyze your provided text/documents and generate unique, contextual questions during the live interview.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-900 mb-2">Upload Documentation</label>
+                                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-colors cursor-pointer bg-white">
+                                                    <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3">
+                                                        <UploadCloud className="w-6 h-6 text-indigo-600" />
+                                                    </div>
+                                                    <p className="text-sm font-medium text-slate-900">Click to upload files</p>
+                                                    <p className="text-xs text-slate-500 mt-1">PDF, DOCX, TXT (Max 10MB)</p>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <label className="block text-sm font-bold text-slate-900 mb-2">Or Paste Text Context</label>
+                                                    <textarea 
+                                                        className="w-full h-64 p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none text-sm leading-relaxed shadow-sm"
+                                                        placeholder="Paste project specifications, company values, or technical documentation here..."
+                                                        value={newModule.knowledgeBase?.content}
+                                                        onChange={(e) => setNewModule({...newModule, knowledgeBase: { ...newModule.knowledgeBase, content: e.target.value }})}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* AI Simulation Preview */}
+                                            <div className="bg-slate-50 rounded-xl border border-slate-200 p-6 flex flex-col">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                                        <BrainCircuit className="w-4 h-4 text-slate-500"/> AI Simulator
+                                                    </h3>
+                                                    <button 
+                                                        onClick={generateKbPreview}
+                                                        disabled={!newModule.knowledgeBase?.content || isGeneratingPreview}
+                                                        className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                        {isGeneratingPreview ? 'Generating...' : 'Generate Sample Questions'}
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="flex-1 bg-white border border-slate-200 rounded-lg p-4 overflow-y-auto">
+                                                    {!newModule.knowledgeBase?.content ? (
+                                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center text-xs p-4">
+                                                            <BookOpen className="w-8 h-8 mb-2 opacity-50"/>
+                                                            Add content to see what questions Lumina might ask.
+                                                        </div>
+                                                    ) : kbPreviewQuestions.length === 0 && !isGeneratingPreview ? (
+                                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center text-xs p-4">
+                                                            <Sparkles className="w-8 h-8 mb-2 opacity-50"/>
+                                                            Click "Generate" to preview AI logic.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-3">
+                                                            {isGeneratingPreview ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="h-16 bg-slate-100 rounded animate-pulse"></div>
+                                                                    <div className="h-16 bg-slate-100 rounded animate-pulse"></div>
+                                                                    <div className="h-16 bg-slate-100 rounded animate-pulse"></div>
+                                                                </div>
+                                                            ) : (
+                                                                kbPreviewQuestions.map((q, i) => (
+                                                                    <div key={i} className="p-3 bg-indigo-50/50 border border-indigo-100 rounded text-sm text-slate-700">
+                                                                        <span className="font-bold text-indigo-600 block text-xs mb-1">Potential Question {i+1}</span>
+                                                                        "{q}"
+                                                                    </div>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                     </div>
+                                 )}
                               </div>
                            )}
 
@@ -540,9 +671,11 @@ export const Settings = () => {
                                     <span className="font-medium text-slate-900">{newModule.difficulty}</span>
                                  </div>
                                  <div>
-                                    <span className="block text-slate-500 text-xs uppercase tracking-wider font-bold">Content Items</span>
+                                    <span className="block text-slate-500 text-xs uppercase tracking-wider font-bold">Source Strategy</span>
                                     <span className="font-medium text-slate-900">
-                                       {newModule.type === 'QuestionBank' ? newModule.questions?.length : 1}
+                                       {newModule.type === 'QuestionBank' 
+                                          ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic Knowledge Base' : `${newModule.questions?.length} Fixed Questions`) 
+                                          : 'Static Scenario'}
                                     </span>
                                  </div>
                               </div>
