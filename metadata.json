@@ -1,0 +1,8 @@
+{
+  "name": "RecruiteAI Ecosystem",
+  "description": "A next-generation recruitment platform featuring AI-powered resume screening, biometric verification, and the Lumina real-time video interviewer using Gemini Multimodal Live API.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
