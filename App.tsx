@@ -8,6 +8,7 @@ import { Candidates } from './pages/Candidates';
 import { ResumeScreener } from './pages/ResumeScreener';
 import { InterviewLobby } from './pages/InterviewLobby';
 import { InterviewRoom } from './pages/InterviewRoom';
+import { Settings } from './pages/Settings';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
@@ -37,9 +38,7 @@ export default function App() {
           <Route path="/resume-screener" element={<ResumeScreener />} />
           <Route path="/interview-lobby" element={<InterviewLobby />} />
           <Route path="/interview/room" element={<InterviewRoom />} />
-          
-          {/* Placeholders for links not fully implemented in this demo */}
-          <Route path="/settings" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
