@@ -49,6 +49,26 @@ export interface LiveConnectionState {
 
 export type AssessmentType = 'QuestionBank' | 'CodingChallenge' | 'SystemDesign';
 
+export interface Question {
+  id: string;
+  text: string;
+  timeLimit?: number; // seconds
+  aiEvaluationCriteria?: string; // What the AI should look for
+}
+
+export interface CodingConfig {
+  language: 'javascript' | 'python' | 'go' | 'java';
+  problemStatement: string;
+  starterCode: string;
+  testCases: { input: string; expectedOutput: string; hidden: boolean }[];
+}
+
+export interface CaseStudyConfig {
+  scenario: string;
+  keyDiscussionPoints: string[]; // Topics the AI must hit
+  documents?: string[]; // URLs to mock docs
+}
+
 export interface AssessmentModule {
   id: string;
   name: string;
@@ -58,4 +78,8 @@ export interface AssessmentModule {
   estimatedDuration: number; // in minutes
   tags: string[];
   itemsCount: number;
+  // Content based on type
+  questions?: Question[];
+  codingConfig?: CodingConfig;
+  caseStudyConfig?: CaseStudyConfig;
 }
