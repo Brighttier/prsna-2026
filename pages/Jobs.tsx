@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle, FileText, Code as CodeIcon } from 'lucide-react';
+import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle, FileText, Code as CodeIcon, Sparkles, Calendar as CalendarIcon, DollarSign, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Job, JobStatus } from '../types';
 
@@ -67,8 +68,20 @@ export const Jobs = () => {
   // Job Creator State
   const [showJobCreator, setShowJobCreator] = useState(false);
   const [creatorStep, setCreatorStep] = useState(1);
-  const [newJob, setNewJob] = useState({ title: '', dept: '', loc: '', screening: '', technical: '' });
+  const [newJob, setNewJob] = useState({ 
+    title: '', 
+    dept: '', 
+    loc: '', 
+    screening: '', 
+    technical: '',
+    description: '',
+    closeDate: '',
+    currency: 'USD',
+    salaryMin: '',
+    salaryMax: ''
+  });
   const [technicalType, setTechnicalType] = useState<'coding' | 'scenario'>('coding');
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   const filteredJobs = MOCK_JOBS.filter(job => {
     const matchesFilter = filter === 'All' || job.status === filter;
@@ -84,6 +97,19 @@ export const Jobs = () => {
       case JobStatus.DRAFT: return 'bg-amber-100 text-amber-700 border-amber-200';
       default: return 'bg-slate-100 text-slate-600 border-slate-200';
     }
+  };
+
+  const handleGenerateDescription = () => {
+     if (!newJob.title) return;
+     setIsGeneratingDesc(true);
+     // Simulate AI Generation
+     setTimeout(() => {
+        setNewJob(prev => ({
+           ...prev,
+           description: `We are seeking a talented ${prev.title} to join our ${prev.dept || 'dynamic'} team. \n\nResponsibilities:\n- Build scalable solutions\n- Collaborate with cross-functional teams\n- Drive innovation in ${prev.dept || 'our product'}\n\nRequirements:\n- 5+ years of experience\n- Strong problem-solving skills\n- Passion for quality code`
+        }));
+        setIsGeneratingDesc(false);
+     }, 1500);
   };
 
   return (
@@ -220,7 +246,7 @@ export const Jobs = () => {
       {/* --- JOB WORKFLOW BUILDER MODAL --- */}
       {showJobCreator && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-fade-in-up">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
                {/* Modal Header */}
                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                   <div className="flex items-center gap-4">
@@ -256,7 +282,7 @@ export const Jobs = () => {
                   {/* Main Form Area */}
                   <div className="flex-1 p-8 overflow-y-auto">
                      {creatorStep === 1 && (
-                        <div className="space-y-6 max-w-2xl">
+                        <div className="space-y-6 max-w-3xl">
                            <h3 className="text-lg font-bold text-slate-900 mb-4">Role Basics</h3>
                            <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">Job Title</label>
@@ -267,6 +293,8 @@ export const Jobs = () => {
                                  onChange={e => setNewJob({...newJob, title: e.target.value})}
                               />
                            </div>
+                           
+                           {/* Department & Location */}
                            <div className="grid grid-cols-2 gap-6">
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">Department</label>
@@ -291,6 +319,73 @@ export const Jobs = () => {
                                     onChange={e => setNewJob({...newJob, loc: e.target.value})}
                                  />
                               </div>
+                           </div>
+
+                           {/* Close Date & Salary */}
+                           <div className="grid grid-cols-2 gap-6">
+                              <div>
+                                 <label className="block text-sm font-medium text-slate-700 mb-2">Close Date</label>
+                                 <div className="relative">
+                                     <CalendarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                     <input 
+                                        type="date"
+                                        className="w-full pl-10 pr-3 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-slate-600" 
+                                        value={newJob.closeDate}
+                                        onChange={e => setNewJob({...newJob, closeDate: e.target.value})}
+                                     />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-medium text-slate-700 mb-2">Salary Range</label>
+                                 <div className="flex gap-2">
+                                     <select 
+                                        className="w-24 p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-slate-600"
+                                        value={newJob.currency}
+                                        onChange={e => setNewJob({...newJob, currency: e.target.value})}
+                                     >
+                                        <option value="USD">USD ($)</option>
+                                        <option value="EUR">EUR (€)</option>
+                                        <option value="GBP">GBP (£)</option>
+                                        <option value="CAD">CAD ($)</option>
+                                     </select>
+                                     <input 
+                                        type="number" 
+                                        placeholder="Min" 
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                                        value={newJob.salaryMin}
+                                        onChange={e => setNewJob({...newJob, salaryMin: e.target.value})}
+                                     />
+                                     <span className="self-center text-slate-400">-</span>
+                                     <input 
+                                        type="number" 
+                                        placeholder="Max" 
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                                        value={newJob.salaryMax}
+                                        onChange={e => setNewJob({...newJob, salaryMax: e.target.value})}
+                                     />
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Job Description with AI */}
+                           <div>
+                              <div className="flex justify-between items-center mb-2">
+                                  <label className="block text-sm font-medium text-slate-700">Job Description</label>
+                                  <button 
+                                     onClick={handleGenerateDescription}
+                                     disabled={isGeneratingDesc || !newJob.title}
+                                     className="text-xs flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-bold bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                     {isGeneratingDesc ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                     {isGeneratingDesc ? 'Generating...' : 'Auto-Generate with AI'}
+                                  </button>
+                              </div>
+                              <textarea 
+                                 className="w-full h-48 p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none leading-relaxed text-sm" 
+                                 placeholder="Enter responsibilities, requirements, and benefits..."
+                                 value={newJob.description}
+                                 onChange={e => setNewJob({...newJob, description: e.target.value})}
+                              />
                            </div>
                         </div>
                      )}
@@ -388,12 +483,20 @@ export const Jobs = () => {
                               <CheckCircle className="w-10 h-10" />
                            </div>
                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
-                           <p className="text-slate-500 max-w-md mx-auto mb-8">Your job post "Senior Frontend Engineer" is ready with 2 linked assessment modules.</p>
+                           <p className="text-slate-500 max-w-md mx-auto mb-8">Your job post "{newJob.title || 'Untitled'}" is ready with linked assessment modules.</p>
                            
                            <div className="bg-slate-50 rounded-xl p-6 max-w-md mx-auto text-left space-y-3 mb-8 border border-slate-200">
                               <div className="flex justify-between text-sm">
                                  <span className="text-slate-500">Role:</span>
                                  <span className="font-medium">{newJob.title || 'Untitled'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                 <span className="text-slate-500">Salary:</span>
+                                 <span className="font-medium">{newJob.salaryMin && newJob.salaryMax ? `${newJob.currency} ${newJob.salaryMin} - ${newJob.salaryMax}` : 'Not Specified'}</span>
+                              </div>
+                               <div className="flex justify-between text-sm">
+                                 <span className="text-slate-500">Close Date:</span>
+                                 <span className="font-medium">{newJob.closeDate || 'Open Indefinitely'}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                  <span className="text-slate-500">Screening:</span>
