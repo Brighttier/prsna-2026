@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown } from 'lucide-react';
+import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2 } from 'lucide-react';
+import { AssessmentModule } from '../types';
+
+// Mock Assessment Data
+const MOCK_ASSESSMENTS: AssessmentModule[] = [
+  { id: '1', name: 'React Core Concepts', type: 'QuestionBank', description: 'Hooks, Lifecycle, and Virtual DOM deep dive.', difficulty: 'Mid', estimatedDuration: 15, tags: ['React', 'Frontend'], itemsCount: 12 },
+  { id: '2', name: 'System Design: Scalable Feed', type: 'SystemDesign', description: 'Design a Twitter-like feed architecture.', difficulty: 'Senior', estimatedDuration: 30, tags: ['Architecture', 'Backend'], itemsCount: 1 },
+  { id: '3', name: 'JS Algorithms: Arrays', type: 'CodingChallenge', description: 'Array manipulation and optimization tasks.', difficulty: 'Mid', estimatedDuration: 20, tags: ['Algorithms', 'JS'], itemsCount: 3 },
+  { id: '4', name: 'Cultural Fit: Leadership', type: 'QuestionBank', description: 'Assessing ownership and conflict resolution.', difficulty: 'Senior', estimatedDuration: 10, tags: ['Soft Skills'], itemsCount: 8 },
+];
 
 const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => void }) => {
   const tabs = [
     { id: 'general', label: 'Career Page Builder', icon: LayoutTemplate },
     { id: 'integrations', label: 'Integrations', icon: Code },
     { id: 'persona', label: 'AI Persona', icon: Zap },
+    { id: 'library', label: 'Assessment Library', icon: Library },
     { id: 'team', label: 'Team', icon: Users },
   ];
 
@@ -31,7 +41,7 @@ const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => v
 };
 
 export const Settings = () => {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('library'); // Default to library for demo
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -56,6 +66,9 @@ export const Settings = () => {
   const [inviteRole, setInviteRole] = useState('Recruiter');
   const [isInviting, setIsInviting] = useState(false);
 
+  // --- LIBRARY STATE ---
+  const [assessments, setAssessments] = useState(MOCK_ASSESSMENTS);
+
   const handleSave = () => {
     setLoading(true);
     setTimeout(() => {
@@ -74,7 +87,6 @@ export const Settings = () => {
           setShowInviteModal(false);
           setInviteEmail('');
           setInviteRole('Recruiter');
-          // Ideally trigger a toast here
       }, 1500);
   };
 
@@ -399,6 +411,69 @@ export const Settings = () => {
                   </div>
               </div>
           </div>
+      )}
+      
+      {/* --- ASSESSMENT LIBRARY TAB (New) --- */}
+      {activeTab === 'library' && (
+        <div className="space-y-6">
+           <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200">
+              <div>
+                  <h2 className="text-xl font-bold text-slate-900">Assessment Library</h2>
+                  <p className="text-slate-500 text-sm mt-1">Create and manage reusable question banks and coding challenges.</p>
+              </div>
+              <button className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800">
+                  <Plus className="w-4 h-4" /> Create Module
+              </button>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {assessments.map((mod) => (
+                 <Card key={mod.id} className="p-6 hover:border-brand-300 transition-colors group cursor-pointer relative">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                           mod.type === 'QuestionBank' ? 'bg-blue-100 text-blue-600' :
+                           mod.type === 'CodingChallenge' ? 'bg-purple-100 text-purple-600' :
+                           'bg-orange-100 text-orange-600'
+                        }`}>
+                           {mod.type === 'QuestionBank' && <FileQuestion className="w-5 h-5" />}
+                           {mod.type === 'CodingChallenge' && <Terminal className="w-5 h-5" />}
+                           {mod.type === 'SystemDesign' && <LayoutTemplate className="w-5 h-5" />}
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500"><Edit2 className="w-4 h-4" /></button>
+                            <button className="p-1.5 hover:bg-red-50 rounded text-red-500"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                    </div>
+                    
+                    <h3 className="font-bold text-slate-900 mb-1">{mod.name}</h3>
+                    <p className="text-xs text-slate-500 mb-4 line-clamp-2">{mod.description}</p>
+                    
+                    <div className="flex flex-wrap gap-2 mb-4">
+                       {mod.tags.map(tag => (
+                          <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase rounded border border-slate-200">
+                             {tag}
+                          </span>
+                       ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-500">
+                        <span className="flex items-center gap-1">
+                           <Zap className="w-3 h-3 text-brand-500" /> {mod.difficulty}
+                        </span>
+                        <span>{mod.itemsCount} Items • {mod.estimatedDuration}m</span>
+                    </div>
+                 </Card>
+              ))}
+              
+              {/* Add New Placeholder Card */}
+              <button className="border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-6 text-slate-400 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/30 transition-all gap-3 min-h-[200px]">
+                  <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
+                     <Plus className="w-6 h-6" />
+                  </div>
+                  <span className="font-medium">Create New Module</span>
+              </button>
+           </div>
+        </div>
       )}
 
       {/* --- INTEGRATIONS TAB --- */}
