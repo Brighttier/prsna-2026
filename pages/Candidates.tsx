@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../components/Card';
-import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, XCircle, Clock, Mail, MessageSquare, Star, ChevronDown, User, Briefcase, X, MapPin, Linkedin, Github, Download, Sparkles, BrainCircuit, Code, Calendar, Phone, Paperclip, ChevronRight, PlayCircle, AlertCircle, Video, ShieldCheck, VideoOff } from 'lucide-react';
+import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, XCircle, Clock, Mail, MessageSquare, Star, ChevronDown, User, Briefcase, X, MapPin, Linkedin, Github, Download, Sparkles, BrainCircuit, Code, Calendar, Phone, Paperclip, ChevronRight, PlayCircle, AlertCircle, Video, ShieldCheck, VideoOff, Flag, Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Candidate } from '../types';
 
@@ -21,6 +22,13 @@ interface TranscriptEntry {
   timestamp: string;
 }
 
+interface VideoHighlight {
+  id: string;
+  timestamp: number; // in seconds
+  type: 'Flag' | 'Insight' | 'Positive' | 'Negative';
+  text: string;
+}
+
 interface InterviewSession {
   id: string;
   date: string;
@@ -30,6 +38,7 @@ interface InterviewSession {
   summary: string;
   transcript?: TranscriptEntry[];
   videoUrl?: string;
+  videoHighlights?: VideoHighlight[];
 }
 
 // Extended Candidate Type for Mock Data
@@ -99,6 +108,14 @@ const MOCK_CANDIDATES: ExtendedCandidate[] = [
         sentiment: 'Positive', 
         summary: 'Candidate demonstrated deep knowledge of React lifecycle and hooks. Communication was clear and concise.',
         videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4', // Sample video for demo
+        videoHighlights: [
+           { id: 'h1', timestamp: 15, type: 'Positive', text: 'Clear explanation of Design Systems' },
+           { id: 'h2', timestamp: 48, type: 'Insight', text: 'Mentioned Nx monorepo benefits' },
+           { id: 'h3', timestamp: 140, type: 'Flag', text: 'Candidate looked away from screen' },
+           { id: 'h4', timestamp: 215, type: 'Negative', text: 'Hesitation on useMemo complexity' },
+           { id: 'h5', timestamp: 300, type: 'Flag', text: 'Candidate looked away from screen' },
+           { id: 'h6', timestamp: 420, type: 'Positive', text: 'Strong closing statement' }
+        ],
         transcript: [
             { speaker: 'Lumina', text: "Hello Sarah. I've reviewed your resume and I'm impressed by your work at TechFlow. Could you walk me through the 'FlowUI' design system you established? specifically the challenges in adoption.", timestamp: "00:05" },
             { speaker: 'Candidate', text: "Absolutely. When I joined, we had three different teams using disparate component libraries. Consistency was a nightmare. I initiated FlowUI by auditing our most used patterns. The biggest challenge wasn't code, it was convincing the designers to standardize their tokens. I set up regular syncs and built a documentation site using Storybook which really helped adoption.", timestamp: "00:18" },
@@ -197,50 +214,233 @@ const TranscriptModal = ({ session, onClose }: { session: InterviewSession, onCl
 }
 
 const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClose: () => void }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
+    const [showControls, setShowControls] = useState(true);
+
+    // Initial play
+    useEffect(() => {
+        if(videoRef.current) {
+            videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+        }
+    }, []);
+
+    const togglePlay = () => {
+        if (!videoRef.current) return;
+        if (isPlaying) {
+            videoRef.current.pause();
+            setIsPlaying(false);
+        } else {
+            videoRef.current.play();
+            setIsPlaying(true);
+        }
+    };
+
+    const handleTimeUpdate = () => {
+        if (videoRef.current) {
+            setCurrentTime(videoRef.current.currentTime);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (videoRef.current) {
+            setDuration(videoRef.current.duration);
+        }
+    };
+
+    const handleSeek = (time: number) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = time;
+            setCurrentTime(time);
+        }
+    };
+
+    const formatTime = (time: number) => {
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const getHighlightColor = (type: string) => {
+        switch (type) {
+            case 'Flag': return 'bg-amber-500 text-amber-500'; // Amber for warnings/flags
+            case 'Positive': return 'bg-emerald-500 text-emerald-500'; // Green for good
+            case 'Negative': return 'bg-red-500 text-red-500'; // Red for bad
+            case 'Insight': return 'bg-blue-500 text-blue-500'; // Blue for info
+            default: return 'bg-slate-400 text-slate-400';
+        }
+    };
+
+    const getHighlightIcon = (type: string) => {
+        switch (type) {
+            case 'Flag': return <Flag className="w-3 h-3" />;
+            case 'Positive': return <CheckCircle className="w-3 h-3" />;
+            case 'Negative': return <XCircle className="w-3 h-3" />;
+            case 'Insight': return <BrainCircuit className="w-3 h-3" />;
+            default: return <div className="w-2 h-2 rounded-full bg-current" />;
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-fade-in">
-            <div className="bg-black rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-fade-in-up flex flex-col max-h-[90vh]">
-                <div className="flex justify-between items-center p-4 bg-slate-900 text-white border-b border-slate-800">
-                    <div className="flex items-center gap-3">
-                       <div className="w-10 h-10 bg-brand-900/50 rounded-lg flex items-center justify-center text-brand-500">
-                          <PlayCircle className="w-5 h-5" />
-                       </div>
-                       <div>
-                          <h3 className="font-bold text-lg leading-tight">{session.type}</h3>
-                          <p className="text-xs text-slate-400 font-mono">ID: {session.id} • {session.date}</p>
-                       </div>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
-                        <X className="w-6 h-6" />
-                    </button>
-                </div>
-                <div className="flex-1 bg-black relative flex items-center justify-center min-h-[400px]">
-                    {session.videoUrl ? (
-                        <video 
-                            src={session.videoUrl} 
-                            controls 
-                            className="w-full h-full max-h-[70vh] object-contain"
-                            autoPlay
-                        >
-                            Your browser does not support the video tag.
-                        </video>
-                    ) : (
-                        <div className="flex flex-col items-center text-slate-500">
-                             <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
-                                <VideoOff className="w-8 h-8 opacity-50" />
-                             </div>
-                             <p>Recording unavailable</p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
+            <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl h-[85vh] flex overflow-hidden animate-fade-in-up border border-slate-800">
+                
+                {/* LEFT: VIDEO PLAYER */}
+                <div className="flex-1 relative flex flex-col bg-black group"
+                     onMouseEnter={() => setShowControls(true)}
+                     onMouseLeave={() => setShowControls(false)}
+                >
+                    <div className="absolute top-0 left-0 right-0 p-4 z-10 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+                        <div className="pointer-events-auto">
+                            <h3 className="font-bold text-lg text-white leading-tight">{session.type}</h3>
+                            <p className="text-xs text-slate-300 font-mono opacity-80">{session.id} • {session.date}</p>
                         </div>
-                    )}
-                </div>
-                <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center">
-                    <div className="flex gap-4 text-sm text-slate-400">
-                        <span className="flex items-center gap-2"><Clock className="w-4 h-4"/> Duration: 45:30</span>
-                        <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4"/> AI Analysis Verified</span>
+                        <button onClick={onClose} className="pointer-events-auto p-2 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors">
+                            <X className="w-6 h-6" />
+                        </button>
                     </div>
-                    <button className="text-brand-400 hover:text-brand-300 text-sm font-bold flex items-center gap-2">
-                        <Download className="w-4 h-4" /> Download MP4
-                    </button>
+
+                    <div className="flex-1 relative flex items-center justify-center bg-black/50">
+                        {session.videoUrl ? (
+                            <video 
+                                ref={videoRef}
+                                src={session.videoUrl}
+                                className="w-full h-full object-contain"
+                                onTimeUpdate={handleTimeUpdate}
+                                onLoadedMetadata={handleLoadedMetadata}
+                                onClick={togglePlay}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center text-slate-500">
+                                <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+                                <VideoOff className="w-8 h-8 opacity-50" />
+                                </div>
+                                <p>Recording unavailable</p>
+                            </div>
+                        )}
+
+                        {/* Center Play Button Overlay */}
+                        {!isPlaying && session.videoUrl && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-20 h-20 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                                    <Play className="w-10 h-10 text-white ml-1" />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Controls Overlay - Transparent Gradient */}
+                    <div className={`absolute bottom-0 left-0 right-0 pt-20 pb-6 px-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+                        
+                        {/* Timeline Rail */}
+                        <div className="relative h-1.5 bg-white/20 rounded-full cursor-pointer group/timeline mb-4"
+                             onClick={(e) => {
+                                 const rect = e.currentTarget.getBoundingClientRect();
+                                 const percent = (e.clientX - rect.left) / rect.width;
+                                 handleSeek(percent * duration);
+                             }}
+                        >
+                            {/* Buffered/Progress Bar */}
+                            <div className="absolute top-0 left-0 bottom-0 bg-brand-500 rounded-full" style={{ width: `${(currentTime / duration) * 100}%` }}></div>
+                            
+                            {/* Hover Handle */}
+                            <div className="absolute top-1/2 -mt-1.5 h-3 w-3 bg-white rounded-full shadow opacity-0 group-hover/timeline:opacity-100 transition-opacity" style={{ left: `${(currentTime / duration) * 100}%`, transform: 'translateX(-50%)' }}></div>
+
+                            {/* Markers on Timeline */}
+                            {session.videoHighlights?.map((h) => (
+                                <div 
+                                    key={h.id}
+                                    className={`absolute top-1/2 -mt-1 h-2 w-2 rounded-full ${getHighlightColor(h.type).split(' ')[0]} z-10 transform -translate-x-1/2 ring-1 ring-black/50 group/marker transition-transform hover:scale-150`}
+                                    style={{ left: `${(h.timestamp / duration) * 100}%` }}
+                                    title={h.text}
+                                >
+                                     {/* Tooltip on Hover */}
+                                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/marker:opacity-100 transition-opacity pointer-events-none border border-slate-700 shadow-xl">
+                                         {h.type}: {h.text}
+                                     </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex justify-between items-center text-white">
+                            <div className="flex items-center gap-4">
+                                <button onClick={togglePlay} className="hover:text-brand-400 transition-colors">
+                                    {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+                                </button>
+                                <div className="text-xs font-mono opacity-80">
+                                    {formatTime(currentTime)} / {formatTime(duration)}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setIsMuted(!isMuted)} className="hover:text-white/80 transition-colors">
+                                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                                </button>
+                                <button className="hover:text-white/80 transition-colors">
+                                    <Maximize className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* RIGHT: INTELLIGENCE SIDEBAR */}
+                <div className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col">
+                    <div className="p-4 border-b border-slate-800 bg-slate-900 z-10">
+                        <h4 className="font-bold text-white flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-brand-400" /> AI Highlights
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1">Jump to key moments detected by Lumina.</p>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                        {session.videoHighlights?.map((h) => {
+                            const isActive = currentTime >= h.timestamp && currentTime < h.timestamp + 5; // Simple active state window
+                            return (
+                                <button 
+                                    key={h.id}
+                                    onClick={() => handleSeek(h.timestamp)}
+                                    className={`w-full text-left p-3 rounded-xl border transition-all flex gap-3 group relative ${
+                                        isActive 
+                                            ? 'bg-slate-800 border-slate-700 shadow-md' 
+                                            : 'bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800'
+                                    }`}
+                                >
+                                    {/* Timeline Connector Line */}
+                                    <div className="absolute left-[19px] top-8 bottom-[-20px] w-px bg-slate-800 group-last:hidden"></div>
+
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 border border-slate-800 ${getHighlightColor(h.type)} bg-opacity-10`}>
+                                        {getHighlightIcon(h.type)}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${getHighlightColor(h.type).split(' ')[1]}`}>
+                                                {h.type}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-slate-500">{formatTime(h.timestamp)}</span>
+                                        </div>
+                                        <p className={`text-xs leading-relaxed ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                                            {h.text}
+                                        </p>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                        
+                        {(!session.videoHighlights || session.videoHighlights.length === 0) && (
+                            <div className="p-8 text-center text-slate-600 text-xs">
+                                No highlights detected for this session.
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="p-4 border-t border-slate-800 bg-slate-900 text-center">
+                        <button className="text-xs font-bold text-brand-500 hover:text-brand-400 flex items-center justify-center gap-2 w-full py-2 rounded-lg hover:bg-slate-800 transition-colors">
+                            <Download className="w-3 h-3" /> Download Full Report
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
