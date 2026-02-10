@@ -35,11 +35,17 @@ export interface OfferDetails {
 }
 
 // New: Onboarding Tasks
+export type OnboardingCategory = 'Legal & Compliance' | 'IT & Equipment' | 'Culture & Orientation';
+export type OnboardingTaskType = 'checkbox' | 'upload';
+
 export interface OnboardingTask {
   id: string;
+  category: OnboardingCategory;
   task: string;
+  type: OnboardingTaskType;
   completed: boolean;
   assignee: 'IT' | 'HR' | 'Manager';
+  fileUrl?: string; // If type is upload
 }
 
 export interface Candidate {
@@ -53,8 +59,8 @@ export interface Candidate {
   // New Fields
   offer?: OfferDetails;
   onboarding?: {
-    sageSyncStatus: 'Not_Synced' | 'Syncing' | 'Synced' | 'Error';
-    sageId?: string;
+    hrisSyncStatus: 'Not_Synced' | 'Syncing' | 'Synced' | 'Error'; // Renamed from sageSyncStatus
+    hrisId?: string;
     tasks: OnboardingTask[];
   };
 }

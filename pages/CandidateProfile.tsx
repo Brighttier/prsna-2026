@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle } from 'lucide-react';
+import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
 
 // Duplicated Mock Data for simplicity in this full-page view context
@@ -167,12 +167,14 @@ const MOCK_DATA: Record<string, ExtendedCandidate> = {
         offerLetterContent: "..."
     },
     onboarding: {
-        sageSyncStatus: 'Not_Synced',
+        hrisSyncStatus: 'Not_Synced',
         tasks: [
-            { id: 't1', task: 'Provision MacBook Pro M2', completed: false, assignee: 'IT' },
-            { id: 't2', task: 'Create AWS IAM User', completed: true, assignee: 'IT' },
-            { id: 't3', task: 'Send Welcome Swag Kit', completed: false, assignee: 'HR' },
-            { id: 't4', task: 'Schedule Team Lunch', completed: false, assignee: 'Manager' },
+            { id: 't1', category: 'IT & Equipment', task: 'Provision MacBook Pro M2', type: 'checkbox', completed: false, assignee: 'IT' },
+            { id: 't2', category: 'IT & Equipment', task: 'Create AWS IAM User', type: 'checkbox', completed: true, assignee: 'IT' },
+            { id: 't3', category: 'Culture & Orientation', task: 'Send Welcome Swag Kit', type: 'checkbox', completed: false, assignee: 'HR' },
+            { id: 't4', category: 'Culture & Orientation', task: 'Schedule Team Lunch', type: 'checkbox', completed: false, assignee: 'Manager' },
+            { id: 't5', category: 'Legal & Compliance', task: 'Upload Signed Offer', type: 'upload', completed: true, assignee: 'HR', fileUrl: 'offer.pdf' },
+            { id: 't6', category: 'Legal & Compliance', task: 'Upload Background Check', type: 'upload', completed: false, assignee: 'HR' },
         ]
     },
     interviews: []
@@ -434,11 +436,15 @@ export const CandidateProfile = () => {
   const [recordingSession, setRecordingSession] = useState<InterviewSession | null>(null);
   const [offerData, setOfferData] = useState<OfferDetails>(candidate?.offer || { status: 'Draft', salary: 0, currency: 'USD', equity: '', bonus: '', startDate: '', offerLetterContent: '' });
   const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
-  const [sageSyncState, setSageSyncState] = useState<'Not_Synced' | 'Syncing' | 'Synced' | 'Error'>(candidate?.onboarding?.sageSyncStatus || 'Not_Synced');
+  const [hrisSyncState, setHrisSyncState] = useState<'Not_Synced' | 'Syncing' | 'Synced' | 'Error'>(candidate?.onboarding?.hrisSyncStatus || 'Not_Synced');
+  
+  // State for Onboarding Tasks (mocking completion toggle and upload)
+  const [localTasks, setLocalTasks] = useState<OnboardingTask[]>(candidate?.onboarding?.tasks || []);
 
   useEffect(() => {
       if (candidate?.stage === 'Offer') setActiveTab('offer');
       if (candidate?.stage === 'Hired') setActiveTab('onboarding');
+      if (candidate?.onboarding?.tasks) setLocalTasks(candidate.onboarding.tasks);
   }, [candidate]);
 
   if (!candidate) return <div className="p-8 text-center">Candidate not found</div>;
@@ -458,11 +464,20 @@ export const CandidateProfile = () => {
       setOfferData(prev => ({ ...prev, status: 'Sent' }));
   };
 
-  const handleSageSync = () => {
-      setSageSyncState('Syncing');
+  const handleHrisSync = () => {
+      setHrisSyncState('Syncing');
       setTimeout(() => {
-          setSageSyncState('Synced');
+          setHrisSyncState('Synced');
       }, 2000);
+  };
+
+  const toggleTask = (taskId: string) => {
+      setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
+  };
+
+  const handleFileUpload = (taskId: string) => {
+      // Simulate file upload
+      setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: true, fileUrl: 'simulated_upload.pdf' } : t));
   };
 
   return (
@@ -519,7 +534,7 @@ export const CandidateProfile = () => {
             { id: 'analysis', label: 'AI Intelligence', icon: BrainCircuit },
             { id: 'interviews', label: 'Interview History', icon: MessageSquare },
             ...(candidate.stage === 'Offer' || candidate.stage === 'Hired' ? [{ id: 'offer', label: 'Offer Management', icon: DollarSign }] : []),
-            ...(candidate.stage === 'Hired' ? [{ id: 'onboarding', label: 'Onboarding & Sage', icon: Server }] : [])
+            ...(candidate.stage === 'Hired' ? [{ id: 'onboarding', label: 'Onboarding & HRIS', icon: Server }] : [])
           ].map(tab => (
              <button 
                key={tab.id}
@@ -647,16 +662,47 @@ export const CandidateProfile = () => {
                 {activeTab === 'onboarding' && (
                    <Card className="p-8 col-span-2">
                       <div className="flex items-center justify-between mb-8">
-                         <div className="flex items-center gap-4"><div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center"><Server className="w-6 h-6 text-emerald-600"/></div><div><h3 className="font-bold text-xl text-slate-900">Sage HR Sync</h3><p className="text-slate-500">Push candidate data to HRIS.</p></div></div>
-                         <button onClick={handleSageSync} disabled={sageSyncState === 'Synced' || sageSyncState === 'Syncing'} className="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50">{sageSyncState === 'Synced' ? <Check className="w-5 h-5"/> : sageSyncState === 'Syncing' ? <Loader2 className="w-5 h-5 animate-spin"/> : 'Sync Now'}</button>
+                         <div className="flex items-center gap-4"><div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center"><Server className="w-6 h-6 text-emerald-600"/></div><div><h3 className="font-bold text-xl text-slate-900">Sync to HRIS</h3><p className="text-slate-500">Push candidate data to external systems.</p></div></div>
+                         <button onClick={handleHrisSync} disabled={hrisSyncState === 'Synced' || hrisSyncState === 'Syncing'} className="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50">{hrisSyncState === 'Synced' ? <Check className="w-5 h-5"/> : hrisSyncState === 'Syncing' ? <Loader2 className="w-5 h-5 animate-spin"/> : 'Sync Now'}</button>
                       </div>
-                      <div className="space-y-3">
-                         {candidate.onboarding?.tasks.map(t => (
-                            <div key={t.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${t.completed ? 'bg-brand-500 border-brand-500' : 'border-slate-300'}`}>{t.completed && <Check className="w-3.5 h-3.5 text-white"/>}</div>
-                               <span className={t.completed ? 'text-slate-400 line-through' : 'text-slate-900 font-medium'}>{t.task}</span>
+                      
+                      <div className="space-y-6">
+                        {['Legal & Compliance', 'IT & Equipment', 'Culture & Orientation'].map(cat => (
+                            <div key={cat}>
+                                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">{cat}</h4>
+                                <div className="space-y-3">
+                                    {localTasks.filter(t => t.category === cat).map(t => (
+                                        <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+                                           <div className="flex items-center gap-4">
+                                               {t.type === 'upload' ? (
+                                                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${t.completed ? 'bg-orange-100 border-orange-200 text-orange-600' : 'border-slate-300 text-slate-400'}`}>
+                                                       <FileText className="w-4 h-4" />
+                                                   </div>
+                                               ) : (
+                                                   <button onClick={() => toggleTask(t.id)} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${t.completed ? 'bg-brand-500 border-brand-500' : 'border-slate-300 hover:border-brand-400'}`}>
+                                                       {t.completed && <Check className="w-3.5 h-3.5 text-white"/>}
+                                                   </button>
+                                               )}
+                                               
+                                               <div>
+                                                   <div className={`font-medium ${t.completed ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{t.task}</div>
+                                                   {t.fileUrl && <div className="text-xs text-brand-600 flex items-center gap-1 mt-0.5"><CheckCircle className="w-3 h-3"/> {t.fileUrl} uploaded</div>}
+                                               </div>
+                                           </div>
+
+                                           {t.type === 'upload' && !t.completed && (
+                                               <button onClick={() => handleFileUpload(t.id)} className="text-xs bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium flex items-center gap-2">
+                                                   <UploadCloud className="w-3 h-3"/> Upload
+                                               </button>
+                                           )}
+                                        </div>
+                                    ))}
+                                    {localTasks.filter(t => t.category === cat).length === 0 && (
+                                        <div className="text-xs text-slate-400 italic">No tasks assigned.</div>
+                                    )}
+                                </div>
                             </div>
-                         ))}
+                        ))}
                       </div>
                    </Card>
                 )}
