@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code } from 'lucide-react';
+import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
@@ -769,26 +769,151 @@ export const CandidateProfile = () => {
 
           {/* INTERVIEWS */}
           {activeTab === 'interviews' && (
-             <div className="space-y-6">
-                {candidate.interviews.map(interview => (
-                   <Card key={interview.id} className="overflow-hidden">
-                      <div className="bg-slate-50 px-8 py-5 border-b border-slate-100 flex justify-between items-center">
-                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center"><PlayCircle className="w-6 h-6" /></div>
-                            <div><h4 className="font-bold text-slate-900">{interview.type}</h4><div className="text-sm text-slate-500">{interview.date}</div></div>
-                         </div>
-                         <div className="text-right"><div className="text-lg font-bold text-slate-900">{interview.score}/10</div><div className="text-sm text-emerald-600 font-medium">{interview.sentiment}</div></div>
-                      </div>
-                      <div className="p-8">
-                         <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Summary</h5>
-                         <p className="text-slate-700 leading-relaxed mb-6">{interview.summary}</p>
-                         <div className="flex gap-4">
-                            <button onClick={() => setTranscriptSession(interview)} className="text-sm font-bold text-brand-600 hover:underline flex items-center gap-2">View Transcript <ChevronRight className="w-4 h-4"/></button>
-                            <button onClick={() => setRecordingSession(interview)} className="text-sm font-bold text-slate-500 hover:text-slate-900 flex items-center gap-2">Watch Recording <ChevronRight className="w-4 h-4"/></button>
-                         </div>
-                      </div>
-                   </Card>
-                ))}
+             <div className="space-y-8 animate-fade-in">
+                {candidate.interviews.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Video className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-slate-900">No interviews yet</h3>
+                        <p className="text-slate-500 mt-1">Schedule a Lumina screening or invite the candidate.</p>
+                        <button className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800">Schedule Interview</button>
+                    </div>
+                ) : (
+                    candidate.interviews.map((interview, index) => (
+                        <div key={interview.id} className="relative pl-8 md:pl-0">
+                            {/* Timeline Line (Desktop) */}
+                            <div className="hidden md:block absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 last:bottom-auto last:h-full"></div>
+                            
+                            <Card className="overflow-hidden border-l-4 border-l-brand-500 relative">
+                                {/* Status Ribbon/Badge */}
+                                <div className="absolute top-0 right-0 p-4">
+                                     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                                         interview.sentiment === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                                         interview.sentiment === 'Negative' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                     }`}>
+                                         {interview.sentiment === 'Positive' ? <Sparkles className="w-3 h-3"/> : interview.sentiment === 'Negative' ? <AlertCircle className="w-3 h-3"/> : <Minus className="w-3 h-3"/>}
+                                         {interview.sentiment} Sentiment
+                                     </div>
+                                </div>
+
+                                <div className="p-6 md:p-8">
+                                    <div className="flex flex-col md:flex-row gap-8">
+                                        {/* Left Column: Meta & Score */}
+                                        <div className="md:w-1/3 space-y-6">
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/20">
+                                                    <Video className="w-7 h-7" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-xl text-slate-900 leading-tight">{interview.type}</h4>
+                                                    <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                                                        <Calendar className="w-4 h-4" /> {interview.date}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Score Card */}
+                                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                                                <div className="flex justify-between items-end mb-2">
+                                                    <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Overall Score</span>
+                                                    <span className="text-3xl font-black text-slate-900">{interview.score}<span className="text-lg text-slate-400 font-medium">/10</span></span>
+                                                </div>
+                                                <div className="w-full bg-white h-3 rounded-full overflow-hidden border border-slate-100">
+                                                    <div className="h-full bg-gradient-to-r from-blue-500 to-brand-500" style={{width: `${interview.score * 10}%`}}></div>
+                                                </div>
+                                                
+                                                {/* Mock Sub-metrics */}
+                                                <div className="mt-4 space-y-3">
+                                                    <div>
+                                                        <div className="flex justify-between text-xs mb-1">
+                                                            <span className="font-medium text-slate-600">Technical Proficiency</span>
+                                                            <span className="font-bold text-slate-900">{(interview.score + 0.5).toFixed(1)}</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${Math.min(100, (interview.score + 0.5)*10)}%`}}></div></div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex justify-between text-xs mb-1">
+                                                            <span className="font-medium text-slate-600">Communication</span>
+                                                            <span className="font-bold text-slate-900">{(interview.score - 0.2).toFixed(1)}</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-purple-500" style={{width: `${Math.min(100, (interview.score - 0.2)*10)}%`}}></div></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Column: Content */}
+                                        <div className="flex-1 space-y-6">
+                                            <div>
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                    <MessageSquare className="w-3 h-3" /> Executive Summary
+                                                </h5>
+                                                <p className="text-slate-700 leading-relaxed bg-white text-sm md:text-base">
+                                                    {interview.summary}
+                                                </p>
+                                            </div>
+
+                                            {/* Highlights Grid */}
+                                            {interview.videoHighlights && interview.videoHighlights.length > 0 && (
+                                                <div>
+                                                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                        <Sparkles className="w-3 h-3" /> Key Moments Detected
+                                                    </h5>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {interview.videoHighlights.slice(0, 4).map((h) => (
+                                                            <div key={h.id} className={`p-3 rounded-lg border flex gap-3 ${
+                                                                h.type === 'Positive' ? 'bg-emerald-50 border-emerald-100' :
+                                                                h.type === 'Negative' ? 'bg-red-50 border-red-100' :
+                                                                h.type === 'Insight' ? 'bg-blue-50 border-blue-100' :
+                                                                'bg-amber-50 border-amber-100'
+                                                            }`}>
+                                                                <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                                                    h.type === 'Positive' ? 'bg-emerald-200 text-emerald-700' :
+                                                                    h.type === 'Negative' ? 'bg-red-200 text-red-700' :
+                                                                    h.type === 'Insight' ? 'bg-blue-200 text-blue-700' :
+                                                                    'bg-amber-200 text-amber-700'
+                                                                }`}>
+                                                                    {h.type === 'Positive' ? <Check className="w-3 h-3"/> : 
+                                                                     h.type === 'Negative' ? <X className="w-3 h-3"/> : 
+                                                                     h.type === 'Insight' ? <BrainCircuit className="w-3 h-3"/> : <Flag className="w-3 h-3"/>}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs font-bold opacity-80 uppercase mb-0.5">{h.type}</div>
+                                                                    <div className="text-sm font-medium text-slate-800 line-clamp-2">{h.text}</div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Actions */}
+                                            <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+                                                <button 
+                                                    onClick={() => setRecordingSession(interview)}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 active:scale-95"
+                                                >
+                                                    <PlayCircle className="w-4 h-4" /> Watch Recording
+                                                </button>
+                                                <button 
+                                                    onClick={() => setTranscriptSession(interview)}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-50 transition-all active:scale-95"
+                                                >
+                                                    <FileText className="w-4 h-4" /> Read Transcript
+                                                </button>
+                                                <div className="flex-1"></div>
+                                                <button className="text-slate-400 hover:text-slate-600 text-sm font-medium flex items-center gap-1">
+                                                    <Download className="w-4 h-4" /> Export Report
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                    ))
+                )}
              </div>
           )}
 
