@@ -22,14 +22,41 @@ export interface Job {
   };
 }
 
+// New: Offer Details
+export interface OfferDetails {
+  status: 'Draft' | 'Pending_Approval' | 'Sent' | 'Negotiating' | 'Accepted' | 'Declined';
+  salary: number;
+  currency: string;
+  equity: string;
+  bonus: string;
+  startDate: string;
+  offerLetterContent?: string;
+  sentDate?: string;
+}
+
+// New: Onboarding Tasks
+export interface OnboardingTask {
+  id: string;
+  task: string;
+  completed: boolean;
+  assignee: 'IT' | 'HR' | 'Manager';
+}
+
 export interface Candidate {
   id: string;
   name: string;
   email: string;
   role: string;
-  stage: 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Rejected';
+  stage: 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Hired' | 'Rejected'; // Added Hired
   score: number;
   matchReason?: string;
+  // New Fields
+  offer?: OfferDetails;
+  onboarding?: {
+    sageSyncStatus: 'Not_Synced' | 'Syncing' | 'Synced' | 'Error';
+    sageId?: string;
+    tasks: OnboardingTask[];
+  };
 }
 
 export interface ScreeningResult {
