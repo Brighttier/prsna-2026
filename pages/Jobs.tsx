@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
 import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Job, JobStatus } from '../types';
 
 // Mock Data
@@ -58,6 +59,7 @@ const MOCK_JOBS: Job[] = [
 ];
 
 export const Jobs = () => {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<JobStatus | 'All'>('All');
   const [search, setSearch] = useState('');
 
@@ -181,7 +183,10 @@ export const Jobs = () => {
                  {job.status === JobStatus.DRAFT && <span>Draft - Not visible to candidates</span>}
                  {job.status === JobStatus.CLOSED && <span>Closed - Not accepting applications</span>}
                </div>
-               <button className="text-brand-600 font-medium hover:text-brand-700 flex items-center gap-1 transition-colors">
+               <button 
+                  onClick={() => navigate('/candidates', { state: { roleFilter: job.title } })}
+                  className="text-brand-600 font-medium hover:text-brand-700 flex items-center gap-1 transition-colors"
+               >
                   View Candidates <ChevronRight className="w-3 h-3" />
                </button>
             </div>
