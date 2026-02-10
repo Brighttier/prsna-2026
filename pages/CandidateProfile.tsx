@@ -553,6 +553,10 @@ export const CandidateProfile = () => {
           {activeTab === 'resume' && (
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1 space-y-6">
+                   <button className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10">
+                      <Download className="w-4 h-4" /> Download Resume (PDF)
+                   </button>
+
                    <Card className="p-6">
                       <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Contact Info</h3>
                       <div className="space-y-4 text-sm text-slate-600">
