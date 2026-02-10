@@ -9,6 +9,8 @@ const MOCK_ASSESSMENTS: AssessmentModule[] = [
   { id: '2', name: 'System Design: Scalable Feed', type: 'SystemDesign', description: 'Design a Twitter-like feed architecture.', difficulty: 'Senior', estimatedDuration: 30, tags: ['Architecture', 'Backend'], itemsCount: 1 },
   { id: '3', name: 'JS Algorithms: Arrays', type: 'CodingChallenge', description: 'Array manipulation and optimization tasks.', difficulty: 'Mid', estimatedDuration: 20, tags: ['Algorithms', 'JS'], itemsCount: 3 },
   { id: '4', name: 'Cultural Fit: Leadership', type: 'QuestionBank', description: 'Assessing ownership and conflict resolution.', difficulty: 'Senior', estimatedDuration: 10, tags: ['Soft Skills'], itemsCount: 8 },
+  { id: '5', name: 'Marketing Strategy Case', type: 'QuestionBank', description: 'Analyze campaign metrics and propose ROI improvements.', difficulty: 'Senior', estimatedDuration: 25, tags: ['Marketing', 'Analytics'], itemsCount: 5 },
+  { id: '6', name: 'Customer Support Escalation', type: 'QuestionBank', description: 'Handling angry enterprise clients.', difficulty: 'Mid', estimatedDuration: 15, tags: ['Support', 'Soft Skills'], itemsCount: 4 },
 ];
 
 const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => void }) => {

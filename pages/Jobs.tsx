@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle } from 'lucide-react';
+import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle, FileText, Code as CodeIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Job, JobStatus } from '../types';
 
@@ -68,6 +68,7 @@ export const Jobs = () => {
   const [showJobCreator, setShowJobCreator] = useState(false);
   const [creatorStep, setCreatorStep] = useState(1);
   const [newJob, setNewJob] = useState({ title: '', dept: '', loc: '', screening: '', technical: '' });
+  const [technicalType, setTechnicalType] = useState<'coding' | 'scenario'>('coding');
 
   const filteredJobs = MOCK_JOBS.filter(job => {
     const matchesFilter = filter === 'All' || job.status === filter;
@@ -330,20 +331,52 @@ export const Jobs = () => {
                                  <div className="w-8 h-8 rounded bg-purple-100 text-purple-600 flex items-center justify-center">
                                     <Terminal className="w-5 h-5" />
                                  </div>
-                                 <span className="font-bold text-slate-700">Stage 2: Technical Deep Dive (Lumina)</span>
+                                 <span className="font-bold text-slate-700">Stage 2: Technical & Skills Assessment</span>
                               </div>
                               <div className="p-6 bg-white">
-                                 <label className="block text-sm font-medium text-slate-700 mb-2">Attach Coding Challenge</label>
+                                 {/* Toggle Technical Type */}
+                                 <div className="flex gap-4 mb-5">
+                                    <button 
+                                       onClick={() => setTechnicalType('coding')}
+                                       className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${technicalType === 'coding' ? 'bg-purple-50 border-purple-200 text-purple-700 ring-1 ring-purple-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                    >
+                                       <CodeIcon className="w-4 h-4" /> Coding Challenge
+                                    </button>
+                                    <button 
+                                       onClick={() => setTechnicalType('scenario')}
+                                       className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${technicalType === 'scenario' ? 'bg-purple-50 border-purple-200 text-purple-700 ring-1 ring-purple-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                    >
+                                       <FileText className="w-4 h-4" /> Scenario / Case Study
+                                    </button>
+                                 </div>
+
+                                 <label className="block text-sm font-medium text-slate-700 mb-2">
+                                     {technicalType === 'coding' ? 'Select Coding Problem' : 'Select Case Study Module'}
+                                 </label>
                                  <select 
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
                                     value={newJob.technical}
                                     onChange={e => setNewJob({...newJob, technical: e.target.value})}
                                  >
                                     <option value="">Select from Library...</option>
-                                    <option value="3">JS Algorithms: Arrays (Mid)</option>
-                                    <option value="2">System Design: Scalable Feed (Senior)</option>
+                                    {technicalType === 'coding' ? (
+                                       <>
+                                          <option value="3">JS Algorithms: Arrays (Mid)</option>
+                                          <option value="7">Python Data Structures (Senior)</option>
+                                       </>
+                                    ) : (
+                                       <>
+                                          <option value="2">System Design: Scalable Feed (Discussion)</option>
+                                          <option value="5">Marketing Strategy Case (Q&A)</option>
+                                          <option value="6">Customer Support Escalation (Roleplay)</option>
+                                       </>
+                                    )}
                                  </select>
-                                 <p className="text-xs text-slate-500 mt-2">Lumina will present this challenge in the code editor during the live interview.</p>
+                                 <p className="text-xs text-slate-500 mt-2">
+                                     {technicalType === 'coding' 
+                                        ? "Lumina will open the Monaco Code Editor and evaluate syntax, logic, and optimization."
+                                        : "Lumina will conduct a verbal deep-dive or whiteboard session based on this specific scenario."}
+                                 </p>
                               </div>
                            </div>
                         </div>
@@ -369,6 +402,10 @@ export const Jobs = () => {
                               <div className="flex justify-between text-sm">
                                  <span className="text-slate-500">Technical:</span>
                                  <span className="font-medium">{newJob.technical ? 'Linked Module' : 'None'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                 <span className="text-slate-500">Assessment Type:</span>
+                                 <span className="font-medium capitalize">{technicalType}</span>
                               </div>
                            </div>
                         </div>
