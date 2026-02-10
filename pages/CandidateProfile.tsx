@@ -2,8 +2,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck } from 'lucide-react';
+import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, Cell
+} from 'recharts';
 
 // Duplicated Mock Data for simplicity in this full-page view context
 interface Experience {
@@ -593,30 +597,173 @@ export const CandidateProfile = () => {
 
           {/* ANALYSIS */}
           {activeTab === 'analysis' && (
-             <div className="space-y-8">
-                <div className="grid grid-cols-3 gap-6">
-                   {[{l: 'Technical', s: candidate.analysis.technicalScore, c: 'bg-blue-500'}, {l: 'Cultural', s: candidate.analysis.culturalScore, c: 'bg-purple-500'}, {l: 'Communication', s: candidate.analysis.communicationScore, c: 'bg-emerald-500'}].map((m, i) => (
-                      <Card key={i} className="p-6 text-center">
-                         <div className="text-sm font-medium text-slate-500 mb-2">{m.l} Fit</div>
-                         <div className="text-4xl font-black text-slate-900">{m.s}</div>
-                         <div className="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden"><div className={`h-full ${m.c}`} style={{width: `${m.s}%`}}></div></div>
-                      </Card>
-                   ))}
-                </div>
-                <div className="grid grid-cols-2 gap-8">
-                   <Card className="p-8 border-t-4 border-emerald-500">
-                      <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2"><Sparkles className="w-5 h-5 text-emerald-500"/> Key Strengths</h3>
-                      <ul className="space-y-4">
-                         {candidate.analysis.strengths.map((s, i) => <li key={i} className="flex gap-3 text-slate-700"><CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0"/>{s}</li>)}
-                      </ul>
+             <div className="space-y-6 animate-fade-in">
+                
+                {/* 1. Hero Section: Verdict & Radar */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                   {/* Verdict Card */}
+                   <Card className="lg:col-span-1 p-0 overflow-hidden border-t-4 border-brand-600 flex flex-col">
+                      <div className="p-6 bg-gradient-to-br from-brand-50 to-white flex-1">
+                          <h3 className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-2">AI Verdict</h3>
+                          <div className="flex items-baseline gap-2 mb-4">
+                             <span className="text-5xl font-black text-slate-900">{candidate.score}</span>
+                             <span className="text-xl font-medium text-slate-400">/ 100</span>
+                          </div>
+                          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold mb-6 ${
+                              candidate.aiVerdict === 'Proceed' ? 'bg-emerald-100 text-emerald-700' : 
+                              candidate.aiVerdict === 'Review' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                              {candidate.aiVerdict === 'Proceed' ? <CheckCircle className="w-4 h-4"/> : <AlertCircle className="w-4 h-4"/>}
+                              Recommended Action: {candidate.aiVerdict}
+                          </div>
+                          <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                             {candidate.matchReason} The candidate shows exceptional alignment with the technical requirements and exhibits strong leadership signals suitable for a Senior role.
+                          </p>
+                      </div>
+                      <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+                          <span>Confidence Score: 94%</span>
+                          <span className="flex items-center gap-1"><BrainCircuit className="w-3 h-3"/> Model: Gemini 2.0</span>
+                      </div>
                    </Card>
-                   <Card className="p-8 border-t-4 border-amber-500">
-                      <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2"><AlertCircle className="w-5 h-5 text-amber-500"/> Areas of Concern</h3>
-                      <ul className="space-y-4">
-                         {candidate.analysis.weaknesses.map((w, i) => <li key={i} className="flex gap-3 text-slate-700"><div className="w-2 h-2 rounded-full bg-amber-500 mt-2 flex-shrink-0"></div>{w}</li>)}
-                      </ul>
+
+                   {/* Radar Chart Analysis */}
+                   <Card className="lg:col-span-2 p-6 flex flex-col md:flex-row items-center gap-8">
+                       <div className="h-64 w-full md:w-1/2 flex-shrink-0">
+                           <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                                  { subject: 'Technical', A: candidate.analysis.technicalScore, fullMark: 100 },
+                                  { subject: 'Cultural', A: candidate.analysis.culturalScore, fullMark: 100 },
+                                  { subject: 'Communication', A: candidate.analysis.communicationScore, fullMark: 100 },
+                                  { subject: 'Experience', A: 90, fullMark: 100 },
+                                  { subject: 'Leadership', A: 85, fullMark: 100 },
+                              ]}>
+                                  <PolarGrid stroke="#e2e8f0" />
+                                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
+                                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                  <Radar name="Candidate" dataKey="A" stroke="#16a34a" strokeWidth={2} fill="#22c55e" fillOpacity={0.3} />
+                                  <Tooltip />
+                              </RadarChart>
+                           </ResponsiveContainer>
+                       </div>
+                       <div className="flex-1 space-y-6">
+                           <div>
+                              <h4 className="font-bold text-slate-900 mb-3">Assessment Summary</h4>
+                              <div className="space-y-3">
+                                  <div className="flex justify-between items-center text-sm">
+                                      <span className="text-slate-600 font-medium">Technical Capability</span>
+                                      <span className="font-bold text-slate-900">{candidate.analysis.technicalScore}/100</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${candidate.analysis.technicalScore}%` }}></div>
+                                  </div>
+                              </div>
+                              <div className="space-y-3 mt-4">
+                                  <div className="flex justify-between items-center text-sm">
+                                      <span className="text-slate-600 font-medium">Cultural Alignment</span>
+                                      <span className="font-bold text-slate-900">{candidate.analysis.culturalScore}/100</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                      <div className="h-full bg-purple-500 rounded-full" style={{ width: `${candidate.analysis.culturalScore}%` }}></div>
+                                  </div>
+                              </div>
+                              <div className="space-y-3 mt-4">
+                                  <div className="flex justify-between items-center text-sm">
+                                      <span className="text-slate-600 font-medium">Communication</span>
+                                      <span className="font-bold text-slate-900">{candidate.analysis.communicationScore}/100</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${candidate.analysis.communicationScore}%` }}></div>
+                                  </div>
+                              </div>
+                           </div>
+                       </div>
                    </Card>
                 </div>
+
+                {/* 2. Detailed Breakdown Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Key Strengths with Evidence */}
+                   <Card className="p-6 border-l-4 border-emerald-500">
+                      <div className="flex items-center justify-between mb-6">
+                          <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                             <Sparkles className="w-5 h-5 text-emerald-500"/> Distinctive Strengths
+                          </h3>
+                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">Top 5%</span>
+                      </div>
+                      <div className="space-y-4">
+                         {candidate.analysis.strengths.map((s, i) => (
+                             <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-100">
+                                 <div className="mt-1">
+                                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                       <Check className="w-3 h-3" />
+                                    </div>
+                                 </div>
+                                 <div>
+                                     <p className="font-bold text-slate-800 text-sm">{s}</p>
+                                     <p className="text-xs text-slate-500 mt-1">Evidenced in Resume & Initial Screening.</p>
+                                 </div>
+                             </div>
+                         ))}
+                      </div>
+                   </Card>
+
+                   {/* Areas of Concern with Probe Questions */}
+                   <Card className="p-6 border-l-4 border-amber-500">
+                      <div className="flex items-center justify-between mb-6">
+                          <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                             <AlertCircle className="w-5 h-5 text-amber-500"/> Risks & Probing Areas
+                          </h3>
+                          <span className="px-2 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded">Attention Needed</span>
+                      </div>
+                      <div className="space-y-4">
+                         {candidate.analysis.weaknesses.map((w, i) => (
+                             <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-amber-50/50 transition-colors border border-transparent hover:border-amber-100">
+                                 <div className="mt-1">
+                                    <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                                       <AlertCircle className="w-3 h-3" />
+                                    </div>
+                                 </div>
+                                 <div>
+                                     <p className="font-bold text-slate-800 text-sm">{w}</p>
+                                     <div className="mt-2 bg-white p-2 rounded border border-slate-200">
+                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Suggested Question:</p>
+                                         <p className="text-xs text-slate-600 italic">"Can you describe a time when you had to learn a new technology under a tight deadline to solve a specific problem related to this?"</p>
+                                     </div>
+                                 </div>
+                             </div>
+                         ))}
+                      </div>
+                   </Card>
+                </div>
+
+                {/* 3. Skills Matrix (Inferred from Resume Skills) */}
+                <Card className="p-8">
+                    <h3 className="font-bold text-lg text-slate-900 mb-6 flex items-center gap-2">
+                        <Code className="w-5 h-5 text-blue-500"/> Skills Proficiency Matrix
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-12">
+                        {candidate.skills.slice(0, 6).map((skill, i) => {
+                            // Mock proficiency generation based on index
+                            const proficiency = Math.max(60, 95 - (i * 5)); 
+                            const experienceYears = Math.max(1, 5 - Math.floor(i/2));
+                            return (
+                                <div key={skill}>
+                                    <div className="flex justify-between items-end mb-2">
+                                        <span className="font-bold text-slate-800">{skill}</span>
+                                        <span className="text-xs text-slate-500">{experienceYears}+ years</span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full rounded-full ${proficiency > 85 ? 'bg-brand-500' : proficiency > 70 ? 'bg-blue-500' : 'bg-slate-400'}`} 
+                                            style={{ width: `${proficiency}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
+
              </div>
           )}
 
