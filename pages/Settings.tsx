@@ -854,8 +854,7 @@ export const Settings = () => {
       {showCreateModule && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
-               {/* Modal Content - (Kept unchanged for brevity, same as before) */}
-               {/* Header */}
+               {/* Modal Header */}
                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                   <div className="flex items-center gap-4">
                      <div className="w-10 h-10 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold">
@@ -871,9 +870,280 @@ export const Settings = () => {
                   </button>
                </div>
                
-               {/* Body Placeholder for brevity - assume content is same as previous implementation */}
-               <div className="flex-1 p-10 flex items-center justify-center text-slate-400">
-                   (Assessment Module Creation Wizard - Same as previous version)
+               {/* Body */}
+               <div className="flex-1 overflow-y-auto p-10">
+                   {/* Step 1: General Details */}
+                   {moduleStep === 1 && (
+                      <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Module Name</label>
+                            <input 
+                              value={newModule.name} 
+                              onChange={(e) => setNewModule({...newModule, name: e.target.value})}
+                              placeholder="e.g. React Deep Dive"
+                              className="w-full p-4 text-lg bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                            />
+                         </div>
+                         
+                         <div className="grid grid-cols-2 gap-6">
+                            <div>
+                               <label className="block text-sm font-medium text-slate-700 mb-2">Type</label>
+                               <select 
+                                  value={newModule.type}
+                                  onChange={(e) => setNewModule({...newModule, type: e.target.value as AssessmentType})}
+                                  className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                               >
+                                  <option value="QuestionBank">Question Bank</option>
+                                  <option value="CodingChallenge">Coding Challenge</option>
+                                  <option value="SystemDesign">System Design</option>
+                               </select>
+                            </div>
+                             <div>
+                               <label className="block text-sm font-medium text-slate-700 mb-2">Difficulty</label>
+                               <div className="flex bg-slate-100 p-1 rounded-lg">
+                                  {['Junior', 'Mid', 'Senior', 'Expert'].map((l) => (
+                                     <button 
+                                       key={l}
+                                       onClick={() => setNewModule({...newModule, difficulty: l as any})}
+                                       className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${newModule.difficulty === l ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                     >
+                                        {l}
+                                     </button>
+                                  ))}
+                               </div>
+                            </div>
+                         </div>
+
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Tags (Press Enter)</label>
+                            <div className="flex flex-wrap gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg focus-within:ring-2 focus-within:ring-brand-500">
+                               {newModule.tags?.map(tag => (
+                                  <span key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-600 flex items-center gap-1">
+                                     {tag} <button onClick={() => setNewModule(prev => ({...prev, tags: prev.tags?.filter(t => t !== tag)}))} className="hover:text-red-500"><X className="w-3 h-3"/></button>
+                                  </span>
+                               ))}
+                               <input 
+                                  value={tagInput}
+                                  onChange={(e) => setTagInput(e.target.value)}
+                                  onKeyDown={addTag}
+                                  placeholder="Add tags..."
+                                  className="flex-1 bg-transparent outline-none text-sm p-1"
+                               />
+                            </div>
+                         </div>
+                         
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
+                            <textarea 
+                              value={newModule.description} 
+                              onChange={(e) => setNewModule({...newModule, description: e.target.value})}
+                              placeholder="Briefly describe what this module assesses..."
+                              className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
+                            />
+                         </div>
+                      </div>
+                   )}
+
+                   {/* Step 2: Content Configuration */}
+                   {moduleStep === 2 && (
+                       <div className="max-w-4xl mx-auto animate-fade-in">
+                          {newModule.type === 'QuestionBank' && (
+                             <div className="space-y-6">
+                                <div className="flex justify-center mb-6">
+                                    <div className="bg-slate-100 p-1 rounded-lg inline-flex">
+                                        <button 
+                                           onClick={() => setNewModule({...newModule, sourceMode: 'manual'})}
+                                           className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${newModule.sourceMode === 'manual' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                                        >
+                                           Manual Entry
+                                        </button>
+                                        <button 
+                                           onClick={() => setNewModule({...newModule, sourceMode: 'knowledgeBase'})}
+                                           className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${newModule.sourceMode === 'knowledgeBase' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                                        >
+                                           <BrainCircuit className="w-4 h-4" /> AI Generator
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {newModule.sourceMode === 'manual' ? (
+                                   <div className="space-y-6">
+                                       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+                                          <div>
+                                              <input 
+                                                value={currentQuestion.text}
+                                                onChange={(e) => setCurrentQuestion({...currentQuestion, text: e.target.value})}
+                                                placeholder="Enter question text..."
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                              />
+                                          </div>
+                                          <div>
+                                              <textarea 
+                                                value={currentQuestion.criteria}
+                                                onChange={(e) => setCurrentQuestion({...currentQuestion, criteria: e.target.value})}
+                                                placeholder="Evaluation criteria for AI (what makes a good answer?)"
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm h-20 resize-none"
+                                              />
+                                          </div>
+                                          <button onClick={handleAddQuestion} disabled={!currentQuestion.text} className="w-full py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 disabled:opacity-50">
+                                              Add Question
+                                          </button>
+                                       </div>
+
+                                       <div className="space-y-2">
+                                          <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Questions ({newModule.questions?.length || 0})</h4>
+                                          {newModule.questions?.map((q, i) => (
+                                              <div key={q.id} className="p-4 bg-white border border-slate-200 rounded-lg flex gap-4">
+                                                  <span className="font-bold text-slate-300">{i+1}</span>
+                                                  <div className="flex-1">
+                                                      <p className="font-medium text-slate-900">{q.text}</p>
+                                                      <p className="text-xs text-slate-500 mt-1">{q.aiEvaluationCriteria}</p>
+                                                  </div>
+                                                  <button onClick={() => setNewModule(prev => ({...prev, questions: prev.questions?.filter(qi => qi.id !== q.id)}))} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+                                              </div>
+                                          ))}
+                                          {(!newModule.questions || newModule.questions.length === 0) && (
+                                              <div className="text-center py-8 text-slate-400 italic">No questions added yet.</div>
+                                          )}
+                                       </div>
+                                   </div>
+                                ) : (
+                                   <div className="space-y-6">
+                                       <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+                                           <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2"><BookOpen className="w-5 h-5"/> Knowledge Base Source</h4>
+                                           <p className="text-sm text-indigo-700 mb-4">Paste text content (e.g. documentation, handbook) and Lumina will dynamically generate relevant questions during the interview.</p>
+                                           <textarea 
+                                              value={newModule.knowledgeBase?.content}
+                                              onChange={(e) => setNewModule({...newModule, knowledgeBase: { ...newModule.knowledgeBase, content: e.target.value }})}
+                                              placeholder="Paste content here..."
+                                              className="w-full p-4 bg-white border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-40 font-mono text-sm"
+                                           />
+                                           <div className="flex justify-end mt-4">
+                                              <button onClick={generateKbPreview} disabled={!newModule.knowledgeBase?.content || isGeneratingPreview} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+                                                 {isGeneratingPreview ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
+                                                 Generate Preview
+                                              </button>
+                                           </div>
+                                       </div>
+                                       
+                                       {kbPreviewQuestions.length > 0 && (
+                                           <div className="space-y-3">
+                                               <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Preview: Potential Questions</h4>
+                                               {kbPreviewQuestions.map((q, i) => (
+                                                   <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 flex gap-3">
+                                                       <span className="text-indigo-500 font-bold">Q{i+1}</span>
+                                                       {q}
+                                                   </div>
+                                               ))}
+                                           </div>
+                                       )}
+                                   </div>
+                                )}
+                             </div>
+                          )}
+
+                          {newModule.type === 'CodingChallenge' && (
+                             <div className="space-y-6">
+                                 <div className="grid grid-cols-2 gap-6">
+                                     <div>
+                                         <label className="block text-sm font-medium text-slate-700 mb-2">Language</label>
+                                         <select 
+                                            value={newModule.codingConfig?.language}
+                                            onChange={(e) => setNewModule({...newModule, codingConfig: { ...newModule.codingConfig!, language: e.target.value as any }})}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                                         >
+                                             <option value="javascript">JavaScript</option>
+                                             <option value="python">Python</option>
+                                             <option value="go">Go</option>
+                                         </select>
+                                     </div>
+                                 </div>
+                                 <div>
+                                     <label className="block text-sm font-medium text-slate-700 mb-2">Problem Statement</label>
+                                     <textarea 
+                                         value={newModule.codingConfig?.problemStatement}
+                                         onChange={(e) => setNewModule({...newModule, codingConfig: { ...newModule.codingConfig!, problemStatement: e.target.value }})}
+                                         className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-32"
+                                         placeholder="Describe the coding task..."
+                                     />
+                                 </div>
+                                 <div>
+                                     <label className="block text-sm font-medium text-slate-700 mb-2">Starter Code</label>
+                                     <textarea 
+                                         value={newModule.codingConfig?.starterCode}
+                                         onChange={(e) => setNewModule({...newModule, codingConfig: { ...newModule.codingConfig!, starterCode: e.target.value }})}
+                                         className="w-full p-4 bg-slate-900 text-green-400 font-mono text-sm rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-48"
+                                         placeholder="// Start typing code here..."
+                                     />
+                                 </div>
+                             </div>
+                          )}
+
+                          {newModule.type === 'SystemDesign' && (
+                              <div className="space-y-6">
+                                  <div>
+                                     <label className="block text-sm font-medium text-slate-700 mb-2">Scenario</label>
+                                     <textarea 
+                                         value={newModule.caseStudyConfig?.scenario}
+                                         onChange={(e) => setNewModule({...newModule, caseStudyConfig: { ...newModule.caseStudyConfig!, scenario: e.target.value }})}
+                                         className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-40"
+                                         placeholder="Describe the system to be designed (e.g. Design a URL shortener)..."
+                                     />
+                                 </div>
+                              </div>
+                          )}
+                       </div>
+                   )}
+
+                   {/* Step 3: Review */}
+                   {moduleStep === 3 && (
+                       <div className="max-w-2xl mx-auto text-center animate-fade-in">
+                           <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                              <CheckCircle className="w-10 h-10" />
+                           </div>
+                           <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
+                           <p className="text-slate-500 mb-8">Review the details below before adding to the library.</p>
+                           
+                           <div className="bg-slate-50 rounded-xl p-6 text-left border border-slate-200 space-y-4">
+                               <div className="flex justify-between">
+                                   <span className="text-slate-500">Name</span>
+                                   <span className="font-bold text-slate-900">{newModule.name}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span className="text-slate-500">Type</span>
+                                   <span className="font-bold text-slate-900">{newModule.type}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span className="text-slate-500">Duration</span>
+                                   <span className="font-bold text-slate-900">{newModule.estimatedDuration} mins</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span className="text-slate-500">Items</span>
+                                   <span className="font-bold text-slate-900">
+                                      {newModule.type === 'QuestionBank' 
+                                          ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic (AI)' : `${newModule.questions?.length} Fixed`) 
+                                          : '1 Scenario'}
+                                   </span>
+                               </div>
+                           </div>
+                       </div>
+                   )}
+               </div>
+
+               {/* Footer */}
+               <div className="px-8 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
+                  <button 
+                     onClick={() => moduleStep > 1 ? setModuleStep(moduleStep - 1) : setShowCreateModule(false)}
+                     className="px-6 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                  >
+                     {moduleStep > 1 ? 'Back' : 'Cancel'}
+                  </button>
+                  <button 
+                     onClick={() => moduleStep < 3 ? setModuleStep(moduleStep + 1) : handlePublishModule()}
+                     className="px-8 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                  >
+                     {moduleStep === 3 ? 'Publish Module' : 'Continue'}
+                  </button>
                </div>
             </div>
          </div>
