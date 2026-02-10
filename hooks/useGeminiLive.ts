@@ -68,8 +68,6 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
             
             processor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
-              // Simple downsampling/conversion if needed, but here we requested 16k context
-              // Create PCM blob formatted for Gemini
               const pcmData = new Float32Array(inputData); 
               
               // Convert Float32 (-1 to 1) to Int16 for the API
@@ -147,11 +145,22 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
       });
       
       sessionPromiseRef.current = sessionPromise;
+      // Critical: Await the connection to catch immediate setup/network errors
+      await sessionPromise;
 
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to connect to Lumina");
       setIsConnected(false);
+      sessionPromiseRef.current = null;
+      
+      // Cleanup streams if connection failed
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+      if (audioContextRef.current) audioContextRef.current.close();
+      if (inputContextRef.current) inputContextRef.current.close();
     }
   };
 
