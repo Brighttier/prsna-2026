@@ -4,72 +4,8 @@ import { Card } from '../components/Card';
 import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, Clock, Mail, MessageSquare, ChevronDown, User, Briefcase, Download, Plus, Users, ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Candidate } from '../types';
+import { store, ExtendedCandidate } from '../services/store';
 
-// Extended Candidate Type for Mock Data
-export interface ExtendedCandidate extends Candidate {
-  avatar: string;
-  appliedDate: string;
-  lastActive: string;
-  location: string;
-  phone: string;
-  linkedin: string;
-  github: string;
-  aiVerdict?: 'Proceed' | 'Review' | 'Reject';
-}
-
-export const MOCK_CANDIDATES: ExtendedCandidate[] = [
-  {
-    id: '1',
-    name: 'Sarah Jenkins',
-    email: 'sarah.j@example.com',
-    role: 'Senior React Engineer',
-    stage: 'Offer',
-    score: 92,
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    appliedDate: '2 days ago',
-    lastActive: '5 hours ago',
-    location: 'San Francisco, CA (Remote)',
-    phone: '+1 (555) 123-4567',
-    linkedin: 'linkedin.com/in/sarahj',
-    github: 'github.com/sarahjcodes',
-    aiVerdict: 'Proceed',
-    matchReason: 'Strong trajectory in SaaS scale-ups.'
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'm.chen@example.com',
-    role: 'Senior React Engineer',
-    stage: 'Hired',
-    score: 88,
-    avatar: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    appliedDate: '1 day ago',
-    lastActive: 'Just now',
-    location: 'New York, NY',
-    phone: '+1 (555) 987-6543',
-    linkedin: 'linkedin.com/in/mchen',
-    github: 'github.com/chenv2',
-    aiVerdict: 'Proceed',
-    matchReason: 'Excellent technical skill density.'
-  },
-  {
-    id: '3',
-    name: 'David Smith',
-    email: 'd.smith@example.com',
-    role: 'Product Designer',
-    stage: 'Screening',
-    score: 74,
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    appliedDate: '3 days ago',
-    lastActive: '1 day ago',
-    location: 'Austin, TX',
-    phone: '+1 (555) 234-5678',
-    linkedin: 'linkedin.com/in/dsmith',
-    github: 'github.com/dsmithdesign',
-    aiVerdict: 'Review',
-    matchReason: 'Good portfolio but lacks mobile experience.'
-  }
-];
 
 export const Candidates = () => {
     const location = useLocation();
@@ -78,6 +14,13 @@ export const Candidates = () => {
     const [filterRole, setFilterRole] = useState('All Roles');
     const [filterStage, setFilterStage] = useState('All Stages');
     const [blindMode, setBlindMode] = useState(false);
+    const [candidates, setCandidates] = useState(store.getState().candidates);
+
+    useEffect(() => {
+        return store.subscribe(() => {
+            setCandidates(store.getState().candidates);
+        });
+    }, []);
 
     useEffect(() => {
         // @ts-ignore
@@ -87,15 +30,15 @@ export const Candidates = () => {
         }
     }, [location.state]);
 
-    const filteredCandidates = MOCK_CANDIDATES.filter(c => {
-        const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
-                              c.email.toLowerCase().includes(search.toLowerCase());
+    const filteredCandidates = candidates.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+            c.email.toLowerCase().includes(search.toLowerCase());
         const matchesRole = filterRole === 'All Roles' || c.role === filterRole;
         const matchesStage = filterStage === 'All Stages' || c.stage === filterStage;
         return matchesSearch && matchesRole && matchesStage;
     });
 
-    const roles = ['All Roles', ...Array.from(new Set(MOCK_CANDIDATES.map(c => c.role)))];
+    const roles = ['All Roles', ...Array.from(new Set(candidates.map(c => c.role)))];
     const stages = ['All Stages', 'Applied', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected'];
 
     const getScoreColor = (score: number) => {
@@ -107,12 +50,12 @@ export const Candidates = () => {
 
     const getStageBadge = (stage: string) => {
         const styles: Record<string, string> = {
-          'Applied': 'bg-slate-100 text-slate-600',
-          'Screening': 'bg-purple-100 text-purple-700',
-          'Interview': 'bg-blue-100 text-blue-700',
-          'Offer': 'bg-amber-100 text-amber-700',
-          'Rejected': 'bg-red-50 text-red-600 line-through',
-          'Hired': 'bg-emerald-100 text-emerald-700'
+            'Applied': 'bg-slate-100 text-slate-600',
+            'Screening': 'bg-purple-100 text-purple-700',
+            'Interview': 'bg-blue-100 text-blue-700',
+            'Offer': 'bg-amber-100 text-amber-700',
+            'Rejected': 'bg-red-50 text-red-600 line-through',
+            'Hired': 'bg-emerald-100 text-emerald-700'
         };
         return styles[stage] || 'bg-slate-100 text-slate-600';
     };
@@ -125,7 +68,7 @@ export const Candidates = () => {
                     <p className="text-slate-500 mt-1">Track and manage your talent pipeline.</p>
                 </div>
                 <div className="flex gap-3">
-                    <button 
+                    <button
                         onClick={() => setBlindMode(!blindMode)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border ${blindMode ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
                     >
@@ -143,28 +86,28 @@ export const Candidates = () => {
 
             <Card className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-2 w-full md:w-auto">
-                   <div className="relative flex-1 md:w-80">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                      <input 
-                        type="text" 
-                        placeholder="Search candidates..." 
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm transition-all"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                   </div>
+                    <div className="relative flex-1 md:w-80">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Search candidates..."
+                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm transition-all"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto">
-                    <select 
+                    <select
                         className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 focus:outline-none focus:border-brand-500 cursor-pointer"
                         value={filterRole}
                         onChange={(e) => setFilterRole(e.target.value)}
                     >
                         {roles.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
-                    
-                    <select 
+
+                    <select
                         className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 focus:outline-none focus:border-brand-500 cursor-pointer"
                         value={filterStage}
                         onChange={(e) => setFilterStage(e.target.value)}
@@ -189,8 +132,8 @@ export const Candidates = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {filteredCandidates.map((candidate) => (
-                                <tr 
-                                    key={candidate.id} 
+                                <tr
+                                    key={candidate.id}
                                     onClick={() => navigate(`/candidates/${candidate.id}`)}
                                     className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
                                 >
@@ -259,7 +202,7 @@ export const Candidates = () => {
                             ))}
                         </tbody>
                     </table>
-                    
+
                     {filteredCandidates.length === 0 && (
                         <div className="text-center py-16">
                             <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">

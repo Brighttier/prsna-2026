@@ -1,7 +1,9 @@
 import React from 'react';
 import { Card } from '../components/Card';
-import { Users, Briefcase, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Users, Briefcase, CheckCircle, Clock, TrendingUp, Activity, FileText, LayoutDashboard, PenTool, ExternalLink, BellRing, Mail } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { store } from '../services/store';
+import { useState, useEffect } from 'react';
 
 const data = [
   { name: 'Mon', applicants: 40, interviews: 24 },
@@ -35,6 +37,31 @@ const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
 );
 
 export const Dashboard = () => {
+  const [candidates, setCandidates] = useState(store.getState().candidates);
+  const [jobs, setJobs] = useState(store.getState().jobs);
+  const [nudgingId, setNudgingId] = useState<string | null>(null);
+  const [showNudgeToast, setShowNudgeToast] = useState(false);
+
+  useEffect(() => {
+    return store.subscribe(() => {
+      setCandidates(store.getState().candidates);
+      setJobs(store.getState().jobs);
+    });
+  }, []);
+
+  const handleNudge = (id: string) => {
+    setNudgingId(id);
+    setTimeout(() => {
+      setNudgingId(null);
+      setShowNudgeToast(true);
+      setTimeout(() => setShowNudgeToast(false), 3000);
+    }, 1500);
+  };
+
+  const totalCandidates = candidates.length;
+  const activeJobs = jobs.filter(j => j.status === 'Open' as any).length;
+  const totalHires = candidates.filter(c => c.stage === 'Hired').length;
+
   return (
     <div className="space-y-8">
       <header>
@@ -44,9 +71,9 @@ export const Dashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={Users} label="Total Candidates" value="1,284" trend="+12.5%" color="bg-blue-500" />
-        <StatCard icon={Briefcase} label="Active Jobs" value="32" trend="+4%" color="bg-purple-500" />
-        <StatCard icon={CheckCircle} label="Hires made" value="18" trend="+8.2%" color="bg-emerald-500" />
+        <StatCard icon={Users} label="Total Candidates" value={totalCandidates} trend="+12.5%" color="bg-blue-500" />
+        <StatCard icon={Briefcase} label="Active Jobs" value={activeJobs} trend="+4%" color="bg-purple-500" />
+        <StatCard icon={CheckCircle} label="Hires made" value={totalHires} trend="+8.2%" color="bg-emerald-500" />
         <StatCard icon={Clock} label="Avg. Time to Hire" value="14 days" trend="-2 days" color="bg-orange-500" />
       </div>
 
@@ -65,12 +92,12 @@ export const Dashboard = () => {
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="colorApps" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8'}} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8' }} />
                 <Tooltip />
                 <Area type="monotone" dataKey="applicants" stroke="#10b981" fillOpacity={1} fill="url(#colorApps)" strokeWidth={2} />
               </AreaChart>
@@ -82,51 +109,162 @@ export const Dashboard = () => {
           <h2 className="text-lg font-bold text-slate-900 mb-6">Pipeline Status</h2>
           <div className="space-y-6">
             {[
-              { label: 'Screening', count: 45, color: 'bg-blue-500', width: '60%' },
-              { label: 'Interview', count: 28, color: 'bg-purple-500', width: '40%' },
-              { label: 'Offer Sent', count: 12, color: 'bg-orange-500', width: '20%' },
-              { label: 'Hired', count: 8, color: 'bg-emerald-500', width: '15%' },
-            ].map((item, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium text-slate-700">{item.label}</span>
-                  <span className="text-slate-500">{item.count} candidates</span>
+              { label: 'Applied', stage: 'Applied', color: 'bg-slate-400' },
+              { label: 'Screening', stage: 'Screening', color: 'bg-blue-500' },
+              { label: 'Interview', stage: 'Interview', color: 'bg-purple-500' },
+              { label: 'Offer', stage: 'Offer', color: 'bg-orange-500' },
+              { label: 'Hired', stage: 'Hired', color: 'bg-emerald-500' },
+            ].map((item, idx) => {
+              const count = candidates.filter(c => c.stage === item.stage).length;
+              const width = candidates.length > 0 ? `${(count / candidates.length) * 100}%` : '0%';
+              return (
+                <div key={idx}>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="font-medium text-slate-700">{item.label}</span>
+                    <span className="text-slate-500">{count} candidates</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width }}></div>
+                  </div>
                 </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${item.color} rounded-full`} style={{ width: item.width }}></div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
 
-      {/* Recent Activity */}
-      <div>
-         <h2 className="text-lg font-bold text-slate-900 mb-4">Recent Sage Syncs</h2>
-         <Card className="overflow-hidden">
-            <table className="w-full text-left text-sm text-slate-600">
-               <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                     <th className="px-6 py-4 font-semibold">Candidate</th>
-                     <th className="px-6 py-4 font-semibold">Role</th>
-                     <th className="px-6 py-4 font-semibold">Status</th>
-                     <th className="px-6 py-4 font-semibold">Sync Date</th>
-                  </tr>
-               </thead>
-               <tbody className="divide-y divide-slate-100">
-                  {[1,2,3].map(i => (
-                     <tr key={i} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-slate-900">Sarah Jenkins</td>
-                        <td className="px-6 py-4">Senior React Developer</td>
-                        <td className="px-6 py-4"><span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">Hired</span></td>
-                        <td className="px-6 py-4">Oct 24, 2023</td>
-                     </tr>
+      {/* DocuSign Tracking Radar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-red-500" />
+            Document Tracking Radar
+          </h2>
+          <Card className="bg-slate-900 border-none overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+              <PenTool className="w-32 h-32 text-white" />
+            </div>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Live Webhook Feed</span>
+                </div>
+                <button className="text-[10px] font-black text-brand-400 uppercase tracking-widest hover:text-brand-300 transition-colors">View All Envelopes</button>
+              </div>
+
+              <div className="space-y-4">
+                {candidates
+                  .filter(c => c.offer?.docusignStatus)
+                  .map(c => (
+                    <div key={c.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group/row">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20 group-hover/row:scale-110 transition-transform">
+                          <FileText className="w-5 h-5 text-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-white leading-tight">{c.name}</p>
+                          <p className="text-[10px] text-slate-400 font-medium uppercase mt-0.5 tracking-wider">{c.role}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right hidden sm:block">
+                          <div className="flex items-center gap-2 justify-end">
+                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-400/10 px-2 py-0.5 rounded">Active</span>
+                            <Activity className="w-3 h-3 text-emerald-400 animate-pulse" />
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-mono mt-1">{c.offer?.docusignEnvelopeId}</p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleNudge(c.id); }}
+                          disabled={nudgingId === c.id}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-brand-600/10 hover:bg-brand-600 text-brand-400 hover:text-white border border-brand-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                        >
+                          {nudgingId === c.id ? (
+                            <Clock className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <>
+                              <BellRing className="w-3 h-3" />
+                              Nudge
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   ))}
-               </tbody>
-            </table>
-         </Card>
+                {candidates.filter(c => c.offer?.docusignStatus).length === 0 && (
+                  <div className="py-8 text-center">
+                    <p className="text-slate-500 text-sm italic">No active signatures tracking...</p>
+                    <p className="text-[10px] text-slate-600 uppercase tracking-widest mt-2">Waiting for first dispatch</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="bg-white/5 px-6 py-4 flex items-center justify-between border-t border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">DocuSign Connect Active</span>
+              </div>
+              <span className="text-[10px] text-slate-600 font-mono">Last event: Just now</span>
+            </div>
+          </Card>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 mb-4">Recent HRIS Syncs</h2>
+          <Card className="overflow-hidden h-[335px] flex flex-col">
+            <div className="flex-1 overflow-y-auto">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold uppercase tracking-widest text-[10px]">Candidate</th>
+                    <th className="px-6 py-4 font-semibold uppercase tracking-widest text-[10px]">Status</th>
+                    <th className="px-6 py-4 font-semibold uppercase tracking-widest text-[10px] text-right">HRIS ID</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {candidates.filter(c => c.onboarding?.hrisSyncStatus === 'Synced').length > 0 ? (
+                    candidates
+                      .filter(c => c.onboarding?.hrisSyncStatus === 'Synced')
+                      .map(c => (
+                        <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <p className="font-bold text-slate-900 leading-tight">{c.name}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{c.role}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md text-[10px] font-black uppercase tracking-widest">Hired</span>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-slate-500 text-right text-xs">{c.onboarding?.hrisId || 'Syncing...'}</td>
+                        </tr>
+                      ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-12 text-center text-slate-400 italic">No candidates synced to HRIS yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
+      {/* Nudge Toast */}
+      {
+        showNudgeToast && (
+          <div className="fixed bottom-8 right-8 z-[100] animate-bounce-subtle">
+            <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10">
+              <div className="w-10 h-10 bg-brand-500/20 rounded-xl flex items-center justify-center">
+                <Mail className="w-5 h-5 text-brand-400" />
+              </div>
+              <div>
+                <p className="font-bold text-sm">Nudge Sent!</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest">Follow-up email dispatched successfully.</p>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };

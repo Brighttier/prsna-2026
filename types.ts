@@ -23,15 +23,42 @@ export interface Job {
 }
 
 // New: Offer Details
+// New: Offer Details
 export interface OfferDetails {
-  status: 'Draft' | 'Pending_Approval' | 'Sent' | 'Negotiating' | 'Accepted' | 'Declined';
+  id: string; // Unique ID for the offer version
+  status: 'Draft' | 'Pending_Approval' | 'Sent' | 'Viewed' | 'Negotiating' | 'Accepted' | 'Signed' | 'Rejected' | 'Declined';
+  token: string; // Secure access token
+
+  // Compensation
   salary: number;
-  currency: string;
+  currency: 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'SGD' | 'INR';
   equity: string;
-  bonus: string;
+  signOnBonus?: string;
+  performanceBonus?: string;
+
+  // Benefits
+  benefits?: string;
+
+  // Logistics
   startDate: string;
+  expirationDate?: string;
+  location?: string;
+
+  // Meta
   offerLetterContent?: string;
-  sentDate?: string;
+  sentAt?: string;
+  viewedAt?: string;
+  signedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+
+  documentUrl: string;
+  signedDocumentUrl?: string;
+
+  // DocuSign Specific
+  docusignStatus?: 'Draft' | 'Sent' | 'Delivered' | 'Completed' | 'Declined' | 'Voided';
+  docusignEnvelopeId?: string;
+  envelopeId?: string; // Keep for backward compatibility/simplicity
 }
 
 // New: Onboarding Tasks
@@ -55,6 +82,7 @@ export interface Candidate {
   role: string;
   stage: 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Hired' | 'Rejected'; // Added Hired
   score: number;
+  match?: number;
   matchReason?: string;
   // New Fields
   offer?: OfferDetails;
@@ -63,12 +91,30 @@ export interface Candidate {
     hrisId?: string;
     tasks: OnboardingTask[];
   };
+  folders?: {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+    fileCount: number;
+    size: string;
+  }[];
+  documents?: {
+    id: string;
+    name: string;
+    type: string;
+    size: string;
+    uploadedAt: string;
+    category: 'Resume' | 'Offer' | 'Legal' | 'Identification' | 'Other';
+    url: string;
+  }[];
 }
 
 export interface ScreeningResult {
   score: number;
   verdict: 'Proceed' | 'Reject' | 'Review';
   reasoning: string;
+  matchReason?: string;
   missingSkills: string[];
 }
 
@@ -116,7 +162,7 @@ export interface AssessmentModule {
   estimatedDuration: number; // in minutes
   tags: string[];
   itemsCount: number;
-  
+
   // Question Bank Specific
   sourceMode?: 'manual' | 'knowledgeBase'; // New field to determine logic
   questions?: Question[];

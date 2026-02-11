@@ -2,190 +2,506 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus } from 'lucide-react';
+import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
-import { 
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, Tooltip, Cell
+import {
+    Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
+    BarChart, Bar, XAxis, YAxis, Tooltip, Cell
 } from 'recharts';
+import { store, ExtendedCandidate, InterviewSession, TranscriptEntry, VideoHighlight } from '../services/store';
 
-// Duplicated Mock Data for simplicity in this full-page view context
-interface Experience {
-  id: string;
-  company: string;
-  role: string;
-  duration: string;
-  description: string;
-}
-
-interface TranscriptEntry {
-  speaker: 'Lumina' | 'Candidate';
-  text: string;
-  timestamp: string;
-}
-
-interface VideoHighlight {
-  id: string;
-  timestamp: number;
-  type: 'Flag' | 'Insight' | 'Positive' | 'Negative';
-  text: string;
-}
-
-interface InterviewSession {
-  id: string;
-  date: string;
-  type: string;
-  score: number;
-  sentiment: 'Positive' | 'Neutral' | 'Negative';
-  summary: string;
-  transcript?: TranscriptEntry[];
-  videoUrl?: string;
-  videoHighlights?: VideoHighlight[];
-}
-
-interface ExtendedCandidate extends Candidate {
-  avatar: string;
-  appliedDate: string;
-  lastActive: string;
-  location: string;
-  phone: string;
-  linkedin: string;
-  github: string;
-  aiVerdict?: 'Proceed' | 'Review' | 'Reject';
-  summary: string;
-  experience: Experience[];
-  education: { school: string; degree: string; year: string }[];
-  skills: string[];
-  analysis: {
-    strengths: string[];
-    weaknesses: string[];
-    technicalScore: number;
-    culturalScore: number;
-    communicationScore: number;
-  };
-  interviews: InterviewSession[];
-}
-
-const MOCK_DATA: Record<string, ExtendedCandidate> = {
-  '1': {
-    id: '1',
-    name: 'Sarah Jenkins',
-    email: 'sarah.j@example.com',
-    role: 'Senior React Engineer',
-    stage: 'Offer',
-    score: 92,
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    appliedDate: '2 days ago',
-    lastActive: '5 hours ago',
-    location: 'San Francisco, CA (Remote)',
-    phone: '+1 (555) 123-4567',
-    linkedin: 'linkedin.com/in/sarahj',
-    github: 'github.com/sarahjcodes',
-    aiVerdict: 'Proceed',
-    matchReason: 'Strong trajectory in SaaS scale-ups.',
-    summary: 'Product-minded Senior Frontend Engineer with 6+ years of experience building scalable web applications. Specialized in React ecosystem, performance optimization, and design systems. Previously led a team of 4 engineers at TechFlow.',
-    experience: [
-      { id: 'e1', company: 'TechFlow Inc', role: 'Senior Frontend Engineer', duration: '2021 - Present', description: 'Led the migration from Angular to Next.js, improving TTI by 40%. established the internal design system "FlowUI" used by 3 product teams.' },
-      { id: 'e2', company: 'WebScale', role: 'Frontend Developer', duration: '2018 - 2021', description: 'Built high-traffic landing pages and marketing funnels. Collaborated with design to implement pixel-perfect UIs.' }
-    ],
-    education: [{ school: 'MIT', degree: 'BS Computer Science', year: '2018' }],
-    skills: ['React', 'TypeScript', 'Next.js', 'Tailwind CSS', 'Node.js', 'GraphQL', 'AWS'],
-    analysis: {
-      strengths: ['Demonstrated leadership in migration projects', 'Strong understanding of web performance vitals', 'Cultural fit: High ownership'],
-      weaknesses: ['Limited backend/database experience', 'No mobile (React Native) experience found'],
-      technicalScore: 94,
-      culturalScore: 88,
-      communicationScore: 90
-    },
-    offer: {
-        status: 'Sent',
-        salary: 165000,
-        currency: 'USD',
-        equity: '0.15%',
-        bonus: '$10,000 Sign-on',
-        startDate: '2023-11-15',
-        offerLetterContent: "Dear Sarah,\n\nWe are thrilled to offer you the position of Senior React Engineer at RecruiteAI. We were impressed by your technical depth and leadership at TechFlow.\n\nWe believe you will be a key addition to our mission..."
-    },
-    interviews: [
-      { 
-        id: 'i1', 
-        date: 'Oct 24, 2023', 
-        type: 'Lumina Screening', 
-        score: 8.5, 
-        sentiment: 'Positive', 
-        summary: 'Candidate demonstrated deep knowledge of React lifecycle and hooks. Communication was clear and concise.',
-        videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-        videoHighlights: [
-           { id: 'h1', timestamp: 15, type: 'Positive', text: 'Clear explanation of Design Systems' },
-           { id: 'h2', timestamp: 48, type: 'Insight', text: 'Mentioned Nx monorepo benefits' },
-           { id: 'h3', timestamp: 140, type: 'Flag', text: 'Candidate looked away from screen' },
-           { id: 'h4', timestamp: 215, type: 'Negative', text: 'Hesitation on useMemo complexity' },
-           { id: 'h5', timestamp: 300, type: 'Flag', text: 'Candidate looked away from screen' },
-           { id: 'h6', timestamp: 420, type: 'Positive', text: 'Strong closing statement' }
-        ],
-        transcript: [
-            { speaker: 'Lumina', text: "Hello Sarah. I've reviewed your resume and I'm impressed by your work at TechFlow. Could you walk me through the 'FlowUI' design system you established? specifically the challenges in adoption.", timestamp: "00:05" },
-            { speaker: 'Candidate', text: "Absolutely. When I joined, we had three different teams using disparate component libraries. Consistency was a nightmare. I initiated FlowUI by auditing our most used patterns. The biggest challenge wasn't code, it was convincing the designers to standardize their tokens. I set up regular syncs and built a documentation site using Storybook which really helped adoption.", timestamp: "00:18" },
-            { speaker: 'Lumina', text: "That's a classic friction point. How did you handle versioning? Did you use a monorepo approach?", timestamp: "00:45" },
-            { speaker: 'Candidate', text: "Yes, we moved to an Nx monorepo. We used semantic versioning for the core package. Breaking changes were strictly gated behind major versions, and we provided codemods to help teams upgrade.", timestamp: "00:58" },
-        ]
-      }
-    ]
-  },
-  '2': {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'm.chen@example.com',
-    role: 'Senior React Engineer',
-    stage: 'Hired',
-    score: 88,
-    avatar: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    appliedDate: '1 day ago',
-    lastActive: 'Just now',
-    location: 'New York, NY',
-    phone: '+1 (555) 987-6543',
-    linkedin: 'linkedin.com/in/mchen',
-    github: 'github.com/chenv2',
-    aiVerdict: 'Proceed',
-    matchReason: 'Excellent technical skill density.',
-    summary: 'Full Stack Engineer with a heavy lean towards frontend. Passionate about developer tooling and CI/CD pipelines.',
-    experience: [
-      { id: 'e1', company: 'DevTools Co', role: 'Software Engineer', duration: '2019 - Present', description: 'Maintained the core dashboard using React and Redux. Optimized build times by 50% using Esbuild.' }
-    ],
-    education: [{ school: 'University of Washington', degree: 'MS Software Engineering', year: '2019' }],
-    skills: ['React', 'Redux', 'Webpack', 'Docker', 'CI/CD', 'Python'],
-    analysis: {
-      strengths: ['Strong tooling experience', 'Backend capable'],
-      weaknesses: ['Less focus on UI/UX details'],
-      technicalScore: 89,
-      culturalScore: 85,
-      communicationScore: 82
-    },
-    offer: {
-        status: 'Accepted',
-        salary: 155000,
-        currency: 'USD',
-        equity: '0.1%',
-        bonus: 'None',
-        startDate: '2023-11-01',
-        offerLetterContent: "..."
-    },
-    onboarding: {
-        hrisSyncStatus: 'Not_Synced',
-        tasks: [
-            { id: 't1', category: 'IT & Equipment', task: 'Provision MacBook Pro M2', type: 'checkbox', completed: false, assignee: 'IT' },
-            { id: 't2', category: 'IT & Equipment', task: 'Create AWS IAM User', type: 'checkbox', completed: true, assignee: 'IT' },
-            { id: 't3', category: 'Culture & Orientation', task: 'Send Welcome Swag Kit', type: 'checkbox', completed: false, assignee: 'HR' },
-            { id: 't4', category: 'Culture & Orientation', task: 'Schedule Team Lunch', type: 'checkbox', completed: false, assignee: 'Manager' },
-            { id: 't5', category: 'Legal & Compliance', task: 'Upload Signed Offer', type: 'upload', completed: true, assignee: 'HR', fileUrl: 'offer.pdf' },
-            { id: 't6', category: 'Legal & Compliance', task: 'Upload Background Check', type: 'upload', completed: false, assignee: 'HR' },
-        ]
-    },
-    interviews: []
-  }
-};
 
 // --- MODALS (Copied for functionality in full page) ---
+
+const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, onClose: () => void, onScheduled: (session: InterviewSession) => void }) => {
+    const [date, setDate] = useState('');
+    const [time, setTime] = useState('');
+    const [type, setType] = useState('Lumina Screening (AI)');
+    const [platform, setPlatform] = useState<'Google Meet' | 'Microsoft Teams'>('Google Meet');
+    const [includeMeet, setIncludeMeet] = useState(true);
+    const [isScheduling, setIsScheduling] = useState(false);
+
+    const handleSchedule = () => {
+        setIsScheduling(true);
+        // Simulate API Latency for the "WOW" factor
+        setTimeout(() => {
+            let meetLink: string | undefined;
+            if (includeMeet) {
+                if (platform === 'Google Meet') {
+                    meetLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+                } else {
+                    // Simulated Microsoft Graph API link generation
+                    meetLink = `https://teams.microsoft.com/l/meetup-join/${Math.random().toString(36).substring(2, 15)}`;
+                }
+            }
+
+            const newSession: InterviewSession = {
+                id: Math.random().toString(36).substr(2, 9),
+                date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                time: time,
+                type: type,
+                status: 'Upcoming',
+                meetLink: meetLink,
+                platform: includeMeet ? platform : undefined
+            };
+
+            store.addInterviewSession(candidate.id, newSession);
+            setIsScheduling(false);
+            onScheduled(newSession);
+        }, 1800);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <Card className="max-w-md w-full p-0 overflow-hidden shadow-2xl relative animate-scale-in">
+                <div className="bg-slate-900 p-8 text-white relative">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 transition-colors"><X className="w-5 h-5" /></button>
+                    <div className="flex items-center gap-4 mb-2">
+                        <div className="w-12 h-12 bg-brand-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+                            <Calendar className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black tracking-tight">Schedule Interview</h2>
+                            <p className="text-slate-400 text-sm">Automated Calendar Sync</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-8 space-y-5">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Interview Type</label>
+                        <select
+                            value={type}
+                            onChange={(e) => setType(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                        >
+                            <option>Lumina Screening (AI)</option>
+                            <option>Technical Round 1 (F2F)</option>
+                            <option>System Design (F2F)</option>
+                            <option>Cultural Fit Chat</option>
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
+                            <input
+                                type="date"
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Time</label>
+                            <input
+                                type="time"
+                                value={time}
+                                onChange={(e) => setTime(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${includeMeet && platform === 'Google Meet' ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500/30' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                            onClick={() => { setIncludeMeet(true); setPlatform('Google Meet'); }}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-100">
+                                    <Globe className="w-5 h-5 text-indigo-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-slate-900 leading-none">Google Meet</p>
+                                    <p className="text-[10px] text-slate-500 font-medium mt-1">Synced with Google Workspace</p>
+                                </div>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${includeMeet && platform === 'Google Meet' ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300'}`}>
+                                {includeMeet && platform === 'Google Meet' && <Check className="w-3 h-3" />}
+                            </div>
+                        </div>
+
+                        <div className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${includeMeet && platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-500/30' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                            onClick={() => { setIncludeMeet(true); setPlatform('Microsoft Teams'); }}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-100">
+                                    <div className="text-blue-600 font-black text-xs">T</div>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-slate-900 leading-none">Microsoft Teams</p>
+                                    <p className="text-[10px] text-slate-500 font-medium mt-1">Synced with Microsoft Graph API</p>
+                                </div>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${includeMeet && platform === 'Microsoft Teams' ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300'}`}>
+                                {includeMeet && platform === 'Microsoft Teams' && <Check className="w-3 h-3" />}
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleSchedule}
+                        disabled={!date || !time || isScheduling}
+                        className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-brand-500/20 hover:bg-brand-700 disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-3 mt-2"
+                    >
+                        {isScheduling ? (
+                            <>
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                                <span>Generating Link & Invite...</span>
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle className="w-6 h-6" />
+                                <span>Finalize & Send Invites</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+const InterviewConfirmationModal = ({ candidate, session, onClose }: { candidate: any, session: InterviewSession, onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-fade-in">
+            <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in">
+                <div className="bg-emerald-600 p-8 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                            <Send className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black tracking-tight">Email Dispatched!</h2>
+                            <p className="text-emerald-100 text-sm">Meeting details sent to {candidate.email}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+                </div>
+
+                <div className="p-8 space-y-6 bg-slate-50">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                Preview: Sending via {session.platform === 'Microsoft Teams' ? 'Outlook' : 'Gmail'}
+                            </span>
+                            <div className="flex gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+                            </div>
+                        </div>
+                        <div className="p-8 space-y-4 text-slate-600 font-serif leading-relaxed">
+                            <p>Hi {candidate.name.split(' ')[0]},</p>
+                            <p>I'm excited to move forward with your application for the <strong>{candidate.role}</strong> position.</p>
+                            <p>We've scheduled our <strong>{session.type}</strong> interview for:</p>
+
+                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex items-center gap-6 my-6 font-sans not-italic">
+                                <div className="flex flex-col items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-sm border border-brand-100">
+                                    <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">{session.date.split(' ')[0]}</span>
+                                    <span className="text-3xl font-black text-slate-900 leading-none">{session.date.split(' ')[1].replace(',', '')}</span>
+                                </div>
+                                <div>
+                                    <p className="text-lg font-black text-slate-900">{session.time}</p>
+                                    <p className="text-sm font-medium text-slate-500">{session.platform || 'Google Meet'} Invitation Sent</p>
+                                </div>
+                            </div>
+
+                            {session.meetLink && (
+                                <div className={`p-4 rounded-xl border flex items-center gap-3 font-sans text-sm ${session.platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                                    <Video className={`w-5 h-5 ${session.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`} />
+                                    <span className={`font-bold ${session.platform === 'Microsoft Teams' ? 'text-blue-900' : 'text-indigo-900'}`}>Meeting Link:</span>
+                                    <a href={session.meetLink} target="_blank" rel="noopener noreferrer" className={`underline font-medium truncate ${session.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`}>{session.meetLink}</a>
+                                </div>
+                            )}
+
+                            <p className="mt-6 italic opacity-80">Looking forward to seeing you then!</p>
+                            <p className="pt-4 border-t border-slate-100">Best regards,<br /><strong>The Hiring Team</strong></p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-1">
+                        <p className="text-xs text-slate-400 italic">"Good luck {candidate.name.split(' ')[0]}! This email just opened in their inbox."</p>
+                        <button
+                            onClick={onClose}
+                            className="w-full mt-2 py-4 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-[0.98]"
+                        >
+                            Return to Profile
+                        </button>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+};
+const OfferConfirmationModal = ({ candidate, offer, onClose }: { candidate: any, offer: OfferDetails, onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-fade-in">
+            <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in">
+                <div className="bg-brand-600 p-8 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                            <Send className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black tracking-tight">Offer Dispatched!</h2>
+                            <p className="text-brand-100 text-sm">Official letter sent to {candidate.email}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+                </div>
+
+                <div className="p-8 space-y-6 bg-slate-50">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Preview: Official Offer Email</span>
+                            <div className="flex gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+                            </div>
+                        </div>
+                        <div className="p-8 space-y-4 text-slate-600 font-serif leading-relaxed">
+                            <p>Dear {candidate.name.split(' ')[0]},</p>
+                            <p>We are absolutely thrilled to offer you the position of <strong>{candidate.role}</strong> at our company!</p>
+
+                            <div className="bg-brand-50 p-6 rounded-2xl border border-brand-100 my-6 font-sans not-italic">
+                                <h4 className="text-brand-900 font-black uppercase text-xs tracking-widest mb-4">Compensation Package Highlights</h4>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <p className="text-[10px] font-bold text-brand-600 uppercase">Annual Salary</p>
+                                        <p className="text-2xl font-black text-slate-900">${offer.salary.toLocaleString()} {offer.currency}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-brand-600 uppercase">Equity Stake</p>
+                                        <p className="text-2xl font-black text-slate-900">{offer.equity || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-brand-600 uppercase">Sign-on Bonus</p>
+                                        <p className="text-lg font-bold text-slate-900">{offer.signOnBonus || 'None'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-brand-600 uppercase">Target Start Date</p>
+                                        <p className="text-lg font-bold text-slate-900">{offer.startDate || 'TBD'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p>You can review and sign the full offer letter by clicking the secure link below. This offer is valid for 7 days.</p>
+
+                            <div className="flex justify-center py-4">
+                                <div className="px-8 py-3 bg-brand-600 text-white rounded-xl font-bold font-sans shadow-lg shadow-brand-500/20">
+                                    Review & Sign Official Letter
+                                </div>
+                            </div>
+
+                            <p className="mt-6 italic opacity-80">We can't wait to have you on the team!</p>
+                            <p className="pt-4 border-t border-slate-100">Warmly,<br /><strong>The People Operations Team</strong></p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-1">
+                        <p className="text-xs text-slate-400 italic">"Sent! A notification has also been triggered in their Mobile Wallet."</p>
+                        <button
+                            onClick={onClose}
+                            className="w-full mt-2 py-4 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-[0.98]"
+                        >
+                            Return to Profile
+                        </button>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+const DocusignModal = ({ candidate, offer, onClose, onComplete }: { candidate: any, offer: OfferDetails, onClose: () => void, onComplete: (envelopeId: string) => void }) => {
+    const [step, setStep] = useState(1);
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const handleCreateEnvelope = () => {
+        setIsProcessing(true);
+        setTimeout(() => {
+            setStep(2);
+            setIsProcessing(false);
+        }, 2000);
+    };
+
+    const handleSend = () => {
+        setIsProcessing(true);
+        setTimeout(() => {
+            onComplete(`DS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`);
+            setIsProcessing(false);
+        }, 1500);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in">
+            <Card className="max-w-xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in bg-white">
+                <div className="bg-[#FF0000] p-6 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                            <PenTool className="w-6 h-6 text-[#FF0000]" />
+                        </div>
+                        <h2 className="text-xl font-black tracking-tight italic">DocuSign Integration</h2>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+                </div>
+
+                <div className="p-8">
+                    {step === 1 ? (
+                        <div className="space-y-6">
+                            <div className="text-center">
+                                <h3 className="text-lg font-bold text-slate-900">Prepare Signing Envelope</h3>
+                                <p className="text-sm text-slate-500 mt-1 text-balance">We are mapping fields from your generated offer letter to a DocuSign template.</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center"><User className="w-4 h-4" /></div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Signer</p>
+                                            <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-black tracking-widest">RECIPIENT</div>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between opacity-60">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-slate-200 text-slate-600 rounded-lg flex items-center justify-center"><Briefcase className="w-4 h-4" /></div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Counter-signer</p>
+                                            <p className="text-sm font-bold text-slate-900">Hiring Manager</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] bg-slate-600 text-white px-2 py-0.5 rounded font-black tracking-widest">OWNER</div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleCreateEnvelope}
+                                disabled={isProcessing}
+                                className="w-full py-4 bg-[#FF0000] text-white rounded-2xl font-black text-lg shadow-xl shadow-red-500/20 hover:bg-red-700 transition-all flex items-center justify-center gap-3"
+                            >
+                                {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Create Envelope'}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="text-center">
+                                <h3 className="text-lg font-bold text-slate-900 italic">Signature Fields Mapped</h3>
+                                <p className="text-sm text-slate-500 mt-1">Ready to dispatch via DocuSign Connect.</p>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 transition-opacity">
+                                    <PenTool className="w-12 h-12 text-[#FF0000]" />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
+                                        <span className="font-bold text-slate-400 uppercase">Document Name</span>
+                                        <span className="font-bold text-slate-900">Offer_Letter_{candidate.name.replace(' ', '_')}.pdf</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
+                                        <span className="font-bold text-slate-400 uppercase">Interactive Fields</span>
+                                        <span className="font-bold text-slate-900">4 Mapped (Signature, Date, Initials)</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="font-bold text-slate-400 uppercase">Branding</span>
+                                        <span className="font-bold text-slate-900">Corporate Identity Applied</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleSend}
+                                disabled={isProcessing}
+                                className="w-full py-4 bg-[#FF0000] text-white rounded-2xl font-black text-lg shadow-xl shadow-red-500/20 hover:bg-red-700 transition-all flex items-center justify-center gap-3"
+                            >
+                                {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Confirm & Send for Signing'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+const DocusignPulse = ({ envelopeId }: { envelopeId: string }) => {
+    const [activities, setActivities] = useState([
+        { id: 1, type: 'Sent', text: 'Offer dispatched via DocuSign Connect', time: '2 mins ago', icon: Send, color: 'text-blue-500' },
+        { id: 2, type: 'Delivered', text: 'Candidate received email notification', time: '1 min ago', icon: Mail, color: 'text-emerald-500' },
+        { id: 3, type: 'Viewing', text: 'Candidate is currently viewing document', time: 'Just now', icon: Activity, color: 'text-amber-500', pulse: true },
+    ]);
+    const [isNudging, setIsNudging] = useState(false);
+
+    const handleNudge = () => {
+        setIsNudging(true);
+        setTimeout(() => {
+            const newActivity = {
+                id: Date.now(),
+                type: 'Nudge',
+                text: 'Follow-up email dispatched via Lumina Engine',
+                time: 'Just now',
+                icon: BellRing,
+                color: 'text-brand-400'
+            };
+            setActivities([newActivity, ...activities]);
+            setIsNudging(false);
+        }, 1500);
+    };
+
+    return (
+        <div className="mt-4 bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+                <PenTool className="w-20 h-20 text-white" />
+            </div>
+
+            <div className="flex items-center justify-between mb-6 relative z-10">
+                <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Live Document Pulse</h4>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleNudge}
+                        disabled={isNudging}
+                        className="px-3 py-1 bg-brand-600/20 hover:bg-brand-600 text-brand-400 hover:text-white border border-brand-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                    >
+                        {isNudging ? <Loader2 className="w-3 h-3 animate-spin" /> : <BellRing className="w-3 h-3" />}
+                        Nudge Candidate
+                    </button>
+                    <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10 uppercase">{envelopeId}</span>
+                </div>
+            </div>
+
+            <div className="space-y-4 relative z-10 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                {activities.map((activity) => (
+                    <div key={activity.id} className="flex gap-4 group animate-fade-in-up">
+                        <div className="flex flex-col items-center">
+                            <div className={`w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center ${activity.color}`}>
+                                <activity.icon className={`w-4 h-4 ${activity.pulse ? 'animate-bounce' : ''}`} />
+                            </div>
+                            <div className="w-px h-full bg-white/10 my-1"></div>
+                        </div>
+                        <div className="flex-1 pb-2">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-bold text-white uppercase tracking-wider">{activity.type}</p>
+                                <span className="text-[10px] text-slate-500 font-medium">{activity.time}</span>
+                            </div>
+                            <p className="text-sm text-slate-400 mt-1">{activity.text}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em]">
+                <span className="text-slate-500 italic">Connected to DocuSign Real-time API</span>
+                <span className="text-brand-400">Listening...</span>
+            </div>
+        </div>
+    );
+};
 
 const TranscriptModal = ({ session, onClose }: { session: InterviewSession, onClose: () => void }) => {
     return (
@@ -205,11 +521,10 @@ const TranscriptModal = ({ session, onClose }: { session: InterviewSession, onCl
                                 {entry.speaker === 'Lumina' ? 'AI' : 'C'}
                             </div>
                             <div className={`flex flex-col ${entry.speaker === 'Candidate' ? 'items-end' : 'items-start'} max-w-[80%]`}>
-                                <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                                    entry.speaker === 'Candidate' 
-                                        ? 'bg-slate-800 text-white rounded-tr-none' 
-                                        : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
-                                }`}>
+                                <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${entry.speaker === 'Candidate'
+                                    ? 'bg-slate-800 text-white rounded-tr-none'
+                                    : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
+                                    }`}>
                                     {entry.text}
                                 </div>
                                 <span className="text-[10px] text-slate-400 mt-1.5 px-2 font-medium">{entry.timestamp} • {entry.speaker}</span>
@@ -237,7 +552,7 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
     const [showControls, setShowControls] = useState(true);
 
     useEffect(() => {
-        if(videoRef.current) {
+        if (videoRef.current) {
             videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
         }
     }, []);
@@ -302,8 +617,8 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
             <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl h-[85vh] flex overflow-hidden animate-fade-in-up border border-slate-800">
                 <div className="flex-1 relative flex flex-col bg-black group"
-                     onMouseEnter={() => setShowControls(true)}
-                     onMouseLeave={() => setShowControls(false)}
+                    onMouseEnter={() => setShowControls(true)}
+                    onMouseLeave={() => setShowControls(false)}
                 >
                     <div className="absolute top-0 left-0 right-0 p-4 z-10 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
                         <div className="pointer-events-auto">
@@ -317,7 +632,7 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
 
                     <div className="flex-1 relative flex items-center justify-center bg-black/50">
                         {session.videoUrl ? (
-                            <video 
+                            <video
                                 ref={videoRef}
                                 src={session.videoUrl}
                                 className="w-full h-full object-contain"
@@ -328,7 +643,7 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
                         ) : (
                             <div className="flex flex-col items-center text-slate-500">
                                 <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
-                                <VideoOff className="w-8 h-8 opacity-50" />
+                                    <VideoOff className="w-8 h-8 opacity-50" />
                                 </div>
                                 <p>Recording unavailable</p>
                             </div>
@@ -344,16 +659,16 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
 
                     <div className={`absolute bottom-0 left-0 right-0 pt-20 pb-6 px-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
                         <div className="relative h-1.5 bg-white/20 rounded-full cursor-pointer group/timeline mb-4"
-                             onClick={(e) => {
-                                 const rect = e.currentTarget.getBoundingClientRect();
-                                 const percent = (e.clientX - rect.left) / rect.width;
-                                 handleSeek(percent * duration);
-                             }}
+                            onClick={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const percent = (e.clientX - rect.left) / rect.width;
+                                handleSeek(percent * duration);
+                            }}
                         >
                             <div className="absolute top-0 left-0 bottom-0 bg-brand-500 rounded-full" style={{ width: `${(currentTime / duration) * 100}%` }}></div>
                             <div className="absolute top-1/2 -mt-1.5 h-3 w-3 bg-white rounded-full shadow opacity-0 group-hover/timeline:opacity-100 transition-opacity" style={{ left: `${(currentTime / duration) * 100}%`, transform: 'translateX(-50%)' }}></div>
                             {session.videoHighlights?.map((h) => (
-                                <div 
+                                <div
                                     key={h.id}
                                     className={`absolute top-1/2 -mt-1 h-2 w-2 rounded-full ${getHighlightColor(h.type).split(' ')[0]} z-10 transform -translate-x-1/2 ring-1 ring-black/50 group/marker transition-transform hover:scale-150`}
                                     style={{ left: `${(h.timestamp / duration) * 100}%` }}
@@ -390,19 +705,18 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
                         </h4>
                         <p className="text-xs text-slate-500 mt-1">Jump to key moments detected by Lumina.</p>
                     </div>
-                    
+
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
                         {session.videoHighlights?.map((h) => {
                             const isActive = currentTime >= h.timestamp && currentTime < h.timestamp + 5;
                             return (
-                                <button 
+                                <button
                                     key={h.id}
                                     onClick={() => handleSeek(h.timestamp)}
-                                    className={`w-full text-left p-3 rounded-xl border transition-all flex gap-3 group relative ${
-                                        isActive 
-                                            ? 'bg-slate-800 border-slate-700 shadow-md' 
-                                            : 'bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800'
-                                    }`}
+                                    className={`w-full text-left p-3 rounded-xl border transition-all flex gap-3 group relative ${isActive
+                                        ? 'bg-slate-800 border-slate-700 shadow-md'
+                                        : 'bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-800'
+                                        }`}
                                 >
                                     <div className="absolute left-[19px] top-8 bottom-[-20px] w-px bg-slate-800 group-last:hidden"></div>
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 border border-slate-800 ${getHighlightColor(h.type)} bg-opacity-10`}>
@@ -429,566 +743,1207 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
     )
 }
 
+const FileManager = ({ candidate }: { candidate: any }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const documents = (candidate as any).documents || [];
+    const folders = (candidate as any).folders || [];
+
+    const filteredDocs = documents.filter((d: any) => {
+        const matchesSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFolder = !selectedFolder || d.category === selectedFolder || (selectedFolder === 'Resume & CV' && d.category === 'Resume') || (selectedFolder === 'Offer Docs' && d.category === 'Offer') || (selectedFolder === 'Legal & Tax' && d.category === 'Legal');
+        return matchesSearch && matchesFolder;
+    });
+
+    const getCategoryStyles = (category: string) => {
+        switch (category) {
+            case 'Resume': return 'bg-blue-50 text-blue-600 border-blue-100';
+            case 'Offer': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+            case 'Legal': return 'bg-purple-50 text-purple-600 border-purple-100';
+            case 'Identification': return 'bg-amber-50 text-amber-600 border-amber-100';
+            default: return 'bg-slate-50 text-slate-600 border-slate-100';
+        }
+    };
+
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        // Simulate upload delay
+        setTimeout(() => {
+            const newDoc = {
+                id: `d${Date.now()}`,
+                name: file.name,
+                type: file.type,
+                size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
+                uploadedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                category: 'Other',
+                url: '#'
+            };
+            store.addCandidateDocument(candidate.id, newDoc);
+            setIsUploading(false);
+        }, 1500);
+    };
+
+    const handleAddFolder = () => {
+        const folderName = prompt('Enter folder name:');
+        if (folderName) {
+            const newFolder = {
+                id: `f${Date.now()}`,
+                name: folderName,
+                color: 'bg-slate-50',
+                icon: 'Folder',
+                fileCount: 0,
+                size: '0 KB'
+            };
+            store.addCandidateFolder(candidate.id, newFolder);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={onFileChange}
+                className="hidden"
+            />
+
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="relative w-full md:w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search workspace files..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <div className="flex gap-3 w-full md:w-auto">
+                    <button
+                        onClick={handleUploadClick}
+                        disabled={isUploading}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-50"
+                    >
+                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                        {isUploading ? 'Uploading...' : 'Upload File'}
+                    </button>
+                </div>
+            </div>
+
+            {selectedFolder && (
+                <div className="flex items-center gap-2 text-sm">
+                    <button
+                        onClick={() => setSelectedFolder(null)}
+                        className="text-slate-500 hover:text-slate-900 font-bold"
+                    >
+                        Workspace
+                    </button>
+                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                    <span className="font-bold text-slate-900">{selectedFolder}</span>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {folders.map((folder: any) => (
+                    <Card
+                        key={folder.id}
+                        onClick={() => setSelectedFolder(folder.name)}
+                        className={`p-4 flex items-center gap-4 hover:border-brand-200 transition-colors cursor-pointer group ${selectedFolder === folder.name ? 'ring-2 ring-brand-500 border-brand-500' : ''}`}
+                    >
+                        <div className={`w-12 h-12 ${folder.color} rounded-xl flex items-center justify-center group-hover:opacity-80 transition-opacity`}>
+                            <Folder className="w-6 h-6 text-slate-600" />
+                        </div>
+                        <div>
+                            <p className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">{folder.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{folder.fileCount} Files • {folder.size}</p>
+                        </div>
+                    </Card>
+                ))}
+
+                <button
+                    onClick={handleAddFolder}
+                    className="p-4 border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 hover:border-slate-400 transition-all cursor-pointer rounded-xl h-full min-h-[100px]"
+                >
+                    <Plus className="w-6 h-6" />
+                    <span className="font-bold text-sm">New Folder</span>
+                </button>
+            </div>
+
+            <Card className="overflow-hidden border-slate-200">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100">
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Document Name</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">File Size</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Modified</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredDocs.length > 0 ? filteredDocs.map((doc: any) => (
+                                <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                                                <File className="w-4 h-4 text-slate-400" />
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-900">{doc.name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${getCategoryStyles(doc.category)}`}>
+                                            {doc.category}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-slate-500 font-medium">{doc.size}</td>
+                                    <td className="px-6 py-4 text-sm text-slate-500 font-medium">{doc.uploadedAt}</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button className="p-1.5 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 text-slate-400 hover:text-slate-600 transition-all shadow-sm">
+                                                <Download className="w-4 h-4" />
+                                            </button>
+                                            <button className="p-1.5 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 text-slate-400 hover:text-slate-600 transition-all shadow-sm">
+                                                <MoreVertical className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic text-sm">
+                                        No files found in this folder.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            <div className="flex items-center gap-4 p-6 bg-slate-900 rounded-2xl text-white">
+                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                    <Globe className="w-6 h-6 text-brand-400" />
+                </div>
+                <div className="flex-1">
+                    <p className="font-bold">Sync with Google Drive</p>
+                    <p className="text-xs text-slate-400">Keep candidate folders synchronized across your workspace.</p>
+                </div>
+                <button className="px-6 py-2.5 bg-brand-600 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-brand-700 transition-all">
+                    Connect Drive
+                </button>
+            </div>
+        </div>
+    );
+};
+
 // --- MAIN PROFILE COMPONENT ---
 
 export const CandidateProfile = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const candidate = id ? MOCK_DATA[id] : null;
-  const [activeTab, setActiveTab] = useState<'resume' | 'analysis' | 'interviews' | 'offer' | 'onboarding'>('resume');
-  const [transcriptSession, setTranscriptSession] = useState<InterviewSession | null>(null);
-  const [recordingSession, setRecordingSession] = useState<InterviewSession | null>(null);
-  const [offerData, setOfferData] = useState<OfferDetails>(candidate?.offer || { status: 'Draft', salary: 0, currency: 'USD', equity: '', bonus: '', startDate: '', offerLetterContent: '' });
-  const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
-  const [hrisSyncState, setHrisSyncState] = useState<'Not_Synced' | 'Syncing' | 'Synced' | 'Error'>(candidate?.onboarding?.hrisSyncStatus || 'Not_Synced');
-  
-  // State for Onboarding Tasks (mocking completion toggle and upload)
-  const [localTasks, setLocalTasks] = useState<OnboardingTask[]>(candidate?.onboarding?.tasks || []);
+    const { id } = useParams();
+    const navigate = useNavigate();
 
-  useEffect(() => {
-      if (candidate?.stage === 'Offer') setActiveTab('offer');
-      if (candidate?.stage === 'Hired') setActiveTab('onboarding');
-      if (candidate?.onboarding?.tasks) setLocalTasks(candidate.onboarding.tasks);
-  }, [candidate]);
+    const [candidate, setCandidate] = useState(id ? store.getState().candidates.find(c => c.id === id) : null);
 
-  if (!candidate) return <div className="p-8 text-center">Candidate not found</div>;
+    // Ensure reliable store subscription
+    useEffect(() => {
+        const unsubscribe = store.subscribe(() => {
+            if (id) {
+                setCandidate(store.getState().candidates.find(c => c.id === id) || null);
+            }
+        });
+        return unsubscribe;
+    }, [id]);
+    const [activeTab, setActiveTab] = useState<'resume' | 'analysis' | 'interviews' | 'offer' | 'onboarding' | 'files'>('resume');
+    const [transcriptSession, setTranscriptSession] = useState<InterviewSession | null>(null);
+    const [recordingSession, setRecordingSession] = useState<InterviewSession | null>(null);
+    const [lastScheduledSession, setLastScheduledSession] = useState<InterviewSession | null>(null);
+    const [sentOfferPreview, setSentOfferPreview] = useState<boolean>(false);
+    const [isDocusignOpen, setIsDocusignOpen] = useState(false);
+    const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+    const [scheduleSuccess, setScheduleSuccess] = useState(false);
+    const [offerData, setOfferData] = useState<OfferDetails>(candidate?.offer || {
+        status: 'Draft',
+        salary: 120000,
+        currency: 'USD',
+        equity: '0.05%',
+        signOnBonus: '$10,000',
+        performanceBonus: '15%',
+        benefits: 'Full Health, Dental, Vision, 401k match',
+        startDate: new Date().toISOString().split('T')[0],
+        expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        location: 'New York, NY (Hybrid)',
+        offerLetterContent: ''
+    });
+    const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
+    const [hrisSyncState, setHrisSyncState] = useState<'Not_Synced' | 'Syncing' | 'Synced' | 'Error'>(candidate?.onboarding?.hrisSyncStatus || 'Not_Synced');
 
-  const handleGenerateOffer = () => {
-      setIsGeneratingOffer(true);
-      setTimeout(() => {
-          setOfferData(prev => ({
-              ...prev,
-              offerLetterContent: `Dear ${candidate.name.split(' ')[0]},\n\nWe are pleased to offer you the position of ${candidate.role} at RecruiteAI.\n\nStarting salary: ${offerData.currency} ${offerData.salary.toLocaleString()}.\n\nSincerely,\nRecruiteAI Team`
-          }));
-          setIsGeneratingOffer(false);
-      }, 1500);
-  };
+    // State for Onboarding Tasks (mocking completion toggle and upload)
+    const [localTasks, setLocalTasks] = useState<OnboardingTask[]>(candidate?.onboarding?.tasks || []);
 
-  const handleSendOffer = () => {
-      setOfferData(prev => ({ ...prev, status: 'Sent' }));
-  };
+    useEffect(() => {
+        if (candidate?.stage === 'Offer') setActiveTab('offer');
+        if (candidate?.stage === 'Hired') setActiveTab('onboarding');
 
-  const handleHrisSync = () => {
-      setHrisSyncState('Syncing');
-      setTimeout(() => {
-          setHrisSyncState('Synced');
-      }, 2000);
-  };
+        if (candidate?.offer) {
+            setOfferData(candidate.offer);
+        }
+        if (candidate?.onboarding) {
+            setHrisSyncState(candidate.onboarding.hrisSyncStatus);
+            setLocalTasks(candidate.onboarding.tasks);
+        }
+    }, [candidate]);
 
-  const toggleTask = (taskId: string) => {
-      setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
-  };
+    if (!candidate) return <div className="p-8 text-center">Candidate not found</div>;
 
-  const handleFileUpload = (taskId: string) => {
-      // Simulate file upload
-      setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: true, fileUrl: 'simulated_upload.pdf' } : t));
-  };
+    const handleGenerateOffer = () => {
+        setIsGeneratingOffer(true);
+        setTimeout(() => {
+            const content = `CONFIDENTIAL
+            
+${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
 
-  return (
-    <div className="max-w-[1400px] mx-auto animate-fade-in-up space-y-6">
-       
-       {/* HEADER & NAVIGATION */}
-       <div className="flex flex-col gap-6">
-          <button onClick={() => navigate('/candidates')} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 w-fit transition-colors">
-             <ArrowLeft className="w-4 h-4" /> Back to Candidates
-          </button>
+${candidate.name}
+${candidate.email}
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex justify-between items-start">
-             <div className="flex gap-6">
-                <img src={candidate.avatar} className="w-24 h-24 rounded-2xl object-cover border-4 border-slate-50 shadow-md" alt={candidate.name} />
-                <div>
-                   <h1 className="text-3xl font-bold text-slate-900">{candidate.name}</h1>
-                   <div className="flex items-center gap-3 mt-2 text-slate-500 font-medium">
-                      <span>{candidate.role}</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                      <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {candidate.location}</span>
-                   </div>
-                   <div className="flex items-center gap-3 mt-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          candidate.stage === 'Hired' ? 'bg-emerald-100 text-emerald-700' :
-                          candidate.stage === 'Offer' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                          {candidate.stage}
-                      </span>
-                      <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
-                          AI Match: {candidate.score}%
-                      </span>
-                   </div>
-                </div>
-             </div>
+Dear ${candidate.name.split(' ')[0]},
 
-             <div className="flex gap-3">
-                <button className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm">
-                   <Mail className="w-4 h-4"/> Email
+We are thrilled to offer you the full-time position of ${candidate.role} at RecruiteAI, reporting to the VP of Engineering. We were impressed by your background and believe your skills will be instrumental to our team's success.
+
+Compensation & Benefits:
+• Base Salary: ${offerData.currency} ${offerData.salary.toLocaleString()} annually, paid semi-monthly.
+• Sign-On Bonus: ${offerData.signOnBonus || 'Not applicable'}
+• Performance Bonus: Target of ${offerData.performanceBonus || '0%'} of base salary.
+• Equity: Option to purchase ${offerData.equity || '0'} shares of Common Stock.
+• Benefits: ${offerData.benefits || 'Standard company benefits package.'}
+
+Start Date:
+Your anticipated start date will be ${new Date(offerData.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+
+Location:
+This role is based in ${offerData.location || 'our headquarters'}.
+
+This offer is valid until ${offerData.expirationDate ? new Date(offerData.expirationDate).toLocaleDateString() : 'Invalid Date'}. We look forward to welcoming you to the team!
+
+Sincerely,
+
+Sarah Connor
+Director of People Operations
+RecruiteAI`;
+
+            setOfferData(prev => ({
+                ...prev,
+                offerLetterContent: content
+            }));
+
+            if (id) {
+                store.updateOffer(id, {
+                    ...offerData,
+                    offerLetterContent: content,
+                    status: 'Draft'
+                });
+            }
+
+            setIsGeneratingOffer(false);
+        }, 1500);
+    };
+
+    const handleSendOffer = () => {
+        setOfferData(prev => ({ ...prev, status: 'Sent' }));
+        if (id) {
+            store.updateOffer(candidate.id, { ...offerData, status: 'Sent', sentDate: new Date().toLocaleDateString() });
+        }
+        setSentOfferPreview(true);
+    };
+
+    const handleHrisSync = () => {
+        setHrisSyncState('Syncing');
+        setTimeout(() => {
+            setHrisSyncState('Synced');
+            if (id) {
+                store.syncToHris(id);
+            }
+        }, 2000);
+    };
+
+    const toggleTask = (taskId: string) => {
+        const task = localTasks.find(t => t.id === taskId);
+        if (id && task) {
+            store.updateOnboardingTask(id, taskId, { completed: !task.completed });
+        }
+    };
+
+    const handleSendDocuSign = () => {
+        setIsDocusignOpen(true);
+        // Simulate API call
+        setTimeout(() => {
+            const token = Math.random().toString(36).substring(7);
+            const offerDetails: any = {
+                id: `off_${Date.now()}`,
+                status: 'Sent',
+                token: token,
+                sentAt: new Date().toISOString(),
+                documentUrl: 'https://example.com/offer.pdf',
+                envelopeId: `env_${Math.random().toString(36).substring(7).toUpperCase()}`
+            };
+
+            if (id) {
+                store.updateOffer(id, {
+                    ...offerData,
+                    status: 'Sent',
+                    docusignStatus: 'Sent',
+                    docusignEnvelopeId: offerDetails.envelopeId
+                });
+
+                // Update candidate model with new OfferDetails structure
+                const currentCandidate = store.getState().candidates.find(c => c.id === id);
+                if (currentCandidate) {
+                    store.updateCandidate(id, {
+                        ...currentCandidate,
+                        offer: offerDetails
+                    });
+                }
+            }
+            setIsDocusignOpen(false);
+            setSentOfferPreview(true); // Re-use this state to trigger UI update
+        }, 1500);
+    };
+
+    const handleFileUpload = (taskId: string) => {
+        if (id) {
+            store.updateOnboardingTask(id, taskId, { completed: true, fileUrl: 'simulated_upload.pdf' });
+        }
+    };
+
+    return (
+        <div className="max-w-[1400px] mx-auto animate-fade-in-up space-y-6">
+
+            {/* HEADER & NAVIGATION */}
+            <div className="flex flex-col gap-6">
+                <button onClick={() => navigate('/candidates')} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 w-fit transition-colors">
+                    <ArrowLeft className="w-4 h-4" /> Back to Candidates
                 </button>
-                <button className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm">
-                   <Calendar className="w-4 h-4"/> Schedule
-                </button>
-                <button className="px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-colors shadow-lg shadow-brand-500/20">
-                   Move Stage
-                </button>
-             </div>
-          </div>
-       </div>
 
-       {/* TABS */}
-       <div className="flex overflow-x-auto border-b border-slate-200 bg-white rounded-t-xl px-2 shadow-sm">
-          {[
-            { id: 'resume', label: 'Resume & Profile', icon: User },
-            { id: 'analysis', label: 'AI Intelligence', icon: BrainCircuit },
-            { id: 'interviews', label: 'Interview History', icon: MessageSquare },
-            ...(candidate.stage === 'Offer' || candidate.stage === 'Hired' ? [{ id: 'offer', label: 'Offer Management', icon: DollarSign }] : []),
-            ...(candidate.stage === 'Hired' ? [{ id: 'onboarding', label: 'Onboarding & HRIS', icon: Server }] : [])
-          ].map(tab => (
-             <button 
-               key={tab.id}
-               onClick={() => setActiveTab(tab.id as any)}
-               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-             >
-                <tab.icon className="w-4 h-4" /> {tab.label}
-             </button>
-          ))}
-       </div>
-
-       {/* CONTENT AREA */}
-       <div className="min-h-[500px]">
-          
-          {/* RESUME */}
-          {activeTab === 'resume' && (
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-6">
-                   <button className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10">
-                      <Download className="w-4 h-4" /> Download Resume (PDF)
-                   </button>
-
-                   <Card className="p-6">
-                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Contact Info</h3>
-                      <div className="space-y-4 text-sm text-slate-600">
-                         <div className="flex items-center gap-3"><Mail className="w-4 h-4 text-slate-400"/> {candidate.email}</div>
-                         <div className="flex items-center gap-3"><Phone className="w-4 h-4 text-slate-400"/> {candidate.phone}</div>
-                         <div className="flex items-center gap-3"><Linkedin className="w-4 h-4 text-slate-400"/> LinkedIn</div>
-                         <div className="flex items-center gap-3"><Github className="w-4 h-4 text-slate-400"/> GitHub</div>
-                      </div>
-                   </Card>
-                   <Card className="p-6">
-                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Skills</h3>
-                      <div className="flex flex-wrap gap-2">
-                         {candidate.skills.map(s => <span key={s} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium border border-slate-200">{s}</span>)}
-                      </div>
-                   </Card>
-                </div>
-                <div className="lg:col-span-2 space-y-6">
-                   <Card className="p-8">
-                      <h3 className="text-xl font-bold text-slate-900 mb-4">Summary</h3>
-                      <p className="text-slate-600 leading-relaxed">{candidate.summary}</p>
-                   </Card>
-                   <div className="space-y-4">
-                      {candidate.experience.map(exp => (
-                         <Card key={exp.id} className="p-6">
-                            <h4 className="font-bold text-slate-900 text-lg">{exp.role}</h4>
-                            <div className="text-sm text-slate-500 font-medium mb-3">{exp.company} • {exp.duration}</div>
-                            <p className="text-slate-600 text-sm leading-relaxed">{exp.description}</p>
-                         </Card>
-                      ))}
-                   </div>
-                </div>
-             </div>
-          )}
-
-          {/* ANALYSIS */}
-          {activeTab === 'analysis' && (
-             <div className="space-y-6 animate-fade-in">
-                
-                {/* 1. Hero Section: Verdict & Radar */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                   {/* Verdict Card */}
-                   <Card className="lg:col-span-1 p-0 overflow-hidden border-t-4 border-brand-600 flex flex-col">
-                      <div className="p-6 bg-gradient-to-br from-brand-50 to-white flex-1">
-                          <h3 className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-2">AI Verdict</h3>
-                          <div className="flex items-baseline gap-2 mb-4">
-                             <span className="text-5xl font-black text-slate-900">{candidate.score}</span>
-                             <span className="text-xl font-medium text-slate-400">/ 100</span>
-                          </div>
-                          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold mb-6 ${
-                              candidate.aiVerdict === 'Proceed' ? 'bg-emerald-100 text-emerald-700' : 
-                              candidate.aiVerdict === 'Review' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                              {candidate.aiVerdict === 'Proceed' ? <CheckCircle className="w-4 h-4"/> : <AlertCircle className="w-4 h-4"/>}
-                              Recommended Action: {candidate.aiVerdict}
-                          </div>
-                          <p className="text-slate-600 text-sm leading-relaxed mb-4">
-                             {candidate.matchReason} The candidate shows exceptional alignment with the technical requirements and exhibits strong leadership signals suitable for a Senior role.
-                          </p>
-                      </div>
-                      <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
-                          <span>Confidence Score: 94%</span>
-                          <span className="flex items-center gap-1"><BrainCircuit className="w-3 h-3"/> Model: Gemini 2.0</span>
-                      </div>
-                   </Card>
-
-                   {/* Radar Chart Analysis */}
-                   <Card className="lg:col-span-2 p-6 flex flex-col md:flex-row items-center gap-8">
-                       <div className="h-64 w-full md:w-1/2 flex-shrink-0">
-                           <ResponsiveContainer width="100%" height="100%">
-                              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                                  { subject: 'Technical', A: candidate.analysis.technicalScore, fullMark: 100 },
-                                  { subject: 'Cultural', A: candidate.analysis.culturalScore, fullMark: 100 },
-                                  { subject: 'Communication', A: candidate.analysis.communicationScore, fullMark: 100 },
-                                  { subject: 'Experience', A: 90, fullMark: 100 },
-                                  { subject: 'Leadership', A: 85, fullMark: 100 },
-                              ]}>
-                                  <PolarGrid stroke="#e2e8f0" />
-                                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
-                                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                  <Radar name="Candidate" dataKey="A" stroke="#16a34a" strokeWidth={2} fill="#22c55e" fillOpacity={0.3} />
-                                  <Tooltip />
-                              </RadarChart>
-                           </ResponsiveContainer>
-                       </div>
-                       <div className="flex-1 space-y-6">
-                           <div>
-                              <h4 className="font-bold text-slate-900 mb-3">Assessment Summary</h4>
-                              <div className="space-y-3">
-                                  <div className="flex justify-between items-center text-sm">
-                                      <span className="text-slate-600 font-medium">Technical Capability</span>
-                                      <span className="font-bold text-slate-900">{candidate.analysis.technicalScore}/100</span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${candidate.analysis.technicalScore}%` }}></div>
-                                  </div>
-                              </div>
-                              <div className="space-y-3 mt-4">
-                                  <div className="flex justify-between items-center text-sm">
-                                      <span className="text-slate-600 font-medium">Cultural Alignment</span>
-                                      <span className="font-bold text-slate-900">{candidate.analysis.culturalScore}/100</span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                      <div className="h-full bg-purple-500 rounded-full" style={{ width: `${candidate.analysis.culturalScore}%` }}></div>
-                                  </div>
-                              </div>
-                              <div className="space-y-3 mt-4">
-                                  <div className="flex justify-between items-center text-sm">
-                                      <span className="text-slate-600 font-medium">Communication</span>
-                                      <span className="font-bold text-slate-900">{candidate.analysis.communicationScore}/100</span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${candidate.analysis.communicationScore}%` }}></div>
-                                  </div>
-                              </div>
-                           </div>
-                       </div>
-                   </Card>
-                </div>
-
-                {/* 2. Detailed Breakdown Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Key Strengths with Evidence */}
-                   <Card className="p-6 border-l-4 border-emerald-500">
-                      <div className="flex items-center justify-between mb-6">
-                          <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                             <Sparkles className="w-5 h-5 text-emerald-500"/> Distinctive Strengths
-                          </h3>
-                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">Top 5%</span>
-                      </div>
-                      <div className="space-y-4">
-                         {candidate.analysis.strengths.map((s, i) => (
-                             <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-100">
-                                 <div className="mt-1">
-                                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                       <Check className="w-3 h-3" />
-                                    </div>
-                                 </div>
-                                 <div>
-                                     <p className="font-bold text-slate-800 text-sm">{s}</p>
-                                     <p className="text-xs text-slate-500 mt-1">Evidenced in Resume & Initial Screening.</p>
-                                 </div>
-                             </div>
-                         ))}
-                      </div>
-                   </Card>
-
-                   {/* Areas of Concern with Probe Questions */}
-                   <Card className="p-6 border-l-4 border-amber-500">
-                      <div className="flex items-center justify-between mb-6">
-                          <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                             <AlertCircle className="w-5 h-5 text-amber-500"/> Risks & Probing Areas
-                          </h3>
-                          <span className="px-2 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded">Attention Needed</span>
-                      </div>
-                      <div className="space-y-4">
-                         {candidate.analysis.weaknesses.map((w, i) => (
-                             <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-amber-50/50 transition-colors border border-transparent hover:border-amber-100">
-                                 <div className="mt-1">
-                                    <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
-                                       <AlertCircle className="w-3 h-3" />
-                                    </div>
-                                 </div>
-                                 <div>
-                                     <p className="font-bold text-slate-800 text-sm">{w}</p>
-                                     <div className="mt-2 bg-white p-2 rounded border border-slate-200">
-                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Suggested Question:</p>
-                                         <p className="text-xs text-slate-600 italic">"Can you describe a time when you had to learn a new technology under a tight deadline to solve a specific problem related to this?"</p>
-                                     </div>
-                                 </div>
-                             </div>
-                         ))}
-                      </div>
-                   </Card>
-                </div>
-
-                {/* 3. Skills Matrix (Inferred from Resume Skills) */}
-                <Card className="p-8">
-                    <h3 className="font-bold text-lg text-slate-900 mb-6 flex items-center gap-2">
-                        <Code className="w-5 h-5 text-blue-500"/> Skills Proficiency Matrix
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-12">
-                        {candidate.skills.slice(0, 6).map((skill, i) => {
-                            // Mock proficiency generation based on index
-                            const proficiency = Math.max(60, 95 - (i * 5)); 
-                            const experienceYears = Math.max(1, 5 - Math.floor(i/2));
-                            return (
-                                <div key={skill}>
-                                    <div className="flex justify-between items-end mb-2">
-                                        <span className="font-bold text-slate-800">{skill}</span>
-                                        <span className="text-xs text-slate-500">{experienceYears}+ years</span>
-                                    </div>
-                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full rounded-full ${proficiency > 85 ? 'bg-brand-500' : proficiency > 70 ? 'bg-blue-500' : 'bg-slate-400'}`} 
-                                            style={{ width: `${proficiency}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </Card>
-
-             </div>
-          )}
-
-          {/* INTERVIEWS */}
-          {activeTab === 'interviews' && (
-             <div className="space-y-8 animate-fade-in">
-                {candidate.interviews.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200">
-                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Video className="w-8 h-8 text-slate-400" />
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex justify-between items-start">
+                    <div className="flex gap-6">
+                        <img src={candidate.avatar} className="w-24 h-24 rounded-2xl object-cover border-4 border-slate-50 shadow-md" alt={candidate.name} />
+                        <div>
+                            <h1 className="text-3xl font-bold text-slate-900">{candidate.name}</h1>
+                            <div className="flex items-center gap-3 mt-2 text-slate-500 font-medium">
+                                <span>{candidate.role}</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                                <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {candidate.location}</span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${candidate.stage === 'Hired' ? 'bg-emerald-100 text-emerald-700' :
+                                    candidate.stage === 'Offer' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                    {candidate.stage}
+                                </span>
+                                <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
+                                    AI Match: {candidate.score}%
+                                </span>
+                            </div>
                         </div>
-                        <h3 className="text-lg font-medium text-slate-900">No interviews yet</h3>
-                        <p className="text-slate-500 mt-1">Schedule a Lumina screening or invite the candidate.</p>
-                        <button className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800">Schedule Interview</button>
                     </div>
-                ) : (
-                    candidate.interviews.map((interview, index) => (
-                        <div key={interview.id} className="relative pl-8 md:pl-0">
-                            {/* Timeline Line (Desktop) */}
-                            <div className="hidden md:block absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 last:bottom-auto last:h-full"></div>
-                            
-                            <Card className="overflow-hidden border-l-4 border-l-brand-500 relative">
-                                {/* Status Ribbon/Badge */}
-                                <div className="absolute top-0 right-0 p-4">
-                                     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-                                         interview.sentiment === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
-                                         interview.sentiment === 'Negative' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
-                                     }`}>
-                                         {interview.sentiment === 'Positive' ? <Sparkles className="w-3 h-3"/> : interview.sentiment === 'Negative' ? <AlertCircle className="w-3 h-3"/> : <Minus className="w-3 h-3"/>}
-                                         {interview.sentiment} Sentiment
-                                     </div>
+
+                    <div className="flex gap-3">
+                        <button className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm">
+                            <Mail className="w-4 h-4" /> Email
+                        </button>
+                        <button
+                            onClick={() => setIsScheduleOpen(true)}
+                            className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+                        >
+                            <Calendar className="w-4 h-4 text-brand-600" /> Schedule
+                        </button>
+                        <button
+                            onClick={() => {
+                                const stages: Candidate['stage'][] = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'];
+                                const currentIndex = stages.indexOf(candidate.stage);
+                                const nextStage = stages[currentIndex + 1] || 'Hired';
+                                if (id) store.updateCandidateStage(id, nextStage as any);
+                            }}
+                            className="px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-colors shadow-lg shadow-brand-500/20"
+                        >
+                            Move Stage
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* TABS */}
+            <div className="flex overflow-x-auto border-b border-slate-200 bg-white rounded-t-xl px-2 shadow-sm">
+                {[
+                    { id: 'resume', label: 'Resume & Profile', icon: User },
+                    { id: 'analysis', label: 'AI Intelligence', icon: BrainCircuit },
+                    { id: 'interviews', label: 'Interview History', icon: MessageSquare },
+                    { id: 'files', label: 'Candidate Workspace', icon: Folder },
+                    ...(candidate.stage === 'Offer' || candidate.stage === 'Hired' ? [{ id: 'offer', label: 'Offer Management', icon: DollarSign }] : []),
+                    ...(candidate.stage === 'Hired' ? [{ id: 'onboarding', label: 'Onboarding & HRIS', icon: Server }] : [])
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.id ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                    >
+                        <tab.icon className="w-4 h-4" /> {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* CONTENT AREA */}
+            <div className="min-h-[500px]">
+
+                {/* RESUME */}
+                {activeTab === 'resume' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-1 space-y-6">
+                            <button className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10">
+                                <Download className="w-4 h-4" /> Download Resume (PDF)
+                            </button>
+
+                            <Card className="p-6">
+                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Contact Info</h3>
+                                <div className="space-y-4 text-sm text-slate-600">
+                                    <div className="flex items-center gap-3"><Mail className="w-4 h-4 text-slate-400" /> {candidate.email}</div>
+                                    <div className="flex items-center gap-3"><Phone className="w-4 h-4 text-slate-400" /> {candidate.phone}</div>
+                                    <div className="flex items-center gap-3"><Linkedin className="w-4 h-4 text-slate-400" /> LinkedIn</div>
+                                    <div className="flex items-center gap-3"><Github className="w-4 h-4 text-slate-400" /> GitHub</div>
+                                </div>
+                            </Card>
+                            <Card className="p-6">
+                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Skills</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {candidate.skills.map(s => <span key={s} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium border border-slate-200">{s}</span>)}
+                                </div>
+                            </Card>
+                        </div>
+                        <div className="lg:col-span-2 space-y-6">
+                            <Card className="p-8">
+                                <h3 className="text-xl font-bold text-slate-900 mb-4">Summary</h3>
+                                <p className="text-slate-600 leading-relaxed">{candidate.summary}</p>
+                            </Card>
+                            <div className="space-y-4">
+                                {candidate.experience.map(exp => (
+                                    <Card key={exp.id} className="p-6">
+                                        <h4 className="font-bold text-slate-900 text-lg">{exp.role}</h4>
+                                        <div className="text-sm text-slate-500 font-medium mb-3">{exp.company} • {exp.duration}</div>
+                                        <p className="text-slate-600 text-sm leading-relaxed">{exp.description}</p>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ANALYSIS */}
+                {activeTab === 'analysis' && (
+                    <div className="space-y-8 animate-fade-in">
+                        {/* 1. Executive Intelligence Overview */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <Card className="lg:col-span-1 p-0 border-2 border-emerald-500 shadow-xl shadow-emerald-100 relative overflow-hidden flex flex-col">
+                                <div className="p-8 flex-1">
+                                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">AI Verdict</h3>
+
+                                    <div className="flex items-baseline gap-3 mb-6">
+                                        <span className="text-7xl font-black text-slate-900 tracking-tight">{candidate.score}</span>
+                                        <span className="text-3xl font-bold text-slate-400">/ 100</span>
+                                    </div>
+
+                                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-8 border ${candidate.aiVerdict === 'Proceed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                        candidate.aiVerdict === 'Review' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-red-50 text-red-700 border-red-100'
+                                        }`}>
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center ${candidate.aiVerdict === 'Proceed' ? 'bg-emerald-500' :
+                                            candidate.aiVerdict === 'Review' ? 'bg-amber-500' : 'bg-red-500'
+                                            }`}>
+                                            <Check className="w-3 h-3 text-white stroke-[4]" />
+                                        </div>
+                                        Recommended Action: {candidate.aiVerdict}
+                                    </div>
+
+                                    <p className="text-slate-600 font-medium leading-relaxed mb-6">
+                                        {candidate.matchReason} The candidate shows exceptional alignment with the technical requirements and exhibits strong leadership signals suitable for a Senior role.
+                                    </p>
                                 </div>
 
-                                <div className="p-6 md:p-8">
-                                    <div className="flex flex-col md:flex-row gap-8">
-                                        {/* Left Column: Meta & Score */}
-                                        <div className="md:w-1/3 space-y-6">
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/20">
-                                                    <Video className="w-7 h-7" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-xl text-slate-900 leading-tight">{interview.type}</h4>
-                                                    <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                                                        <Calendar className="w-4 h-4" /> {interview.date}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                        <span>Confidence Score: 94%</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                        <Cpu className="w-3.5 h-3.5" />
+                                        <span>Model: Gemini 2.0</span>
+                                    </div>
+                                </div>
+                            </Card>
 
-                                            {/* Score Card */}
-                                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
-                                                <div className="flex justify-between items-end mb-2">
-                                                    <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Overall Score</span>
-                                                    <span className="text-3xl font-black text-slate-900">{interview.score}<span className="text-lg text-slate-400 font-medium">/10</span></span>
-                                                </div>
-                                                <div className="w-full bg-white h-3 rounded-full overflow-hidden border border-slate-100">
-                                                    <div className="h-full bg-gradient-to-r from-blue-500 to-brand-500" style={{width: `${interview.score * 10}%`}}></div>
-                                                </div>
-                                                
-                                                {/* Mock Sub-metrics */}
-                                                <div className="mt-4 space-y-3">
-                                                    <div>
-                                                        <div className="flex justify-between text-xs mb-1">
-                                                            <span className="font-medium text-slate-600">Technical Proficiency</span>
-                                                            <span className="font-bold text-slate-900">{(interview.score + 0.5).toFixed(1)}</span>
-                                                        </div>
-                                                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${Math.min(100, (interview.score + 0.5)*10)}%`}}></div></div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex justify-between text-xs mb-1">
-                                                            <span className="font-medium text-slate-600">Communication</span>
-                                                            <span className="font-bold text-slate-900">{(interview.score - 0.2).toFixed(1)}</span>
-                                                        </div>
-                                                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-purple-500" style={{width: `${Math.min(100, (interview.score - 0.2)*10)}%`}}></div></div>
-                                                    </div>
-                                                </div>
+                            <Card className="lg:col-span-2 p-6 flex flex-col md:flex-row items-center gap-8">
+                                <div className="h-64 w-full md:w-1/2 flex-shrink-0">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                                            { subject: 'Technical', A: candidate.analysis.technicalScore, fullMark: 100 },
+                                            { subject: 'Cultural', A: candidate.analysis.culturalScore, fullMark: 100 },
+                                            { subject: 'Communication', A: candidate.analysis.communicationScore, fullMark: 100 },
+                                            { subject: 'Experience', A: 90, fullMark: 100 },
+                                            { subject: 'Leadership', A: 85, fullMark: 100 },
+                                        ]}>
+                                            <PolarGrid stroke="#e2e8f0" />
+                                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} />
+                                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                            <Radar name="Candidate" dataKey="A" stroke="#16a34a" strokeWidth={2} fill="#22c55e" fillOpacity={0.3} />
+                                            <Tooltip />
+                                        </RadarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="flex-1 space-y-6">
+                                    <div>
+                                        <h4 className="font-bold text-slate-900 mb-3">Assessment Summary</h4>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-slate-600 font-medium">Technical Capability</span>
+                                                <span className="font-bold text-slate-900">{candidate.analysis.technicalScore}/100</span>
+                                            </div>
+                                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${candidate.analysis.technicalScore}%` }}></div>
                                             </div>
                                         </div>
-
-                                        {/* Right Column: Content */}
-                                        <div className="flex-1 space-y-6">
-                                            <div>
-                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                    <MessageSquare className="w-3 h-3" /> Executive Summary
-                                                </h5>
-                                                <p className="text-slate-700 leading-relaxed bg-white text-sm md:text-base">
-                                                    {interview.summary}
-                                                </p>
+                                        <div className="space-y-3 mt-4">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-slate-600 font-medium">Cultural Alignment</span>
+                                                <span className="font-bold text-slate-900">{candidate.analysis.culturalScore}/100</span>
                                             </div>
-
-                                            {/* Highlights Grid */}
-                                            {interview.videoHighlights && interview.videoHighlights.length > 0 && (
-                                                <div>
-                                                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                                        <Sparkles className="w-3 h-3" /> Key Moments Detected
-                                                    </h5>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                        {interview.videoHighlights.slice(0, 4).map((h) => (
-                                                            <div key={h.id} className={`p-3 rounded-lg border flex gap-3 ${
-                                                                h.type === 'Positive' ? 'bg-emerald-50 border-emerald-100' :
-                                                                h.type === 'Negative' ? 'bg-red-50 border-red-100' :
-                                                                h.type === 'Insight' ? 'bg-blue-50 border-blue-100' :
-                                                                'bg-amber-50 border-amber-100'
-                                                            }`}>
-                                                                <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                                                    h.type === 'Positive' ? 'bg-emerald-200 text-emerald-700' :
-                                                                    h.type === 'Negative' ? 'bg-red-200 text-red-700' :
-                                                                    h.type === 'Insight' ? 'bg-blue-200 text-blue-700' :
-                                                                    'bg-amber-200 text-amber-700'
-                                                                }`}>
-                                                                    {h.type === 'Positive' ? <Check className="w-3 h-3"/> : 
-                                                                     h.type === 'Negative' ? <X className="w-3 h-3"/> : 
-                                                                     h.type === 'Insight' ? <BrainCircuit className="w-3 h-3"/> : <Flag className="w-3 h-3"/>}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-xs font-bold opacity-80 uppercase mb-0.5">{h.type}</div>
-                                                                    <div className="text-sm font-medium text-slate-800 line-clamp-2">{h.text}</div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Actions */}
-                                            <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
-                                                <button 
-                                                    onClick={() => setRecordingSession(interview)}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 active:scale-95"
-                                                >
-                                                    <PlayCircle className="w-4 h-4" /> Watch Recording
-                                                </button>
-                                                <button 
-                                                    onClick={() => setTranscriptSession(interview)}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-50 transition-all active:scale-95"
-                                                >
-                                                    <FileText className="w-4 h-4" /> Read Transcript
-                                                </button>
-                                                <div className="flex-1"></div>
-                                                <button className="text-slate-400 hover:text-slate-600 text-sm font-medium flex items-center gap-1">
-                                                    <Download className="w-4 h-4" /> Export Report
-                                                </button>
+                                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                <div className="h-full bg-purple-500 rounded-full" style={{ width: `${candidate.analysis.culturalScore}%` }}></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3 mt-4">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-slate-600 font-medium">Communication</span>
+                                                <span className="font-bold text-slate-900">{candidate.analysis.communicationScore}/100</span>
+                                            </div>
+                                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${candidate.analysis.communicationScore}%` }}></div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </Card>
                         </div>
-                    ))
-                )}
-             </div>
-          )}
 
-          {/* OFFER & ONBOARDING (Simplified for brevity, same logic as drawer) */}
-          {(activeTab === 'offer' || activeTab === 'onboarding') && (
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {activeTab === 'offer' && (
-                   <>
-                      <Card className="p-8">
-                         <h3 className="font-bold text-slate-900 mb-6">Offer Details</h3>
-                         <div className="space-y-4">
-                            <div><label className="text-sm text-slate-500 block mb-1">Salary</label><input type="number" value={offerData.salary} onChange={(e) => setOfferData({...offerData, salary: parseInt(e.target.value)})} className="w-full p-3 border rounded-lg bg-slate-50"/></div>
-                            <button onClick={handleGenerateOffer} disabled={isGeneratingOffer} className="w-full py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-700 flex justify-center gap-2">{isGeneratingOffer ? <Loader2 className="w-5 h-5 animate-spin"/> : <Sparkles className="w-5 h-5"/>} Generate Letter</button>
-                         </div>
-                      </Card>
-                      <Card className="p-8 bg-slate-50 border-slate-200">
-                         <pre className="whitespace-pre-wrap font-serif text-sm text-slate-700 leading-relaxed">{offerData.offerLetterContent || "Draft not generated..."}</pre>
-                         {offerData.offerLetterContent && <button onClick={handleSendOffer} className="mt-6 w-full py-3 bg-slate-900 text-white rounded-lg font-bold">Send Offer</button>}
-                      </Card>
-                   </>
-                )}
-                {activeTab === 'onboarding' && (
-                   <Card className="p-8 col-span-2">
-                      <div className="flex items-center justify-between mb-8">
-                         <div className="flex items-center gap-4"><div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center"><Server className="w-6 h-6 text-emerald-600"/></div><div><h3 className="font-bold text-xl text-slate-900">Sync to HRIS</h3><p className="text-slate-500">Push candidate data to external systems.</p></div></div>
-                         <button onClick={handleHrisSync} disabled={hrisSyncState === 'Synced' || hrisSyncState === 'Syncing'} className="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50">{hrisSyncState === 'Synced' ? <Check className="w-5 h-5"/> : hrisSyncState === 'Syncing' ? <Loader2 className="w-5 h-5 animate-spin"/> : 'Sync Now'}</button>
-                      </div>
-                      
-                      <div className="space-y-6">
-                        {['Legal & Compliance', 'IT & Equipment', 'Culture & Orientation'].map(cat => (
-                            <div key={cat}>
-                                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">{cat}</h4>
-                                <div className="space-y-3">
-                                    {localTasks.filter(t => t.category === cat).map(t => (
-                                        <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
-                                           <div className="flex items-center gap-4">
-                                               {t.type === 'upload' ? (
-                                                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${t.completed ? 'bg-orange-100 border-orange-200 text-orange-600' : 'border-slate-300 text-slate-400'}`}>
-                                                       <FileText className="w-4 h-4" />
-                                                   </div>
-                                               ) : (
-                                                   <button onClick={() => toggleTask(t.id)} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${t.completed ? 'bg-brand-500 border-brand-500' : 'border-slate-300 hover:border-brand-400'}`}>
-                                                       {t.completed && <Check className="w-3.5 h-3.5 text-white"/>}
-                                                   </button>
-                                               )}
-                                               
-                                               <div>
-                                                   <div className={`font-medium ${t.completed ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{t.task}</div>
-                                                   {t.fileUrl && <div className="text-xs text-brand-600 flex items-center gap-1 mt-0.5"><CheckCircle className="w-3 h-3"/> {t.fileUrl} uploaded</div>}
-                                               </div>
-                                           </div>
-
-                                           {t.type === 'upload' && !t.completed && (
-                                               <button onClick={() => handleFileUpload(t.id)} className="text-xs bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium flex items-center gap-2">
-                                                   <UploadCloud className="w-3 h-3"/> Upload
-                                               </button>
-                                           )}
+                        {/* 2. Detailed Breakdown Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Key Strengths with Evidence */}
+                            <Card className="p-6 border-l-4 border-emerald-500">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-emerald-500" /> Distinctive Strengths
+                                    </h3>
+                                    <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">Top 5%</span>
+                                </div>
+                                <div className="space-y-4">
+                                    {candidate.analysis.strengths.map((s, i) => (
+                                        <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-100">
+                                            <div className="mt-1">
+                                                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                    <Check className="w-3 h-3" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-800 text-sm">{s}</p>
+                                                <p className="text-xs text-slate-500 mt-1">Evidenced in Resume & Initial Screening.</p>
+                                            </div>
                                         </div>
                                     ))}
-                                    {localTasks.filter(t => t.category === cat).length === 0 && (
-                                        <div className="text-xs text-slate-400 italic">No tasks assigned.</div>
-                                    )}
                                 </div>
-                            </div>
-                        ))}
-                      </div>
-                   </Card>
-                )}
-             </div>
-          )}
-       </div>
+                            </Card>
 
-       {/* MODALS */}
-       {transcriptSession && <TranscriptModal session={transcriptSession} onClose={() => setTranscriptSession(null)} />}
-       {recordingSession && <RecordingModal session={recordingSession} onClose={() => setRecordingSession(null)} />}
-    </div>
-  );
+                            {/* Areas of Concern with Probe Questions */}
+                            <Card className="p-6 border-l-4 border-amber-500">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                                        <AlertCircle className="w-5 h-5 text-amber-500" /> Risks & Probing Areas
+                                    </h3>
+                                    <span className="px-2 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded">Attention Needed</span>
+                                </div>
+                                <div className="space-y-4">
+                                    {candidate.analysis.weaknesses.map((w, i) => (
+                                        <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-amber-50/50 transition-colors border border-transparent hover:border-amber-100">
+                                            <div className="mt-1">
+                                                <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-800 text-sm">{w}</p>
+                                                <div className="mt-2 bg-white p-2 rounded border border-slate-200">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Suggested Question:</p>
+                                                    <p className="text-xs text-slate-600 italic">"Can you describe a time when you had to learn a new technology under a tight deadline to solve a specific problem related to this?"</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* 3. Skills Matrix (Inferred from Resume Skills) */}
+                        <Card className="p-8">
+                            <h3 className="font-bold text-lg text-slate-900 mb-6 flex items-center gap-2">
+                                <Code className="w-5 h-5 text-blue-500" /> Skills Proficiency Matrix
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-12">
+                                {candidate.skills.slice(0, 6).map((skill, i) => {
+                                    // Mock proficiency generation based on index
+                                    const proficiency = Math.max(60, 95 - (i * 5));
+                                    const experienceYears = Math.max(1, 5 - Math.floor(i / 2));
+                                    return (
+                                        <div key={skill}>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="font-bold text-slate-800">{skill}</span>
+                                                <span className="text-xs text-slate-500">{experienceYears}+ years</span>
+                                            </div>
+                                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full ${proficiency > 85 ? 'bg-brand-500' : proficiency > 70 ? 'bg-blue-500' : 'bg-slate-400'}`}
+                                                    style={{ width: `${proficiency}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+
+                    </div>
+                )}
+
+                {/* INTERVIEWS */}
+                {activeTab === 'interviews' && (
+                    <div className="space-y-8 animate-fade-in">
+                        {candidate.interviews.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200">
+                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Video className="w-8 h-8 text-slate-400" />
+                                </div>
+                                <h3 className="text-lg font-medium text-slate-900">No interviews yet</h3>
+                                <p className="text-slate-500 mt-1">Schedule a Lumina screening or invite the candidate.</p>
+                                <button
+                                    onClick={() => setIsScheduleOpen(true)}
+                                    className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10 active:scale-95"
+                                >
+                                    Schedule Interview
+                                </button>
+                            </div>
+                        ) : (
+                            candidate.interviews.map((interview, index) => (
+                                <div key={interview.id} className="relative pl-8 md:pl-0">
+                                    {/* Timeline Line (Desktop) */}
+                                    <div className="hidden md:block absolute left-8 top-0 bottom-0 w-px bg-slate-200 -z-10 last:bottom-auto last:h-full"></div>
+
+                                    <Card className="overflow-hidden border-l-4 border-l-brand-500 relative">
+                                        {/* Status Ribbon/Badge */}
+                                        <div className="absolute top-0 right-0 p-4">
+                                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${interview.status === 'Upcoming' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                                interview.sentiment === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    interview.sentiment === 'Negative' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                                }`}>
+                                                {interview.status === 'Upcoming' ? <Clock className="w-3 h-3" /> :
+                                                    interview.sentiment === 'Positive' ? <Sparkles className="w-3 h-3" /> : interview.sentiment === 'Negative' ? <AlertCircle className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                                                {interview.status === 'Upcoming' ? 'Upcoming' : `${interview.sentiment} Sentiment`}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 md:p-8">
+                                            <div className="flex flex-col md:flex-row gap-8">
+                                                {/* Left Column: Meta & Score */}
+                                                <div className="md:w-1/3 space-y-6">
+                                                    <div className="flex items-start gap-4">
+                                                        <div className={`w-14 h-14 ${interview.platform === 'Microsoft Teams' ? 'bg-blue-600' : 'bg-slate-900'} text-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/20`}>
+                                                            {interview.platform === 'Microsoft Teams' ? <span className="font-bold text-lg">T</span> : <Video className="w-7 h-7" />}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-xl text-slate-900 leading-tight">{interview.type}</h4>
+                                                            <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                                                                <Calendar className="w-4 h-4" /> {interview.date}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Score Card / Status Card */}
+                                                    {interview.status === 'Upcoming' ? (
+                                                        <div className={`${interview.platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-100' : 'bg-indigo-50 border-indigo-100'} rounded-xl p-5 border`}>
+                                                            <p className={`text-xs font-bold ${interview.platform === 'Microsoft Teams' ? 'text-blue-400' : 'text-indigo-400'} uppercase tracking-wide mb-3`}>Meeting Details</p>
+                                                            <div className="flex items-center gap-3 mb-4">
+                                                                <Clock className={`w-5 h-5 ${interview.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`} />
+                                                                <span className={`font-bold ${interview.platform === 'Microsoft Teams' ? 'text-blue-900' : 'text-indigo-900'}`}>{interview.time || 'TBD'}</span>
+                                                            </div>
+                                                            {interview.meetLink && (
+                                                                <a
+                                                                    href={interview.meetLink}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className={`w-full py-3 ${interview.platform === 'Microsoft Teams' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'} text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg`}
+                                                                >
+                                                                    <Video className="w-4 h-4" /> Join {interview.platform === 'Microsoft Teams' ? 'Teams Call' : 'Google Meet'}
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                                                            <div className="flex justify-between items-end mb-2">
+                                                                <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Overall Score</span>
+                                                                <span className="text-3xl font-black text-slate-900">{interview.score}<span className="text-lg text-slate-400 font-medium">/10</span></span>
+                                                            </div>
+                                                            <div className="w-full bg-white h-3 rounded-full overflow-hidden border border-slate-100">
+                                                                <div className="h-full bg-gradient-to-r from-blue-500 to-brand-500" style={{ width: `${(interview.score || 0) * 10}%` }}></div>
+                                                            </div>
+
+                                                            {/* Mock Sub-metrics */}
+                                                            <div className="mt-4 space-y-3">
+                                                                <div>
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="font-medium text-slate-600">Technical Proficiency</span>
+                                                                        <span className="font-bold text-slate-900">{((interview.score || 0) + 0.5).toFixed(1)}</span>
+                                                                    </div>
+                                                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{ width: `${Math.min(100, ((interview.score || 0) + 0.5) * 10)}%` }}></div></div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="font-medium text-slate-600">Communication</span>
+                                                                        <span className="font-bold text-slate-900">{((interview.score || 0) - 0.2).toFixed(1)}</span>
+                                                                    </div>
+                                                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-purple-500" style={{ width: `${Math.min(100, ((interview.score || 0) - 0.2) * 10)}%` }}></div></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Right Column: Content */}
+                                                <div className="flex-1 space-y-6">
+                                                    {interview.status === 'Upcoming' ? (
+                                                        <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100 border-dashed text-center">
+                                                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                                                <Calendar className="w-8 h-8 text-slate-300" />
+                                                            </div>
+                                                            <h5 className="font-bold text-slate-900 mb-1">Awaiting Session</h5>
+                                                            <p className="text-sm text-slate-500">This interview has been scheduled and sync-checked with your calendar. Participants will receive a reminder 10 minutes before the start.</p>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div>
+                                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                    <MessageSquare className="w-3 h-3" /> Executive Summary
+                                                                </h5>
+                                                                <p className="text-slate-700 leading-relaxed bg-white text-sm md:text-base">
+                                                                    {interview.summary}
+                                                                </p>
+                                                            </div>
+
+                                                            {/* Highlights Grid */}
+                                                            {interview.videoHighlights && interview.videoHighlights.length > 0 && (
+                                                                <div>
+                                                                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                                        <Sparkles className="w-3 h-3" /> Key Moments Detected
+                                                                    </h5>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                        {interview.videoHighlights.slice(0, 4).map((h) => (
+                                                                            <div key={h.id} className={`p-3 rounded-lg border flex gap-3 ${h.type === 'Positive' ? 'bg-emerald-50 border-emerald-100' :
+                                                                                h.type === 'Negative' ? 'bg-red-50 border-red-100' :
+                                                                                    h.type === 'Insight' ? 'bg-blue-50 border-blue-100' :
+                                                                                        'bg-amber-50 border-amber-100'
+                                                                                }`}>
+                                                                                <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${h.type === 'Positive' ? 'bg-emerald-200 text-emerald-700' :
+                                                                                    h.type === 'Negative' ? 'bg-red-200 text-red-700' :
+                                                                                        h.type === 'Insight' ? 'bg-blue-200 text-blue-700' :
+                                                                                            'bg-amber-200 text-amber-700'
+                                                                                    }`}>
+                                                                                    {h.type === 'Positive' ? <Check className="w-3 h-3" /> :
+                                                                                        h.type === 'Negative' ? <X className="w-3 h-3" /> :
+                                                                                            h.type === 'Insight' ? <BrainCircuit className="w-3 h-3" /> : <Flag className="w-3 h-3" />}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="text-xs font-bold opacity-80 uppercase mb-0.5">{h.type}</div>
+                                                                                    <div className="text-sm font-medium text-slate-800 line-clamp-2">{h.text}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {/* Actions */}
+                                                    <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+                                                        <button
+                                                            onClick={() => setRecordingSession(interview)}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 active:scale-95"
+                                                        >
+                                                            <PlayCircle className="w-4 h-4" /> Watch Recording
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setTranscriptSession(interview)}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-50 transition-all active:scale-95"
+                                                        >
+                                                            <FileText className="w-4 h-4" /> Read Transcript
+                                                        </button>
+                                                        <div className="flex-1"></div>
+                                                        <button className="text-slate-400 hover:text-slate-600 text-sm font-medium flex items-center gap-1">
+                                                            <Download className="w-4 h-4" /> Export Report
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'files' && (
+                    <FileManager candidate={candidate} />
+                )}
+
+                {/* OFFER & ONBOARDING (Simplified for brevity, same logic as drawer) */}
+                {(activeTab === 'offer' || activeTab === 'onboarding') && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {activeTab === 'offer' && (
+                            <>
+                                <Card className="p-8">
+                                    <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                        <Briefcase className="w-5 h-5 text-brand-600" />
+                                        Offer Details
+                                    </h3>
+                                    <div className="space-y-6">
+                                        {/* Financials Row 1 */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Base Salary</label>
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        value={offerData.currency}
+                                                        onChange={(e) => setOfferData({ ...offerData, currency: e.target.value as any })}
+                                                        className="w-24 p-2.5 border rounded-lg bg-slate-50 text-sm font-bold"
+                                                    >
+                                                        {['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'INR'].map(c => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                    <input
+                                                        type="number"
+                                                        value={offerData.salary}
+                                                        onChange={(e) => setOfferData({ ...offerData, salary: parseInt(e.target.value) || 0 })}
+                                                        className="flex-1 p-2.5 border rounded-lg bg-slate-50 text-sm font-bold"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Sign-On Bonus</label>
+                                                <input
+                                                    type="text"
+                                                    value={offerData.signOnBonus || ''}
+                                                    onChange={(e) => setOfferData({ ...offerData, signOnBonus: e.target.value })}
+                                                    placeholder="$10,000"
+                                                    className="w-full p-2.5 border rounded-lg bg-slate-50 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Financials Row 2 */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Equity / Options</label>
+                                                <input
+                                                    type="text"
+                                                    value={offerData.equity}
+                                                    onChange={(e) => setOfferData({ ...offerData, equity: e.target.value })}
+                                                    placeholder="0.05% or 10,000 RSUs"
+                                                    className="w-full p-2.5 border rounded-lg bg-slate-50 text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Perf. Bonus</label>
+                                                <input
+                                                    type="text"
+                                                    value={offerData.performanceBonus || ''}
+                                                    onChange={(e) => setOfferData({ ...offerData, performanceBonus: e.target.value })}
+                                                    placeholder="15% of annual"
+                                                    className="w-full p-2.5 border rounded-lg bg-slate-50 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Logistics Row */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={offerData.startDate}
+                                                    onChange={(e) => setOfferData({ ...offerData, startDate: e.target.value })}
+                                                    className="w-full p-2.5 border rounded-lg bg-slate-50 text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Offer Expiry</label>
+                                                <input
+                                                    type="date"
+                                                    value={offerData.expirationDate || ''}
+                                                    onChange={(e) => setOfferData({ ...offerData, expirationDate: e.target.value })}
+                                                    className="w-full p-2.5 border rounded-lg bg-slate-50 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Benefits Summary</label>
+                                            <textarea
+                                                value={offerData.benefits || ''}
+                                                onChange={(e) => setOfferData({ ...offerData, benefits: e.target.value })}
+                                                className="w-full p-2.5 border rounded-lg bg-slate-50 text-sm h-20 resize-none"
+                                                placeholder="Describe health, dental, vision, 401k..."
+                                            />
+                                        </div>
+
+                                        <button onClick={handleGenerateOffer} disabled={isGeneratingOffer} className="w-full py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-700 flex justify-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95 transition-all">
+                                            {isGeneratingOffer ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5 fill-white" />}
+                                            Generate Official Letter
+                                        </button>
+                                    </div>
+                                </Card>
+                                <Card className="p-8 bg-slate-50 border-slate-200">
+                                    <pre className="whitespace-pre-wrap font-serif text-sm text-slate-700 leading-relaxed h-[300px] overflow-y-auto pr-2">{offerData.offerLetterContent || "Draft not generated..."}</pre>
+
+                                    {/* Action Buttons (Only show if not already sent/signed) */}
+                                    {(!candidate.offer || candidate.offer.status === 'Draft') && offerData.offerLetterContent && (
+                                        <div className="mt-6 flex gap-3">
+                                            <button onClick={handleSendOffer} className="flex-1 py-3 bg-slate-900 text-white rounded-lg font-bold flex items-center justify-center gap-2">
+                                                <Send className="w-4 h-4" /> Send Direct Email
+                                            </button>
+                                            <button onClick={handleSendDocuSign} className="flex-1 py-3 bg-[#FF0000] text-white rounded-lg font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 hover:bg-red-700 active:scale-95 transition-all">
+                                                <PenTool className="w-4 h-4" /> Send via DocuSign
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* LIVE STATUS CARD */}
+                                    {candidate.offer && candidate.offer.status !== 'Draft' && (
+                                        <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden">
+                                            <div className="bg-slate-50 p-4 border-b border-slate-200 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
+                                                        <FileText className="w-5 h-5 text-indigo-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-slate-900 text-sm">Employment Offer</div>
+                                                        <div className="text-xs text-slate-500">Envelope ID: {candidate.offer.envelopeId || '...'}</div>
+                                                    </div>
+                                                </div>
+                                                <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-2 ${candidate.offer.status === 'Signed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                    candidate.offer.status === 'Rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                                                        candidate.offer.status === 'Viewed' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                            'bg-amber-100 text-amber-700 border-amber-200'
+                                                    }`}>
+                                                    {candidate.offer.status === 'Signed' ? <CheckCircle className="w-3 h-3" /> :
+                                                        candidate.offer.status === 'Rejected' ? <X className="w-3 h-3" /> :
+                                                            candidate.offer.status === 'Viewed' ? <Globe className="w-3 h-3" /> :
+                                                                <Clock className="w-3 h-3" />}
+                                                    {candidate.offer.status}
+                                                </div>
+                                            </div>
+
+                                            <div className="p-4 bg-white space-y-4">
+                                                {/* Timeline */}
+                                                <div className="relative pl-4 space-y-4 border-l-2 border-slate-100 ml-2">
+                                                    <div className="relative">
+                                                        <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-slate-300 border-2 border-white"></div>
+                                                        <p className="text-xs text-slate-500">{new Date(candidate.offer.sentAt).toLocaleString()}</p>
+                                                        <p className="text-sm font-medium text-slate-900">Offer Sent via DocuSign</p>
+                                                    </div>
+
+                                                    {candidate.offer.viewedAt && (
+                                                        <div className="relative">
+                                                            <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-blue-300 border-2 border-white"></div>
+                                                            <p className="text-xs text-slate-500">{new Date(candidate.offer.viewedAt).toLocaleString()}</p>
+                                                            <p className="text-sm font-medium text-slate-900">Candidate Viewed Offer</p>
+                                                        </div>
+                                                    )}
+
+                                                    {candidate.offer.status === 'Signed' && (
+                                                        <div className="relative">
+                                                            <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-emerald-100 shadow-sm"></div>
+                                                            <p className="text-xs text-slate-500">{candidate.offer.signedAt ? new Date(candidate.offer.signedAt).toLocaleString() : 'Just now'}</p>
+                                                            <p className="text-sm font-bold text-emerald-700">Signed & Accepted</p>
+                                                        </div>
+                                                    )}
+
+                                                    {candidate.offer.status === 'Rejected' && (
+                                                        <div className="relative">
+                                                            <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white"></div>
+                                                            <p className="text-xs text-slate-500">{candidate.offer.rejectedAt ? new Date(candidate.offer.rejectedAt).toLocaleString() : 'Just now'}</p>
+                                                            <p className="text-sm font-bold text-red-700">Offer Declined</p>
+                                                            {candidate.offer.rejectionReason && (
+                                                                <div className="mt-2 p-3 bg-red-50 rounded-lg text-xs text-red-800 italic border border-red-100">
+                                                                    "{candidate.offer.rejectionReason}"
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex gap-2 pt-4 border-t border-slate-100 flex-wrap">
+                                                    <button
+                                                        onClick={() => window.open(`/#/offer/${candidate.offer?.token}`, '_blank')}
+                                                        className="px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                                                    >
+                                                        <Globe className="w-3 h-3" /> View Secure Link
+                                                    </button>
+                                                    {candidate.offer.status === 'Signed' && (
+                                                        <button className="px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1">
+                                                            <Download className="w-3 h-3" /> Download Signed PDF
+                                                        </button>
+                                                    )}
+                                                    {/* Demo Reset Button */}
+                                                    <button
+                                                        onClick={() => {
+                                                            store.updateOffer(candidate.id, {
+                                                                status: 'Sent',
+                                                                viewedAt: undefined,
+                                                                signedAt: undefined,
+                                                                rejectedAt: undefined,
+                                                                rejectionReason: undefined
+                                                            });
+                                                        }}
+                                                        className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1 ml-auto"
+                                                        title="Reset for testing"
+                                                    >
+                                                        <RefreshCw className="w-3 h-3" /> Reset (Demo)
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </Card>
+                            </>
+                        )}
+                        {activeTab === 'onboarding' && (
+                            <Card className="p-8 col-span-2">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="flex items-center gap-4"><div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center"><Server className="w-6 h-6 text-emerald-600" /></div><div><h3 className="font-bold text-xl text-slate-900">Sync to HRIS</h3><p className="text-slate-500">Push candidate data to external systems.</p></div></div>
+                                    <button onClick={handleHrisSync} disabled={hrisSyncState === 'Synced' || hrisSyncState === 'Syncing'} className="px-6 py-3 bg-slate-900 text-white font-bold rounded-xl flex items-center gap-2 disabled:opacity-50">{hrisSyncState === 'Synced' ? <Check className="w-5 h-5" /> : hrisSyncState === 'Syncing' ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sync Now'}</button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {['Legal & Compliance', 'IT & Equipment', 'Culture & Orientation'].map(cat => (
+                                        <div key={cat}>
+                                            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">{cat}</h4>
+                                            <div className="space-y-3">
+                                                {localTasks.filter(t => t.category === cat).map(t => (
+                                                    <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+                                                        <div className="flex items-center gap-4">
+                                                            {t.type === 'upload' ? (
+                                                                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${t.completed ? 'bg-orange-100 border-orange-200 text-orange-600' : 'border-slate-300 text-slate-400'}`}>
+                                                                    <FileText className="w-4 h-4" />
+                                                                </div>
+                                                            ) : (
+                                                                <button onClick={() => toggleTask(t.id)} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${t.completed ? 'bg-brand-500 border-brand-500' : 'border-slate-300 hover:border-brand-400'}`}>
+                                                                    {t.completed && <Check className="w-3.5 h-3.5 text-white" />}
+                                                                </button>
+                                                            )}
+
+                                                            <div>
+                                                                <div className={`font-medium ${t.completed ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{t.task}</div>
+                                                                {t.fileUrl && <div className="text-xs text-brand-600 flex items-center gap-1 mt-0.5"><CheckCircle className="w-3 h-3" /> {t.fileUrl} uploaded</div>}
+                                                            </div>
+                                                        </div>
+
+                                                        {t.type === 'upload' && !t.completed && (
+                                                            <button onClick={() => handleFileUpload(t.id)} className="text-xs bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium flex items-center gap-2">
+                                                                <UploadCloud className="w-3 h-3" /> Upload
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {localTasks.filter(t => t.category === cat).length === 0 && (
+                                                    <div className="text-xs text-slate-400 italic">No tasks assigned.</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* MODALS */}
+            {transcriptSession && <TranscriptModal session={transcriptSession} onClose={() => setTranscriptSession(null)} />}
+            {recordingSession && <RecordingModal session={recordingSession} onClose={() => setRecordingSession(null)} />}
+            {isScheduleOpen && (
+                <ScheduleModal
+                    candidate={candidate}
+                    onClose={() => setIsScheduleOpen(false)}
+                    onScheduled={(session) => {
+                        setIsScheduleOpen(false);
+                        setLastScheduledSession(session);
+                    }}
+                />
+            )}
+            {lastScheduledSession && (
+                <InterviewConfirmationModal
+                    candidate={candidate}
+                    session={lastScheduledSession}
+                    onClose={() => setLastScheduledSession(null)}
+                />
+            )}
+            {sentOfferPreview && (
+                <OfferConfirmationModal
+                    candidate={candidate}
+                    offer={offerData}
+                    onClose={() => setSentOfferPreview(false)}
+                />
+            )}
+            {isDocusignOpen && (
+                <DocusignModal
+                    candidate={candidate}
+                    offer={offerData}
+                    onClose={() => setIsDocusignOpen(false)}
+                    onComplete={(envId) => {
+                        setIsDocusignOpen(false);
+                        const updates = { ...offerData, status: 'Sent' as any, docusignStatus: 'Sent' as any, docusignEnvelopeId: envId };
+                        setOfferData(updates);
+                        store.updateOffer(candidate.id, updates);
+                        setSentOfferPreview(true);
+                    }}
+                />
+            )}
+
+            {/* Success Notification */}
+            {scheduleSuccess && (
+                <div className="fixed bottom-8 right-8 z-[100] animate-bounce-subtle">
+                    <div className="bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
+                        <CheckCircle className="w-6 h-6" />
+                        <div>
+                            <p className="font-bold">Interview Scheduled!</p>
+                            <p className="text-xs opacity-90 text-emerald-50">Calendar invites sent to candidate & team.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };

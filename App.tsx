@@ -12,10 +12,13 @@ import { InterviewLobby } from './pages/InterviewLobby';
 import { InterviewRoom } from './pages/InterviewRoom';
 import { Settings } from './pages/Settings';
 import { PlatformAdmin } from './pages/PlatformAdmin';
+import { OfferPortal } from './pages/OfferPortal';
+import { DynamicBranding } from './components/DynamicBranding';
+import { LockdownOverlay } from './components/LockdownOverlay';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
-  const isFullScreen = location.pathname.includes('/interview');
+  const isFullScreen = location.pathname.includes('/interview') || location.pathname.includes('/offer');
 
   if (isFullScreen) return <>{children}</>;
 
@@ -32,6 +35,8 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 export default function App() {
   return (
     <Router>
+      <DynamicBranding />
+      <LockdownOverlay />
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -44,7 +49,8 @@ export default function App() {
           <Route path="/interview/room" element={<InterviewRoom />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/platform-admin" element={<PlatformAdmin />} />
-          
+          <Route path="/offer/:token" element={<OfferPortal />} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
