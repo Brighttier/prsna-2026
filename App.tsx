@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
@@ -14,12 +13,13 @@ import { Settings } from './pages/Settings';
 import { PlatformAdmin } from './pages/PlatformAdmin';
 import { OfferPortal } from './pages/OfferPortal';
 import { Login } from './pages/Login';
+import { Landing } from './pages/Landing';
 import { DynamicBranding } from './components/DynamicBranding';
 import { LockdownOverlay } from './components/LockdownOverlay';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
-  const isFullScreen = location.pathname.includes('/interview') || location.pathname.includes('/offer') || location.pathname === '/login';
+  const isFullScreen = location.pathname.includes('/interview') || location.pathname.includes('/offer') || location.pathname === '/login' || location.pathname === '/';
 
   if (isFullScreen) return <>{children}</>;
 
@@ -40,7 +40,8 @@ export default function App() {
       <LockdownOverlay />
       <Layout>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/candidates" element={<Candidates />} />
@@ -52,7 +53,6 @@ export default function App() {
           <Route path="/platform-admin" element={<PlatformAdmin />} />
           <Route path="/offer/:token" element={<OfferPortal />} />
           <Route path="/login" element={<Login />} />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
