@@ -1010,6 +1010,26 @@ export const CandidateProfile = () => {
     const handleGenerateOffer = () => {
         setIsGeneratingOffer(true);
         setTimeout(() => {
+            // Build compensation lines conditionally
+            const compensationLines = [];
+            compensationLines.push(`• Base Salary: ${offerData.currency} ${offerData.salary.toLocaleString()} annually, paid semi-monthly.`);
+
+            if (offerData.signOnBonus && offerData.signOnBonus.trim() !== '' && offerData.signOnBonus !== '0') {
+                compensationLines.push(`• Sign-On Bonus: ${offerData.signOnBonus}`);
+            }
+
+            if (offerData.performanceBonus && offerData.performanceBonus.trim() !== '' && offerData.performanceBonus !== '0%' && offerData.performanceBonus !== '0') {
+                compensationLines.push(`• Performance Bonus: Target of ${offerData.performanceBonus} of base salary.`);
+            }
+
+            if (offerData.equity && offerData.equity.trim() !== '' && offerData.equity !== '0') {
+                compensationLines.push(`• Equity: Option to purchase ${offerData.equity} shares of Common Stock.`);
+            }
+
+            if (offerData.benefits && offerData.benefits.trim() !== '') {
+                compensationLines.push(`• Benefits: ${offerData.benefits}`);
+            }
+
             const content = `CONFIDENTIAL
             
 ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -1022,11 +1042,7 @@ Dear ${candidate.name.split(' ')[0]},
 We are thrilled to offer you the full-time position of ${candidate.role} at RecruiteAI, reporting to the VP of Engineering. We were impressed by your background and believe your skills will be instrumental to our team's success.
 
 Compensation & Benefits:
-• Base Salary: ${offerData.currency} ${offerData.salary.toLocaleString()} annually, paid semi-monthly.
-• Sign-On Bonus: ${offerData.signOnBonus || 'Not applicable'}
-• Performance Bonus: Target of ${offerData.performanceBonus || '0%'} of base salary.
-• Equity: Option to purchase ${offerData.equity || '0'} shares of Common Stock.
-• Benefits: ${offerData.benefits || 'Standard company benefits package.'}
+${compensationLines.join('\n')}
 
 Start Date:
 Your anticipated start date will be ${new Date(offerData.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
