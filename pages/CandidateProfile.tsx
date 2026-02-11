@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw } from 'lucide-react';
+import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw, Edit2 } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
 import {
     Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
@@ -747,6 +747,8 @@ const FileManager = ({ candidate }: { candidate: any }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const documents = (candidate as any).documents || [];
@@ -794,17 +796,22 @@ const FileManager = ({ candidate }: { candidate: any }) => {
     };
 
     const handleAddFolder = () => {
-        const folderName = prompt('Enter folder name:');
-        if (folderName) {
+        setShowNewFolderModal(true);
+    };
+
+    const createFolder = () => {
+        if (newFolderName.trim()) {
             const newFolder = {
                 id: `f${Date.now()}`,
-                name: folderName,
+                name: newFolderName,
                 color: 'bg-slate-50',
                 icon: 'Folder',
                 fileCount: 0,
                 size: '0 KB'
             };
             store.addCandidateFolder(candidate.id, newFolder);
+            setNewFolderName('');
+            setShowNewFolderModal(false);
         }
     };
 
@@ -944,6 +951,42 @@ const FileManager = ({ candidate }: { candidate: any }) => {
                     Connect Drive
                 </button>
             </div>
+
+            {/* New Folder Modal */}
+            {showNewFolderModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewFolderModal(false)}>
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold text-slate-900 mb-4">Create New Folder</h3>
+                        <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && createFolder()}
+                            placeholder="Enter folder name..."
+                            className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none mb-4"
+                            autoFocus
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowNewFolderModal(false);
+                                    setNewFolderName('');
+                                }}
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-bold hover:bg-slate-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={createFolder}
+                                disabled={!newFolderName.trim()}
+                                className="flex-1 py-2.5 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Create Folder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -987,14 +1030,26 @@ export const CandidateProfile = () => {
         offerLetterContent: ''
     });
     const [isGeneratingOffer, setIsGeneratingOffer] = useState(false);
+    const [isEditingOffer, setIsEditingOffer] = useState(false);
     const [hrisSyncState, setHrisSyncState] = useState<'Not_Synced' | 'Syncing' | 'Synced' | 'Error'>(candidate?.onboarding?.hrisSyncStatus || 'Not_Synced');
+
 
     // State for Onboarding Tasks (mocking completion toggle and upload)
     const [localTasks, setLocalTasks] = useState<OnboardingTask[]>(candidate?.onboarding?.tasks || []);
+    const initialTabSet = useRef(false);
+
+    // Reset the ref when navigating to a different candidate
+    useEffect(() => {
+        initialTabSet.current = false;
+    }, [id]);
 
     useEffect(() => {
-        if (candidate?.stage === 'Offer') setActiveTab('offer');
-        if (candidate?.stage === 'Hired') setActiveTab('onboarding');
+        // Only set tab based on stage on initial load, not on every update
+        if (!initialTabSet.current && candidate) {
+            if (candidate?.stage === 'Offer') setActiveTab('offer');
+            if (candidate?.stage === 'Hired') setActiveTab('onboarding');
+            initialTabSet.current = true;
+        }
 
         if (candidate?.offer) {
             setOfferData(candidate.offer);
@@ -1740,7 +1795,37 @@ RecruiteAI`;
                                     </div>
                                 </Card>
                                 <Card className="p-8 bg-slate-50 border-slate-200">
-                                    <pre className="whitespace-pre-wrap font-serif text-sm text-slate-700 leading-relaxed h-[300px] overflow-y-auto pr-2">{offerData.offerLetterContent || "Draft not generated..."}</pre>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-bold text-slate-900">Offer Letter Preview</h3>
+                                        {offerData.offerLetterContent && (
+                                            <button
+                                                onClick={() => setIsEditingOffer(!isEditingOffer)}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                                            >
+                                                {isEditingOffer ? (
+                                                    <>
+                                                        <Check className="w-4 h-4" />
+                                                        Save Changes
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Edit2 className="w-4 h-4" />
+                                                        Edit Letter
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {isEditingOffer ? (
+                                        <textarea
+                                            value={offerData.offerLetterContent || ''}
+                                            onChange={(e) => setOfferData({ ...offerData, offerLetterContent: e.target.value })}
+                                            className="w-full h-[300px] p-4 font-serif text-sm text-slate-700 leading-relaxed border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"
+                                        />
+                                    ) : (
+                                        <pre className="whitespace-pre-wrap font-serif text-sm text-slate-700 leading-relaxed h-[300px] overflow-y-auto pr-2">{offerData.offerLetterContent || "Draft not generated..."}</pre>
+                                    )}
 
                                     {/* Action Buttons (Only show if not already sent/signed) */}
                                     {(!candidate.offer || candidate.offer.status === 'Draft') && offerData.offerLetterContent && (
