@@ -1,4 +1,4 @@
-import { ExtendedCandidate, Job } from './store';
+import { ExtendedCandidate, Job, VideoHighlight } from './store';
 import { httpsCallable, functions } from './firebase';
 
 /**
@@ -7,14 +7,24 @@ import { httpsCallable, functions } from './firebase';
  * Uses Firebase Cloud Functions v2 for scalable, secure AI processing.
  */
 
+interface AnalysisResult {
+    strengths: string[];
+    weaknesses: string[];
+    technicalScore: number;
+    culturalScore: number;
+    communicationScore: number;
+    matchReason?: string;
+    summary?: string;
+}
+
 export const generateCandidateReport = async (candidate: ExtendedCandidate, job: Job): Promise<Partial<ExtendedCandidate>> => {
     console.log(`[AI SERVICE] Triggering Cloud Function for: ${candidate.id}`);
 
     try {
-        const generateReportFn = httpsCallable(functions, 'generateCandidateReport');
+        const generateReportFn = httpsCallable<any, AnalysisResult>(functions, 'generateCandidateReport');
         // Call the V2 Cloud Function
         const result = await generateReportFn({ candidate, job });
-        const analysis = result.data as any;
+        const analysis = result.data;
 
         return {
             aiVerdict: analysis.technicalScore > 80 ? 'Proceed' : (analysis.technicalScore > 60 ? 'Review' : 'Reject'),
@@ -37,7 +47,7 @@ export const generateCandidateReport = async (candidate: ExtendedCandidate, job:
 
 export const screenResume = async (resumeText: string, jobDescription: string) => {
     try {
-        const screenFn = httpsCallable(functions, 'screenResume');
+        const screenFn = httpsCallable<any, any>(functions, 'screenResume');
         const result = await screenFn({ resumeText, jobDescription });
         return result.data;
     } catch (error) {
@@ -48,7 +58,7 @@ export const screenResume = async (resumeText: string, jobDescription: string) =
 
 export const generateInterviewQuestions = async (candidate: ExtendedCandidate, job: Job, type: string) => {
     try {
-        const questionsFn = httpsCallable(functions, 'generateInterviewQuestions');
+        const questionsFn = httpsCallable<any, any>(functions, 'generateInterviewQuestions');
         const result = await questionsFn({ candidate, job, type });
         return result.data;
     } catch (error) {
@@ -57,9 +67,16 @@ export const generateInterviewQuestions = async (candidate: ExtendedCandidate, j
     }
 };
 
-export const analyzeInterview = async (transcript: any[], jobTitle: string) => {
+interface InterviewAnalysisResponse {
+    score: number;
+    sentiment: 'Positive' | 'Neutral' | 'Negative';
+    summary: string;
+    highlights: VideoHighlight[];
+}
+
+export const analyzeInterview = async (transcript: any[], jobTitle: string): Promise<InterviewAnalysisResponse> => {
     try {
-        const analyzeFn = httpsCallable(functions, 'analyzeInterview');
+        const analyzeFn = httpsCallable<any, InterviewAnalysisResponse>(functions, 'analyzeInterview');
         const result = await analyzeFn({ transcript, jobTitle });
         return result.data;
     } catch (error) {
@@ -68,9 +85,13 @@ export const analyzeInterview = async (transcript: any[], jobTitle: string) => {
     }
 };
 
-export const startInterviewSession = async (candidate: ExtendedCandidate, job: Job) => {
+interface StartSessionResponse {
+    systemInstruction: string;
+}
+
+export const startInterviewSession = async (candidate: ExtendedCandidate, job: Job): Promise<StartSessionResponse> => {
     try {
-        const startFn = httpsCallable(functions, 'startInterviewSession');
+        const startFn = httpsCallable<any, StartSessionResponse>(functions, 'startInterviewSession');
         const result = await startFn({ candidate, job });
         return result.data;
     } catch (error) {

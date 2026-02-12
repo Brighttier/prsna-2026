@@ -1,5 +1,6 @@
 import { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus } from '../types';
-import { db, collection, doc, setDoc, updateDoc, onSnapshot, getDoc } from './firebase';
+export type { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus };
+import { db, collection, doc, setDoc, updateDoc, onSnapshot, getDoc, auth } from './firebase';
 
 export interface TranscriptEntry {
     speaker: 'Lumina' | 'Candidate';
@@ -256,6 +257,8 @@ class Store {
     private state: AppState;
     private listeners: Set<() => void> = new Set();
     private seeded: boolean = false;
+    private orgId: string | null = null;
+    private unsubscribeListeners: (() => void)[] = [];
 
     constructor() {
         this.state = INITIAL_STATE;
@@ -263,60 +266,91 @@ class Store {
     }
 
     private async initFirestore() {
+        // Import auth dynamically or use the exported one
+        const { onAuthStateChanged } = await import('firebase/auth');
+
+        onAuthStateChanged(auth, async (user) => {
+            // Clear existing listeners
+            this.unsubscribeListeners.forEach(unsub => unsub());
+            this.unsubscribeListeners = [];
+
+            if (user) {
+                // Fetch user to get Org ID
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    this.orgId = userDoc.data().orgId;
+                    console.log(`[Store] Initialized for Org: ${this.orgId}`);
+                    this.initOrgListeners(this.orgId!);
+                } else {
+                    console.warn("User authenticated but no user profile found in Firestore.");
+                }
+            } else {
+                this.orgId = null;
+                console.log("[Store] User signed out. Resetting state.");
+                this.state = INITIAL_STATE;
+                this.notifyListeners();
+            }
+        });
+    }
+
+    private initOrgListeners(orgId: string) {
         // Jobs Listener
-        onSnapshot(collection(db, 'jobs'), (snapshot) => {
+        const jobsUnsub = onSnapshot(collection(db, 'organizations', orgId, 'jobs'), (snapshot) => {
             if (!snapshot.empty) {
                 this.state.jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
                 this.notifyListeners();
             } else {
-                this.seedJobs();
+                this.seedJobs(orgId);
             }
         });
+        this.unsubscribeListeners.push(jobsUnsub);
 
         // Candidates Listener
-        onSnapshot(collection(db, 'candidates'), (snapshot) => {
+        const candidatesUnsub = onSnapshot(collection(db, 'organizations', orgId, 'candidates'), (snapshot) => {
             if (!snapshot.empty) {
                 this.state.candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExtendedCandidate));
                 this.notifyListeners();
             } else {
-                this.seedCandidates();
+                this.seedCandidates(orgId);
             }
         });
+        this.unsubscribeListeners.push(candidatesUnsub);
 
         // Settings Listener
-        onSnapshot(doc(db, 'config', 'settings'), (docParams) => {
+        const settingsUnsub = onSnapshot(doc(db, 'organizations', orgId), (docParams) => {
             if (docParams.exists()) {
-                this.state.settings = docParams.data() as PlatformSettings;
+                const data = docParams.data();
+                if (data.settings) {
+                    this.state.settings = data.settings as PlatformSettings;
+                }
+                if (data.settings?.branding) {
+                    this.state.branding = data.settings.branding as BrandingSettings;
+                }
                 this.notifyListeners();
             } else {
-                this.seedSettings();
+                // If org exists but no settings, seeding handled by signUp usually, but we can double check
             }
         });
+        this.unsubscribeListeners.push(settingsUnsub);
     }
 
-    private async seedJobs() {
+    private async seedJobs(orgId: string) {
         if (this.seeded) return;
-        console.log('Seeding Jobs...');
+        console.log('Seeding Jobs for Org...');
         for (const job of INITIAL_STATE.jobs) {
-            await setDoc(doc(db, 'jobs', job.id), job);
+            await setDoc(doc(db, 'organizations', orgId, 'jobs', job.id), job);
         }
     }
 
-    private async seedCandidates() {
+    private async seedCandidates(orgId: string) {
         if (this.seeded) return;
-        console.log('Seeding Candidates...');
+        console.log('Seeding Candidates for Org...');
         for (const candidate of INITIAL_STATE.candidates) {
-            await setDoc(doc(db, 'candidates', candidate.id), candidate);
+            await setDoc(doc(db, 'organizations', orgId, 'candidates', candidate.id), candidate);
         }
     }
 
-    private async seedSettings() {
-        if (this.seeded) return;
-        console.log('Seeding Settings...');
-        await setDoc(doc(db, 'config', 'settings'), INITIAL_STATE.settings);
-        await setDoc(doc(db, 'config', 'branding'), INITIAL_STATE.branding);
-        this.seeded = true;
-    }
+    // No need to seed settings as they are created during SignUp in auth.ts
 
     getState() {
         return this.state;
@@ -334,32 +368,36 @@ class Store {
     // Actions - Writing to Firestore
 
     async addJob(job: Job) {
+        if (!this.orgId) return;
         try {
-            await setDoc(doc(db, 'jobs', job.id), job);
+            await setDoc(doc(db, 'organizations', this.orgId, 'jobs', job.id), job);
         } catch (e) {
             console.error("Error adding job: ", e);
         }
     }
 
     async updateJob(id: string, updates: Partial<Job>) {
+        if (!this.orgId) return;
         try {
-            await updateDoc(doc(db, 'jobs', id), updates);
+            await updateDoc(doc(db, 'organizations', this.orgId, 'jobs', id), updates);
         } catch (e) {
             console.error("Error updating job: ", e);
         }
     }
 
     async addCandidate(candidate: ExtendedCandidate) {
+        if (!this.orgId) return;
         try {
-            await setDoc(doc(db, 'candidates', candidate.id), candidate);
+            await setDoc(doc(db, 'organizations', this.orgId, 'candidates', candidate.id), candidate);
         } catch (e) {
             console.error("Error adding candidate: ", e);
         }
     }
 
     async updateCandidate(id: string, updates: Partial<ExtendedCandidate>) {
+        if (!this.orgId) return;
         try {
-            await updateDoc(doc(db, 'candidates', id), updates as any);
+            await updateDoc(doc(db, 'organizations', this.orgId, 'candidates', id), updates as any);
         } catch (e) {
             console.error("Error updating candidate: ", e);
         }
@@ -390,19 +428,24 @@ class Store {
     }
 
     async updateKillSwitch(key: keyof PlatformSettings['killSwitches'], value: boolean) {
+        if (!this.orgId) return;
         const newSettings = { ...this.state.settings };
         newSettings.killSwitches[key] = value;
         try {
-            await setDoc(doc(db, 'config', 'settings'), newSettings);
+            // Update the consolidated settings in org doc
+            await updateDoc(doc(db, 'organizations', this.orgId), { settings: newSettings });
         } catch (e) {
             console.error("Error updating killswitch: ", e);
         }
     }
 
     async updateBranding(updates: Partial<BrandingSettings>) {
+        if (!this.orgId) return;
         const newBranding = { ...this.state.branding, ...updates };
         try {
-            await setDoc(doc(db, 'config', 'branding'), newBranding);
+            await updateDoc(doc(db, 'organizations', this.orgId), {
+                'settings.branding': newBranding
+            });
         } catch (e) {
             console.error("Error updating branding: ", e);
         }
@@ -433,7 +476,7 @@ class Store {
             const hrisId = `SGE-${Math.floor(Math.random() * 10000)}`;
             const updatedOnboarding = {
                 ...candidate.onboarding,
-                hrisSyncStatus: 'Synced',
+                hrisSyncStatus: 'Synced' as const,
                 hrisId: hrisId
             };
             await this.updateCandidate(candidateId, { onboarding: updatedOnboarding });
