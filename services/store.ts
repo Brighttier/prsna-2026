@@ -174,23 +174,21 @@ class Store {
     private initOrgListeners(orgId: string) {
         // Jobs Listener
         const jobsUnsub = onSnapshot(collection(db, 'organizations', orgId, 'jobs'), (snapshot) => {
-            if (!snapshot.empty) {
-                this.state.jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
-                this.notifyListeners();
-            } else {
+            this.state.jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+            if (snapshot.empty) {
                 this.seedJobs(orgId);
             }
+            this.notifyListeners();
         });
         this.unsubscribeListeners.push(jobsUnsub);
 
         // Candidates Listener
         const candidatesUnsub = onSnapshot(collection(db, 'organizations', orgId, 'candidates'), (snapshot) => {
-            if (!snapshot.empty) {
-                this.state.candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExtendedCandidate));
-                this.notifyListeners();
-            } else {
+            this.state.candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExtendedCandidate));
+            if (snapshot.empty) {
                 this.seedCandidates(orgId);
             }
+            this.notifyListeners();
         });
         this.unsubscribeListeners.push(candidatesUnsub);
 
@@ -205,8 +203,6 @@ class Store {
                     this.state.branding = data.settings.branding as BrandingSettings;
                 }
                 this.notifyListeners();
-            } else {
-                // If org exists but no settings, seeding handled by signUp usually, but we can double check
             }
         });
         this.unsubscribeListeners.push(settingsUnsub);
@@ -214,6 +210,7 @@ class Store {
 
     private async seedJobs(orgId: string) {
         if (this.seeded) return;
+        if (INITIAL_STATE.jobs.length === 0) return;
         console.log('Seeding Jobs for Org...');
         for (const job of INITIAL_STATE.jobs) {
             await setDoc(doc(db, 'organizations', orgId, 'jobs', job.id), job);
@@ -222,6 +219,7 @@ class Store {
 
     private async seedCandidates(orgId: string) {
         if (this.seeded) return;
+        if (INITIAL_STATE.candidates.length === 0) return;
         console.log('Seeding Candidates for Org...');
         for (const candidate of INITIAL_STATE.candidates) {
             await setDoc(doc(db, 'organizations', orgId, 'candidates', candidate.id), candidate);
