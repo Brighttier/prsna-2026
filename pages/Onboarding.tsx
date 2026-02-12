@@ -473,21 +473,24 @@ export const Onboarding = () => {
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 p-12 flex flex-col">
-                    <div className="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full">
-                        <div className="mb-8">
-                            <h2 className="text-3xl font-bold text-slate-900 mb-2">{steps[currentStep].title}</h2>
-                            <p className="text-slate-500 text-lg">{steps[currentStep].desc}</p>
-                        </div>
+                <div className="flex-1 flex flex-col h-full">
+                    {/* Scrollable Content Area */}
+                    <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
+                        <div className="max-w-xl mx-auto w-full">
+                            <div className="mb-8">
+                                <h2 className="text-3xl font-bold text-slate-900 mb-2">{steps[currentStep].title}</h2>
+                                <p className="text-slate-500 text-lg">{steps[currentStep].desc}</p>
+                            </div>
 
-                        <div className="min-h-[320px]">
-                            {StepContent()}
+                            <div className="min-h-[320px]">
+                                {StepContent()}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Footer / Navigation - Hide on Launch success screen to focus on the BIG button */}
+                    {/* Footer / Navigation - Fixed at bottom */}
                     {currentStep !== steps.length - 1 && (
-                        <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                        <div className="p-12 pt-6 border-t border-slate-100 flex items-center justify-between bg-white">
                             <button
                                 onClick={handleBack}
                                 disabled={currentStep === 0}
