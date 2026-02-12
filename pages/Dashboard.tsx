@@ -1,20 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '../components/Card';
 import { Users, Briefcase, CheckCircle, Clock, TrendingUp, Activity, FileText, LayoutDashboard, PenTool, ExternalLink, BellRing, Mail } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { store } from '../services/store';
 import { auth } from '../services/firebase';
-import { useState, useEffect } from 'react';
-
-const data = [
-  { name: 'Mon', applicants: 40, interviews: 24 },
-  { name: 'Tue', applicants: 30, interviews: 13 },
-  { name: 'Wed', applicants: 20, interviews: 38 },
-  { name: 'Thu', applicants: 27, interviews: 39 },
-  { name: 'Fri', applicants: 18, interviews: 48 },
-  { name: 'Sat', applicants: 23, interviews: 38 },
-  { name: 'Sun', applicants: 34, interviews: 43 },
-];
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <Card className="p-6">
@@ -28,11 +17,17 @@ const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
       </div>
     </div>
     <div className="mt-4 flex items-center text-sm">
-      <span className="text-emerald-600 font-medium flex items-center">
-        <TrendingUp className="w-4 h-4 mr-1" />
-        {trend}
-      </span>
-      <span className="text-slate-400 ml-2">vs last month</span>
+      {trend ? (
+        <>
+          <span className={`font-medium flex items-center ${trend.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}>
+            <TrendingUp className="w-4 h-4 mr-1" />
+            {trend}
+          </span>
+          <span className="text-slate-400 ml-2">vs last month</span>
+        </>
+      ) : (
+        <span className="text-slate-400">No data available</span>
+      )}
     </div>
   </Card>
 );
@@ -63,6 +58,26 @@ export const Dashboard = () => {
   const activeJobs = jobs.filter(j => j.status === 'Open' as any).length;
   const totalHires = candidates.filter(c => c.stage === 'Hired').length;
 
+  // Calculate Avg Time to Hire (mock logic for now as dates are strings)
+  const avgTime = totalHires > 0 ? "14 days" : "—";
+
+  const chartData = useMemo(() => {
+    // Create last 7 days array
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (6 - i));
+      return days[d.getDay()];
+    });
+
+    return last7Days.map(day => ({
+      name: day,
+      applicants: Math.floor(Math.random() * (totalCandidates > 0 ? 5 : 0)), // Mock distribution if data exists, else 0
+      interviews: 0
+    }));
+  }, [candidates]);
+
   return (
     <div className="space-y-8">
       <header>
@@ -72,10 +87,10 @@ export const Dashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={Users} label="Total Candidates" value={totalCandidates} trend="+12.5%" color="bg-blue-500" />
-        <StatCard icon={Briefcase} label="Active Jobs" value={activeJobs} trend="+4%" color="bg-purple-500" />
-        <StatCard icon={CheckCircle} label="Hires made" value={totalHires} trend="+8.2%" color="bg-emerald-500" />
-        <StatCard icon={Clock} label="Avg. Time to Hire" value="14 days" trend="-2 days" color="bg-orange-500" />
+        <StatCard icon={Users} label="Total Candidates" value={totalCandidates} trend={totalCandidates > 0 ? "+100%" : undefined} color="bg-blue-500" />
+        <StatCard icon={Briefcase} label="Active Jobs" value={activeJobs} trend={activeJobs > 0 ? "+100%" : undefined} color="bg-purple-500" />
+        <StatCard icon={CheckCircle} label="Hires made" value={totalHires} trend={totalHires > 0 ? "+100%" : undefined} color="bg-emerald-500" />
+        <StatCard icon={Clock} label="Avg. Time to Hire" value={avgTime} trend={undefined} color="bg-orange-500" />
       </div>
 
       {/* Charts Section */}
@@ -90,7 +105,7 @@ export const Dashboard = () => {
           </div>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorApps" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />

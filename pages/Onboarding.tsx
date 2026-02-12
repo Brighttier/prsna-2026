@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    Check, ChevronRight, Building2, Users, Briefcase,
-    Palette, ArrowRight, Upload, Sparkles, Globe
+    Check, ChevronRight, Building2, Users,
+    Palette, ArrowRight, Upload, Globe, Sparkles
 } from 'lucide-react';
 import { store } from '../services/store';
 
@@ -214,44 +214,6 @@ export const Onboarding = () => {
                         <p className="text-slate-500 mb-8 max-w-md mx-auto">
                             We've set up your workspace for <span className="font-bold text-slate-900">{formData.companyName}</span>.
                             Your career site is ready to go live!
-                        </p>
-
-                        <div className="bg-slate-50 rounded-2xl p-6 text-left max-w-sm mx-auto border border-slate-100 mb-8">
-                            <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <Globe className="w-4 h-4 text-emerald-600" /> Career Site Preview
-                            </h4>
-                            <div className="space-y-3">
-                                <div className="h-2 w-1/3 bg-slate-200 rounded"></div>
-                                <div className="h-32 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div className="h-4 w-4 bg-emerald-500 rounded-full"></div>
-                                        <div className="h-2 w-12 bg-slate-100 rounded"></div>
-                                    </div>
-                                    <div className="h-4 w-3/4 bg-slate-100 rounded mb-2"></div>
-                                    <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={handleComplete}
-                            disabled={loading}
-                            className="w-full max-w-sm mx-auto px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2"
-                        >
-                            {loading ? 'Launching...' : 'Go to Dashboard'}
-                            {!loading && <ArrowRight className="w-5 h-5" />}
-                        </button>
-                    </div>
-                );
-                return (
-                    <div className="text-center animate-fade-in">
-                        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Sparkles className="w-10 h-10 text-emerald-600" />
-                        </div>
-                        <h3 className="text-2xl font-bold text-slate-900 mb-2">You're All Set!</h3>
-                        <p className="text-slate-500 mb-8 max-w-md mx-auto">
-                            We've set up your workspace for <span className="font-bold text-slate-900">{formData.companyName}</span>.
-                            Your career site is ready to go live and your first job post is drafted.
                         </p>
 
                         <div className="bg-slate-50 rounded-2xl p-6 text-left max-w-sm mx-auto border border-slate-100 mb-8">
