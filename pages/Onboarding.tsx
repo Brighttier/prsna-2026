@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Check, ChevronRight, Building2, Users, Briefcase,
     Palette, ArrowRight, Upload, Sparkles, Globe
@@ -10,44 +10,24 @@ const steps = [
     { id: 'company', title: 'Company Profile', icon: Building2, desc: 'Tell us about your organization' },
     { id: 'branding', title: 'Brand Identity', icon: Palette, desc: 'Customize your career site' },
     { id: 'team', title: 'Team Setup', icon: Users, desc: 'Invite your hiring team' },
-    { id: 'job', title: 'First Job', icon: Briefcase, desc: 'Post your first open role' },
     { id: 'launch', title: 'Launch', icon: Globe, desc: 'Review and publish' }
 ];
 
 export const Onboarding = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
 
-    // Steps Definition
-    const steps = [
-        { id: 'company', title: 'Company Profile', icon: Building2, desc: 'Tell us about your organization' },
-        { id: 'branding', title: 'Brand Identity', icon: Palette, desc: 'Customize your career site' },
-        { id: 'team', title: 'Team Setup', icon: Users, desc: 'Invite your hiring team' },
-        { id: 'job', title: 'First Job', icon: Briefcase, desc: 'Post your first open role' },
-        { id: 'launch', title: 'Launch', icon: Globe, desc: 'Review and publish' }
-    ];
-
     // Form State
     const [formData, setFormData] = useState({
-        companyName: store.getState().branding?.companyName || 'Acme Corp',
+        companyName: location.state?.companyName || store.getState().branding?.companyName || '',
         industry: '',
         size: '',
         brandColor: '#16a34a',
         logo: null as File | null,
-        teamMembers: [''],
-        // Job Details
-        jobTitle: '',
-        department: '',
-        location: '',
-        jobType: 'Full-time',
-        salaryRange: '',
-        closingDate: '',
-        description: '', // For paste option
-        jobMode: 'manual' as 'manual' | 'ai' | 'paste'
+        teamMembers: ['']
     });
-
-    const [isGenerating, setIsGenerating] = useState(false);
 
     // Watch for store updates in case of race condition on initial load
     React.useEffect(() => {
@@ -78,20 +58,6 @@ export const Onboarding = () => {
         }
     };
 
-    const handleGenerateJob = async () => {
-        if (!formData.jobTitle) return;
-        setIsGenerating(true);
-        // Simulate AI generation
-        setTimeout(() => {
-            setFormData(prev => ({
-                ...prev,
-                description: `We are looking for a talented ${formData.jobTitle} to join our ${formData.department || 'growing'} team. You will be responsible for... \n\nKey Responsibilities:\n- ...\n\nRequirements:\n- ...`,
-                jobMode: 'ai'
-            }));
-            setIsGenerating(false);
-        }, 1500);
-    };
-
     const handleComplete = async () => {
         setLoading(true);
         try {
@@ -100,23 +66,6 @@ export const Onboarding = () => {
                 companyName: formData.companyName,
                 brandColor: formData.brandColor
             });
-
-            // Post First Job
-            if (formData.jobTitle) {
-                await store.addJob({
-                    id: `job_${Math.random().toString(36).substr(2, 9)}`,
-                    title: formData.jobTitle,
-                    department: formData.department || 'General',
-                    location: formData.location || 'Remote',
-                    type: formData.jobType,
-                    salary: formData.salaryRange,
-                    closingDate: formData.closingDate,
-                    description: formData.description,
-                    status: 'Open' as any,
-                    applicants: 0,
-                    postedDate: 'Just now'
-                });
-            }
 
             // Invite Team
             if (formData.teamMembers.length > 0 && formData.teamMembers[0] !== '') {
@@ -255,140 +204,45 @@ export const Onboarding = () => {
                         </div>
                     </div>
                 );
-            case 3: // First Job - Enhanced
+            case 3: // Launch
                 return (
-                    <div className="space-y-4 animate-fade-in">
-                        {/* Job Creation Mode Tabs */}
-                        <div className="flex gap-2 p-1 bg-slate-100 rounded-xl mb-4">
-                            <button
-                                onClick={() => setFormData(prev => ({ ...prev, jobMode: 'manual' }))}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${formData.jobMode === 'manual' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                Manual
-                            </button>
-                            <button
-                                onClick={() => setFormData(prev => ({ ...prev, jobMode: 'ai' }))}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${formData.jobMode === 'ai' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                <Sparkles className="w-3 h-3 inline mr-1" />
-                                Generate with AI
-                            </button>
-                            <button
-                                onClick={() => setFormData(prev => ({ ...prev, jobMode: 'paste' }))}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${formData.jobMode === 'paste' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                Paste JD
-                            </button>
+                    <div className="text-center animate-fade-in">
+                        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Sparkles className="w-10 h-10 text-emerald-600" />
                         </div>
+                        <h3 className="text-2xl font-bold text-slate-900 mb-2">You're All Set!</h3>
+                        <p className="text-slate-500 mb-8 max-w-md mx-auto">
+                            We've set up your workspace for <span className="font-bold text-slate-900">{formData.companyName}</span>.
+                            Your career site is ready to go live!
+                        </p>
 
-                        {formData.jobMode === 'ai' && (
-                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-4">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={formData.jobTitle}
-                                        onChange={e => setFormData({ ...formData, jobTitle: e.target.value })}
-                                        className="flex-1 px-4 py-2 bg-white border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                        placeholder="Enter Job Title target (e.g. Senior Product Manager)"
-                                    />
-                                    <button
-                                        onClick={handleGenerateJob}
-                                        disabled={!formData.jobTitle || isGenerating}
-                                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                                    >
-                                        {isGenerating ? 'Generating...' : 'Generate'}
-                                    </button>
-                                </div>
-                                {formData.description && (
-                                    <div className="mt-3 p-3 bg-white rounded-lg border border-emerald-100 text-xs text-slate-600 h-24 overflow-y-auto">
-                                        <pre className="whitespace-pre-wrap font-sans">{formData.description}</pre>
+                        <div className="bg-slate-50 rounded-2xl p-6 text-left max-w-sm mx-auto border border-slate-100 mb-8">
+                            <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Globe className="w-4 h-4 text-emerald-600" /> Career Site Preview
+                            </h4>
+                            <div className="space-y-3">
+                                <div className="h-2 w-1/3 bg-slate-200 rounded"></div>
+                                <div className="h-32 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="h-4 w-4 bg-emerald-500 rounded-full"></div>
+                                        <div className="h-2 w-12 bg-slate-100 rounded"></div>
                                     </div>
-                                )}
-                            </div>
-                        )}
-
-                        {formData.jobMode === 'paste' && (
-                            <textarea
-                                value={formData.description}
-                                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full h-32 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none mb-4"
-                                placeholder="Paste your entire Job Description here..."
-                            />
-                        )}
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Job Title</label>
-                                <input
-                                    type="text"
-                                    value={formData.jobTitle}
-                                    onChange={e => setFormData({ ...formData, jobTitle: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    placeholder="e.g. Senior Product Designer"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Department</label>
-                                <input
-                                    type="text"
-                                    value={formData.department}
-                                    onChange={e => setFormData({ ...formData, department: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    placeholder="e.g. Design"
-                                />
+                                    <div className="h-4 w-3/4 bg-slate-100 rounded mb-2"></div>
+                                    <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Location</label>
-                                <input
-                                    type="text"
-                                    value={formData.location}
-                                    onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    placeholder="e.g. Remote"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Employment Type</label>
-                                <select
-                                    value={formData.jobType}
-                                    onChange={e => setFormData({ ...formData, jobType: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                                >
-                                    <option>Full-time</option>
-                                    <option>Contract</option>
-                                    <option>Part-time</option>
-                                    <option>Internship</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Salary Range</label>
-                                <input
-                                    type="text"
-                                    value={formData.salaryRange}
-                                    onChange={e => setFormData({ ...formData, salaryRange: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    placeholder="e.g. $120k - $150k"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Closing Date (Optional)</label>
-                                <input
-                                    type="date"
-                                    value={formData.closingDate}
-                                    onChange={e => setFormData({ ...formData, closingDate: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                                />
-                            </div>
-                        </div>
+                        <button
+                            onClick={handleComplete}
+                            disabled={loading}
+                            className="w-full max-w-sm mx-auto px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2"
+                        >
+                            {loading ? 'Launching...' : 'Go to Dashboard'}
+                            {!loading && <ArrowRight className="w-5 h-5" />}
+                        </button>
                     </div>
                 );
-            case 4: // Launch
                 return (
                     <div className="text-center animate-fade-in">
                         <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">

@@ -3,6 +3,7 @@ import { Card } from '../components/Card';
 import { Users, Briefcase, CheckCircle, Clock, TrendingUp, Activity, FileText, LayoutDashboard, PenTool, ExternalLink, BellRing, Mail } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { store } from '../services/store';
+import { auth } from '../services/firebase';
 import { useState, useEffect } from 'react';
 
 const data = [
@@ -66,7 +67,7 @@ export const Dashboard = () => {
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500 mt-1">Welcome back, here's what's happening today.</p>
+        <p className="text-slate-500 mt-1">Welcome back, {auth.currentUser?.displayName?.split(' ')[0] || 'Admin'}. Here's what's happening today.</p>
       </header>
 
       {/* Stats Grid */}
