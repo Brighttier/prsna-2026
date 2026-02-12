@@ -1,68 +1,36 @@
-import { GoogleGenAI, Type, Schema, LiveServerMessage, Modality } from "@google/genai";
+import { functions, httpsCallable } from './firebase';
+import { GoogleGenAI } from "@google/genai";
 
-const getAiClient = () => {
+export const getAiClient = () => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    // Original warning was: console.warn("VITE_GEMINI_API_KEY is missing. AI features will fail.");
-    // The instruction implies a stricter check, so changing to throw an error.
     throw new Error("VITE_GEMINI_API_KEY is missing. AI features cannot be initialized.");
   }
   return new GoogleGenAI({ apiKey: apiKey });
 };
 
-// --- Resume Screening Service ---
-
 export const screenResume = async (resumeText: string, jobDescription: string): Promise<string> => {
   // Check global kill switch via store
-  // We import it here to avoid top-level circular dependency if possible
   const { store } = await import('./store');
   if (!store.isAiAllowed('resume')) {
     throw new Error("AI Services are currently disabled by Platform Admin.");
   }
 
   try {
-    const ai = getAiClient(); // getAiClient now throws if API key is missing.
-    const prompt = `
-      You are an expert technical recruiter known as "The Gatekeeper".
-      
-      Job Description:
-      ${jobDescription}
+    const screenResumeFn = httpsCallable(functions, 'screenResume');
+    // Call the Cloud Function
+    const result = await screenResumeFn({ resumeText, jobDescription });
 
-      Candidate Resume Content:
-      ${resumeText}
-
- Task:
-      Analyze the candidate's career trajectory and skill density relative to the job description.
-      Provide a strict JSON output with the following structure:
- {
-   "score": number(0 - 100),
-     "verdict": "Proceed" | "Reject" | "Review",
-       "reasoning": "A concise summary of why this score was given.",
-         "missingSkills": ["skill1", "skill2"]
- }
-      
-      Do not include markdown formatting(like \`\`\`json). Just the raw JSON string.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      }
-    });
-
-    console.log("Gemini Response:", response);
-
-    // Model getter returns text directly
-    const text = response.text;
-
-    return text || "{}";
-  } catch (error) {
+    // The function returns the parsed object, but the frontend expects a JSON string based on current usage
+    // So we stringify it back to match the existing contract until we refactor the frontend component.
+    return JSON.stringify(result.data);
+  } catch (error: any) {
     console.error("Error screening resume:", error);
     throw error;
   }
 };
+
+// ... keep existing helpers ...
 
 // --- Live API Helpers (Audio/Video Processing) ---
 

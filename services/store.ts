@@ -1,5 +1,5 @@
-
-import { Job, Candidate, ScreeningResult, AssessmentModule, OnboardingTask, OfferDetails, JobStatus } from '../types';
+import { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus } from '../types';
+import { db, collection, doc, setDoc, updateDoc, onSnapshot, getDoc } from './firebase';
 
 export interface TranscriptEntry {
     speaker: 'Lumina' | 'Candidate';
@@ -45,7 +45,6 @@ export interface Education {
 }
 
 // Extended candidate for UI
-
 export interface ExtendedCandidate extends Candidate {
     avatar: string;
     appliedDate: string;
@@ -92,8 +91,6 @@ interface AppState {
     settings: PlatformSettings;
     branding: BrandingSettings;
 }
-
-const STORAGE_KEY = 'recruiteai_store_v2';
 
 const INITIAL_STATE: AppState = {
     jobs: [
@@ -258,18 +255,74 @@ const INITIAL_STATE: AppState = {
 class Store {
     private state: AppState;
     private listeners: Set<() => void> = new Set();
+    private seeded: boolean = false;
 
     constructor() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        this.state = saved ? JSON.parse(saved) : INITIAL_STATE;
+        this.state = INITIAL_STATE;
+        this.initFirestore();
+    }
+
+    private async initFirestore() {
+        // Jobs Listener
+        onSnapshot(collection(db, 'jobs'), (snapshot) => {
+            if (!snapshot.empty) {
+                this.state.jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
+                this.notifyListeners();
+            } else {
+                this.seedJobs();
+            }
+        });
+
+        // Candidates Listener
+        onSnapshot(collection(db, 'candidates'), (snapshot) => {
+            if (!snapshot.empty) {
+                this.state.candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExtendedCandidate));
+                this.notifyListeners();
+            } else {
+                this.seedCandidates();
+            }
+        });
+
+        // Settings Listener
+        onSnapshot(doc(db, 'config', 'settings'), (docParams) => {
+            if (docParams.exists()) {
+                this.state.settings = docParams.data() as PlatformSettings;
+                this.notifyListeners();
+            } else {
+                this.seedSettings();
+            }
+        });
+    }
+
+    private async seedJobs() {
+        if (this.seeded) return;
+        console.log('Seeding Jobs...');
+        for (const job of INITIAL_STATE.jobs) {
+            await setDoc(doc(db, 'jobs', job.id), job);
+        }
+    }
+
+    private async seedCandidates() {
+        if (this.seeded) return;
+        console.log('Seeding Candidates...');
+        for (const candidate of INITIAL_STATE.candidates) {
+            await setDoc(doc(db, 'candidates', candidate.id), candidate);
+        }
+    }
+
+    private async seedSettings() {
+        if (this.seeded) return;
+        console.log('Seeding Settings...');
+        await setDoc(doc(db, 'config', 'settings'), INITIAL_STATE.settings);
+        await setDoc(doc(db, 'config', 'branding'), INITIAL_STATE.branding);
+        this.seeded = true;
     }
 
     getState() {
         return this.state;
     }
 
-    private save() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    private notifyListeners() {
         this.listeners.forEach(l => l());
     }
 
@@ -278,141 +331,139 @@ class Store {
         return () => this.listeners.delete(listener);
     }
 
-    // Actions
-    addJob(job: Job) {
-        this.state.jobs = [job, ...this.state.jobs];
-        this.save();
-    }
+    // Actions - Writing to Firestore
 
-    updateJob(id: string, updates: Partial<Job>) {
-        this.state.jobs = this.state.jobs.map(j => j.id === id ? { ...j, ...updates } : j);
-        this.save();
-    }
-
-    addCandidate(candidate: ExtendedCandidate) {
-        this.state.candidates = [candidate, ...this.state.candidates];
-        this.save();
-    }
-
-    updateCandidate(id: string, updates: Partial<ExtendedCandidate>) {
-        this.state.candidates = this.state.candidates.map(c => c.id === id ? { ...c, ...updates } : c);
-        this.save();
-    }
-
-    addInterviewSession(candidateId: string, session: InterviewSession) {
-        this.state.candidates = this.state.candidates.map(c =>
-            c.id === candidateId ? { ...c, interviews: [...(c.interviews || []), session] } : c
-        );
-        this.save();
-    }
-
-    addCandidateDocument(candidateId: string, doc: any) {
-        this.state.candidates = this.state.candidates.map(c =>
-            c.id === candidateId ? { ...c, documents: [...(c.documents || []), doc] } : c
-        );
-        this.save();
-    }
-
-    addCandidateFolder(candidateId: string, folder: any) {
-        const candidateIndex = this.state.candidates.findIndex(c => c.id === candidateId);
-
-        if (candidateIndex !== -1) {
-            const candidate = this.state.candidates[candidateIndex];
-            const updatedFolders = [...(candidate.folders || []), folder];
-
-            const updatedCandidate = { ...candidate, folders: updatedFolders };
-            this.state.candidates = [
-                ...this.state.candidates.slice(0, candidateIndex),
-                updatedCandidate,
-                ...this.state.candidates.slice(candidateIndex + 1)
-            ];
-            this.save();
-            this.listeners.forEach(listener => listener());
+    async addJob(job: Job) {
+        try {
+            await setDoc(doc(db, 'jobs', job.id), job);
+        } catch (e) {
+            console.error("Error adding job: ", e);
         }
     }
 
-    updateKillSwitch(key: keyof PlatformSettings['killSwitches'], value: boolean) {
-        this.state.settings.killSwitches[key] = value;
-        this.save();
+    async updateJob(id: string, updates: Partial<Job>) {
+        try {
+            await updateDoc(doc(db, 'jobs', id), updates);
+        } catch (e) {
+            console.error("Error updating job: ", e);
+        }
     }
 
-    updateBranding(updates: Partial<BrandingSettings>) {
-        this.state.branding = { ...this.state.branding, ...updates };
-        this.save();
+    async addCandidate(candidate: ExtendedCandidate) {
+        try {
+            await setDoc(doc(db, 'candidates', candidate.id), candidate);
+        } catch (e) {
+            console.error("Error adding candidate: ", e);
+        }
     }
 
-    updateOffer(candidateId: string, offer: Partial<OfferDetails>) {
-        this.state.candidates = this.state.candidates.map(c => {
-            if (c.id === candidateId) {
-                const existingOffer = c.offer || {} as OfferDetails;
-                return { ...c, offer: { ...existingOffer, ...offer } as OfferDetails };
-            }
-            return c;
-        });
-        this.save();
+    async updateCandidate(id: string, updates: Partial<ExtendedCandidate>) {
+        try {
+            await updateDoc(doc(db, 'candidates', id), updates as any);
+        } catch (e) {
+            console.error("Error updating candidate: ", e);
+        }
     }
 
-    updateOnboardingTask(candidateId: string, taskId: string, updates: Partial<OnboardingTask>) {
-        this.state.candidates = this.state.candidates.map(c => {
-            if (c.id === candidateId && c.onboarding) {
-                return {
-                    ...c,
-                    onboarding: {
-                        ...c.onboarding,
-                        tasks: c.onboarding.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t)
-                    }
-                };
-            }
-            return c;
-        });
-        this.save();
+    async addInterviewSession(candidateId: string, session: InterviewSession) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (candidate) {
+            const updatedInterviews = [...(candidate.interviews || []), session];
+            await this.updateCandidate(candidateId, { interviews: updatedInterviews });
+        }
     }
 
-    syncToHris(candidateId: string) {
-        this.state.candidates = this.state.candidates.map(c => {
-            if (c.id === candidateId && c.onboarding) {
-                return {
-                    ...c,
-                    onboarding: {
-                        ...c.onboarding,
-                        hrisSyncStatus: 'Synced',
-                        hrisId: `SGE-${Math.floor(Math.random() * 10000)}`
-                    }
-                };
-            }
-            return c;
-        });
-        this.save();
+    async addCandidateDocument(candidateId: string, docData: any) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (candidate) {
+            const updatedDocs = [...(candidate.documents || []), docData];
+            await this.updateCandidate(candidateId, { documents: updatedDocs });
+        }
     }
 
-    promoteToHired(candidateId: string) {
-        this.state.candidates = this.state.candidates.map(c => {
-            if (c.id === candidateId) {
-                return {
-                    ...c,
-                    stage: 'Hired',
-                    onboarding: {
-                        hrisSyncStatus: 'Not_Synced',
-                        tasks: [
-                            { id: 't1', category: 'IT & Equipment', task: 'Provision MacBook Pro M2', type: 'checkbox', completed: false, assignee: 'IT' },
-                            { id: 't2', category: 'IT & Equipment', task: 'Create IAM User', type: 'checkbox', completed: false, assignee: 'IT' },
-                            { id: 't3', category: 'Culture & Orientation', task: 'Send Welcome Swag Kit', type: 'checkbox', completed: false, assignee: 'HR' },
-                            { id: 't4', category: 'Legal & Compliance', task: 'Sign Employment Agreement', type: 'upload', completed: false, assignee: 'HR' },
-                        ]
-                    }
-                };
-            }
-            return c;
-        });
-        this.save();
+    async addCandidateFolder(candidateId: string, folder: any) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (candidate) {
+            const updatedFolders = [...(candidate.folders || []), folder];
+            await this.updateCandidate(candidateId, { folders: updatedFolders });
+        }
     }
 
-    updateCandidateStage(id: string, stage: Candidate['stage']) {
+    async updateKillSwitch(key: keyof PlatformSettings['killSwitches'], value: boolean) {
+        const newSettings = { ...this.state.settings };
+        newSettings.killSwitches[key] = value;
+        try {
+            await setDoc(doc(db, 'config', 'settings'), newSettings);
+        } catch (e) {
+            console.error("Error updating killswitch: ", e);
+        }
+    }
+
+    async updateBranding(updates: Partial<BrandingSettings>) {
+        const newBranding = { ...this.state.branding, ...updates };
+        try {
+            await setDoc(doc(db, 'config', 'branding'), newBranding);
+        } catch (e) {
+            console.error("Error updating branding: ", e);
+        }
+    }
+
+    async updateOffer(candidateId: string, offer: Partial<OfferDetails>) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (candidate) {
+            const existingOffer = candidate.offer || {} as OfferDetails;
+            const updatedOffer = { ...existingOffer, ...offer };
+            await this.updateCandidate(candidateId, { offer: updatedOffer });
+        }
+    }
+
+    async updateOnboardingTask(candidateId: string, taskId: string, updates: Partial<OnboardingTask>) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (candidate && candidate.onboarding) {
+            const updatedTasks = candidate.onboarding.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t);
+            await this.updateCandidate(candidateId, {
+                onboarding: { ...candidate.onboarding, tasks: updatedTasks }
+            });
+        }
+    }
+
+    async syncToHris(candidateId: string) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (candidate && candidate.onboarding) {
+            const hrisId = `SGE-${Math.floor(Math.random() * 10000)}`;
+            const updatedOnboarding = {
+                ...candidate.onboarding,
+                hrisSyncStatus: 'Synced',
+                hrisId: hrisId
+            };
+            await this.updateCandidate(candidateId, { onboarding: updatedOnboarding });
+        }
+    }
+
+    async promoteToHired(candidateId: string) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (candidate) {
+            const updates: Partial<ExtendedCandidate> = {
+                stage: "Hired" as Candidate['stage'],
+                onboarding: {
+                    hrisSyncStatus: 'Not_Synced',
+                    tasks: [
+                        { id: 't1', category: 'IT & Equipment', task: 'Provision MacBook Pro M2', type: 'checkbox', completed: false, assignee: 'IT' },
+                        { id: 't2', category: 'IT & Equipment', task: 'Create IAM User', type: 'checkbox', completed: false, assignee: 'IT' },
+                        { id: 't3', category: 'Culture & Orientation', task: 'Send Welcome Swag Kit', type: 'checkbox', completed: false, assignee: 'HR' },
+                        { id: 't4', category: 'Legal & Compliance', task: 'Sign Employment Agreement', type: 'upload', completed: false, assignee: 'HR' },
+                    ]
+                }
+            };
+            await this.updateCandidate(candidateId, updates);
+        }
+    }
+
+    async updateCandidateStage(id: string, stage: Candidate['stage']) {
         if (stage === 'Hired') {
-            this.promoteToHired(id);
+            await this.promoteToHired(id);
         } else {
-            this.state.candidates = this.state.candidates.map(c => c.id === id ? { ...c, stage } : c);
-            this.save();
+            await this.updateCandidate(id, { stage });
         }
     }
 

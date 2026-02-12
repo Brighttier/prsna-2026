@@ -48,21 +48,23 @@ export const InterviewRoom = () => {
    const candidateId = location.state?.candidateId;
    const [candidate] = useState(candidateId ? store.getState().candidates.find(c => c.id === candidateId) : null);
 
+   const [systemInstruction, setSystemInstruction] = useState<string>('');
+
+   // Fetch dynamic persona from Backend V2
+   useEffect(() => {
+      if (candidate) {
+         import('../services/ai').then(({ startInterviewSession }) => {
+            // Mock job for now, or fetch if available
+            const mockJob = { title: candidate.role, department: 'Engineering', company: 'RenovateMySite' };
+            startInterviewSession(candidate, mockJob as any).then(data => {
+               setSystemInstruction(data.systemInstruction);
+            }).catch(err => console.error("Failed to init Lumina session:", err));
+         });
+      }
+   }, [candidate]);
+
    const { isConnected, error, connect, disconnect, sendVideoFrame } = useGeminiLive({
-      systemInstruction: `
-      You are Lumina, a professional, empathetic, yet rigorous technical recruiter for a top-tier tech company.
-      You are interviewing ${candidate?.name || 'a candidate'} for a ${candidate?.role || 'Senior React Engineer'} role.
-      Your goal is to assess their technical depth, problem-solving skills, and cultural fit.
-      
-      Guidelines:
-      1. Start by welcoming them warmly and asking them to introduce themselves.
-      2. Ask probing questions based on their responses. Do not just ask a list of questions.
-      3. If they mention a technology, ask "how" and "why" they used it.
-      4. Maintain a professional demeanor but be conversational.
-      5. Keep your responses relatively concise (under 30 seconds of speech) to allow for back-and-forth.
-      
-      Wait for the user to speak first or initiate the conversation if there is silence.
-    `,
+      systemInstruction: systemInstruction || "You are a helpful assistant.",
       onTranscript: (text, isUser) => {
          setTranscript(prev => {
             const lastMsg = prev[prev.length - 1];
@@ -125,11 +127,10 @@ export const InterviewRoom = () => {
       disconnect();
 
       if (candidateId && transcript.length > 0) {
-         const fullTranscriptText = transcript.map(t => `${t.user ? 'Candidate' : 'Lumina'}: ${t.text}`).join('\n');
-
          try {
-            const summaryJson = await summarizeInterview(fullTranscriptText);
-            const data = JSON.parse(summaryJson);
+            // Use V2 Backend Function for analysis
+            const { analyzeInterview } = await import('../services/ai');
+            const data = await analyzeInterview(transcript, candidate?.role || 'Engineer');
 
             const session: InterviewSession = {
                id: Math.random().toString(36).substr(2, 9),
