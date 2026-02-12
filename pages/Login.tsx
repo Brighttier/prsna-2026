@@ -34,7 +34,7 @@ export const Login = () => {
                 if (res.error) {
                     setError(res.error);
                 } else {
-                    navigate('/');
+                    navigate('/dashboard');
                 }
             }
         } catch (err: any) {
