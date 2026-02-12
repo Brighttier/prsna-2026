@@ -14,12 +14,17 @@ import { PlatformAdmin } from './pages/PlatformAdmin';
 import { OfferPortal } from './pages/OfferPortal';
 import { Login } from './pages/Login';
 import { Landing } from './pages/Landing';
+import { Onboarding } from './pages/Onboarding';
 import { DynamicBranding } from './components/DynamicBranding';
 import { LockdownOverlay } from './components/LockdownOverlay';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
-  const isFullScreen = location.pathname.includes('/interview') || location.pathname.includes('/offer') || location.pathname === '/login' || location.pathname === '/';
+  const isFullScreen = location.pathname.includes('/interview') ||
+    location.pathname.includes('/offer') ||
+    location.pathname === '/login' ||
+    location.pathname === '/' ||
+    location.pathname === '/onboarding';
 
   if (isFullScreen) return <>{children}</>;
 
@@ -53,6 +58,7 @@ export default function App() {
           <Route path="/platform-admin" element={<PlatformAdmin />} />
           <Route path="/offer/:token" element={<OfferPortal />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

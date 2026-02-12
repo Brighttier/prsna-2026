@@ -510,6 +510,22 @@ class Store {
         }
     }
 
+    async inviteTeamMember(email: string) {
+        if (!this.orgId || !email) return;
+        try {
+            const inviteId = `inv_${Math.random().toString(36).substr(2, 9)}`;
+            await setDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId), {
+                email,
+                status: 'pending',
+                invitedAt: new Date().toISOString(),
+                role: 'member'
+            });
+            console.log(`Invitation created for ${email}`);
+        } catch (e) {
+            console.error("Error inviting team member: ", e);
+        }
+    }
+
     // Check if AI is allowed
     isAiAllowed(feature: 'resume' | 'interview'): boolean {
         if (this.state.settings.killSwitches.global) return false;

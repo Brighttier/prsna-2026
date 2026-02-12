@@ -27,7 +27,7 @@ export const Login = () => {
                 if (res.error) {
                     setError(res.error);
                 } else {
-                    navigate('/');
+                    navigate('/onboarding');
                 }
             } else {
                 const res = await signIn(formData.email, formData.password);
