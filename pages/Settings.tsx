@@ -92,12 +92,14 @@ export const Settings = () => {
         setFontStyle(branding.fontStyle);
         setCornerStyle(branding.cornerStyle);
         setDomain(branding.domain || 'acme');
+        setHeroHeadline(branding.heroHeadline || 'Build the future with us.');
+        setHeroSubhead(branding.heroSubhead || 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.');
     }, [branding]);
 
     // Other UI-only state
     // const [domain, setDomain] = useState('acme.com'); // Removed redundant state
-    const [heroHeadline, setHeroHeadline] = useState('Build the future with us.');
-    const [heroSubhead, setHeroSubhead] = useState('Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.');
+    const [heroHeadline, setHeroHeadline] = useState(branding.heroHeadline || 'Build the future with us.');
+    const [heroSubhead, setHeroSubhead] = useState(branding.heroSubhead || 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.');
     const [coverStyle, setCoverStyle] = useState<'gradient' | 'minimal'>('gradient');
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -190,7 +192,9 @@ export const Settings = () => {
             brandColor,
             fontStyle,
             cornerStyle,
-            domain
+            domain,
+            heroHeadline,
+            heroSubhead
         });
         setTimeout(() => {
             setLoading(false);

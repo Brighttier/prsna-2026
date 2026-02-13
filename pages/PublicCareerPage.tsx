@@ -103,11 +103,10 @@ export const PublicCareerPage = () => {
                 </div>
                 <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
                     <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                        Join Our Team at <span style={{ color: primaryColor }}>{branding.companyName}</span>
+                        {branding.heroHeadline || <span>Join Our Team at <span style={{ color: primaryColor }}>{branding.companyName}</span></span>}
                     </h1>
                     <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-                        We are looking for exceptional talent to solve the world's hardest problems.
-                        Build your career with us.
+                        {branding.heroSubhead || "We are looking for exceptional talent to solve the world's hardest problems. Build your career with us."}
                     </p>
                     <button
                         className={`bg-white text-slate-900 px-8 py-4 ${getRadius('full')} font-bold text-lg hover:bg-slate-100 transition-all shadow-xl active:scale-95`}
