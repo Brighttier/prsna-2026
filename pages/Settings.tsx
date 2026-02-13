@@ -4,6 +4,8 @@ import { Card } from '../components/Card';
 import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2, List, FileText, CheckCircle, AlertCircle, UploadCloud, BookOpen, Sparkles, BrainCircuit, ClipboardList, FileCheck, Video, Settings as SettingsIcon } from 'lucide-react';
 import { store, Invitation } from '../services/store';
 import { auth } from '../services/firebase';
+import { logout } from '../services/auth';
+import { LogOut } from 'lucide-react';
 import { useEffect } from 'react';
 import { AssessmentModule, AssessmentType, Question, OnboardingTask, OnboardingCategory } from '../types';
 
@@ -36,6 +38,7 @@ const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => v
         { id: 'library', label: 'Assessments', icon: Library },
         { id: 'onboarding', label: 'Onboarding', icon: ClipboardList },
         { id: 'team', label: 'Team', icon: Users },
+        { id: 'profile', label: 'Profile', icon: SettingsIcon },
     ];
 
     return (
@@ -1132,6 +1135,42 @@ export const Settings = () => {
                         </tbody>
                     </table>
                 </Card>
+            )}
+
+            {/* --- PROFILE TAB --- */}
+            {activeTab === 'profile' && (
+                <div className="max-w-2xl space-y-6">
+                    <Card className="p-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-6">Your Profile</h2>
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-6 pb-6 border-b border-slate-100">
+                                <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-3xl font-bold border-2 border-brand-200">
+                                    {auth.currentUser?.displayName?.charAt(0) || 'U'}
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">{auth.currentUser?.displayName || 'User'}</h3>
+                                    <p className="text-slate-500">{auth.currentUser?.email}</p>
+                                    <span className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700">
+                                        Owner
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="pt-2">
+                                <h4 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">Account Actions</h4>
+                                <button
+                                    onClick={() => logout()}
+                                    className="flex items-center gap-3 w-full p-4 rounded-xl border border-red-100 bg-red-50/50 text-red-600 hover:bg-red-50 hover:border-red-200 transition-all font-bold group"
+                                >
+                                    <div className="p-2 bg-red-100 rounded-lg group-hover:bg-red-200 transition-colors">
+                                        <LogOut className="w-5 h-5" />
+                                    </div>
+                                    <span>Logout of your account</span>
+                                </button>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
             )}
 
             {/* --- ASSESSMENT LIBRARY TAB --- */}
