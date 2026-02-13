@@ -29,17 +29,24 @@ service cloud.firestore {
     }
 
     // Organizations (High Level)
+    // Organizations (High Level)
     match /organizations/{orgId} {
-      allow read: if isAuthenticated(); 
+      allow get: if true; // Public access for branding
+      allow list: if isAuthenticated();
       allow create: if isAuthenticated(); // Allow creation on signup
       allow update: if isAuthenticated() && resource.data.ownerId == request.auth.uid; // Only owner can update the org root doc (settings)
       
       // Subcollections within Organization
       match /jobs/{jobId} {
-        allow read, write: if isAuthenticated(); 
+        allow read: if true; // Public access for job listings
+        allow write: if isAuthenticated(); 
       }
       
       match /candidates/{candidateId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      match /invitations/{inviteId} {
         allow read, write: if isAuthenticated();
       }
     }

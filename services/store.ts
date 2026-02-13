@@ -99,6 +99,7 @@ interface AppState {
     settings: PlatformSettings;
     branding: BrandingSettings;
     invitations: Invitation[];
+    orgId?: string; // Expose orgId for UI
 }
 
 export interface Invitation {
@@ -131,7 +132,8 @@ const INITIAL_STATE: AppState = {
         cornerStyle: 'soft',
         domain: 'acme'
     },
-    invitations: []
+    invitations: [],
+    orgId: undefined
 };
 
 class Store {
@@ -163,6 +165,7 @@ class Store {
                         const newOrgId = userDoc.data().orgId;
                         if (this.orgId !== newOrgId) {
                             this.orgId = newOrgId;
+                            this.state.orgId = newOrgId; // Update state
                             console.log(`[Store] Organization ID found: ${this.orgId}`);
                             // Re-init org listeners if org changes
                             // Note: We might need to clear previous org listeners specifically if we supported switching orgs,
