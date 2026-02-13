@@ -133,6 +133,8 @@ interface AppState {
     orgId?: string; // Expose orgId for UI
     tenants: Tenant[];
     platformStats: PlatformStats;
+    isHydrated: boolean;
+    onboardingTemplate: OnboardingTask[];
 }
 
 export interface Invitation {
@@ -168,11 +170,11 @@ const INITIAL_STATE: AppState = {
         }
     },
     branding: {
-        companyName: 'Acme Corp',
+        companyName: 'Loading...',
         brandColor: '#16a34a',
         fontStyle: 'sans',
         cornerStyle: 'soft',
-        domain: 'acme',
+        domain: '',
         heroHeadline: 'Build the future with us.',
         heroSubhead: 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.',
         coverStyle: 'gradient'
@@ -185,7 +187,9 @@ const INITIAL_STATE: AppState = {
         infraOverhead: 0,
         computeCredits: 0,
         netProfit: 0
-    }
+    },
+    isHydrated: false,
+    onboardingTemplate: []
 };
 
 class Store {
@@ -196,8 +200,27 @@ class Store {
     private unsubscribeListeners: (() => void)[] = [];
 
     constructor() {
-        this.state = INITIAL_STATE;
+        this.state = JSON.parse(JSON.stringify(INITIAL_STATE));
         this.initFirestore();
+    }
+
+    async waitForOrgId(timeoutMs: number = 5000): Promise<string> {
+        if (this.orgId) return this.orgId;
+
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                unsubscribe();
+                reject(new Error("Timeout waiting for Organization ID"));
+            }, timeoutMs);
+
+            const unsubscribe = this.subscribe(() => {
+                if (this.state.orgId) {
+                    clearTimeout(timeout);
+                    unsubscribe();
+                    resolve(this.state.orgId);
+                }
+            });
+        });
     }
 
     private async initFirestore() {
@@ -205,6 +228,7 @@ class Store {
         const { onAuthStateChanged } = await import('firebase/auth');
 
         onAuthStateChanged(auth, async (user) => {
+            console.log(`[Store] Auth state change: ${user ? user.email : 'Signed Out'}`);
             // Clear existing listeners
             this.unsubscribeListeners.forEach(unsub => unsub());
             this.unsubscribeListeners = [];
@@ -214,13 +238,16 @@ class Store {
                 // Listen to User Profile to get Org ID (handles race condition during signup)
                 const userUnsub = onSnapshot(doc(db, 'users', user.uid), (userDoc) => {
                     if (userDoc.exists()) {
-                        const newOrgId = userDoc.data().orgId;
+                        const userData = userDoc.data();
+                        const newOrgId = userData.orgId;
+                        console.log(`[Store] User profile doc updated:`, userData);
+
                         if (this.orgId !== newOrgId) {
                             this.orgId = newOrgId;
                             this.state.orgId = newOrgId; // Update state
                             console.log(`[Store] Organization ID found: ${this.orgId}`);
 
-                            const role = userDoc.data().role;
+                            const role = userData.role;
                             if (role === 'platform_admin' || role === 'admin') {
                                 this.initPlatformAdminListeners();
                             }
@@ -229,26 +256,29 @@ class Store {
                             this.initOrgListeners(this.orgId!);
                         }
                     } else {
-                        console.warn("User authenticated but no user profile found in Firestore yet. Waiting...");
+                        console.warn(`[Store] No user profile found in Firestore for ${user.uid} yet.`);
                     }
                 }, (error) => {
-                    console.error("Error listening to user profile:", error);
+                    console.error("[Store] Error listening to user profile:", error);
                 });
                 this.unsubscribeListeners.push(userUnsub);
             } else {
                 this.orgId = null;
                 console.log("[Store] User signed out. Resetting state.");
-                this.state = INITIAL_STATE;
+                this.state = JSON.parse(JSON.stringify(INITIAL_STATE));
                 this.notifyListeners();
             }
         });
     }
 
     private initOrgListeners(orgId: string) {
+        console.log(`[Store] Initializing Org Listeners for: ${orgId}`);
         // Jobs Listener
         const jobsUnsub = onSnapshot(collection(db, 'organizations', orgId, 'jobs'), (snapshot) => {
+            console.log(`[Store] Jobs snapshot received: ${snapshot.size} docs`);
             this.state.jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
             if (snapshot.empty) {
+                console.log(`[Store] Jobs empty, seeding...`);
                 this.seedJobs(orgId);
             }
             this.notifyListeners();
@@ -257,8 +287,10 @@ class Store {
 
         // Candidates Listener
         const candidatesUnsub = onSnapshot(collection(db, 'organizations', orgId, 'candidates'), (snapshot) => {
+            console.log(`[Store] Candidates snapshot received: ${snapshot.size} docs`);
             this.state.candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExtendedCandidate));
             if (snapshot.empty) {
+                console.log(`[Store] Candidates empty, seeding...`);
                 this.seedCandidates(orgId);
             }
             this.notifyListeners();
@@ -267,6 +299,7 @@ class Store {
 
         // Settings Listener
         const settingsUnsub = onSnapshot(doc(db, 'organizations', orgId), (docParams) => {
+            console.log(`[Store] Organization root doc update:`, docParams.exists() ? docParams.data() : 'DOC MISSING');
             if (docParams.exists()) {
                 const data = docParams.data();
                 if (data.settings) {
@@ -274,7 +307,16 @@ class Store {
                 }
                 if (data.settings?.branding) {
                     this.state.branding = data.settings.branding as BrandingSettings;
+                    console.log(`[Store] Branding updated to:`, this.state.branding.companyName);
                 }
+                if (data.onboardingTemplate) {
+                    this.state.onboardingTemplate = data.onboardingTemplate as OnboardingTask[];
+                }
+                this.state.isHydrated = true;
+                this.notifyListeners();
+            } else {
+                // If org doc doesn't exist, we are still "hydrated" (with defaults) but ready
+                this.state.isHydrated = true;
                 this.notifyListeners();
             }
         });
@@ -282,6 +324,7 @@ class Store {
 
         // Invitations Listener
         const invitesUnsub = onSnapshot(collection(db, 'organizations', orgId, 'invitations'), (snapshot) => {
+            console.log(`[Store] Invitations snapshot received: ${snapshot.size} docs`);
             this.state.invitations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invitation));
             this.notifyListeners();
         });
@@ -522,18 +565,25 @@ class Store {
     }
 
     async inviteTeamMember(email: string, role: string = 'Recruiter') {
-        if (!this.orgId || !email) return;
+        if (!this.orgId) {
+            console.error("[Store] Cannot invite team member: Organization ID is missing.");
+            throw new Error("Organization ID not loaded. Please try again in 5 seconds.");
+        }
+        if (!email) return;
+
         try {
             const inviteId = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            console.log(`[Store] Creating invitation for ${email} in org ${this.orgId}`);
             await setDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId), {
                 email,
                 status: 'pending',
                 invitedAt: new Date().toISOString(),
                 role: role
             });
-            console.log(`Invitation created for ${email} with role ${role}`);
+            console.log(`[Store] Invitation successfully created for ${email}`);
         } catch (e) {
-            console.error("Error inviting team member: ", e);
+            console.error("[Store] Error inviting team member: ", e);
+            throw e;
         }
     }
     async revokeInvitation(inviteId: string) {
@@ -570,6 +620,17 @@ class Store {
             await updateDoc(doc(db, 'organizations', tenantId), { plan });
         } catch (e) {
             console.error("Error updating tenant plan: ", e);
+        }
+    }
+
+    async updateOnboardingTemplate(tasks: OnboardingTask[]) {
+        if (!this.orgId) return;
+        try {
+            await updateDoc(doc(db, 'organizations', this.orgId), {
+                onboardingTemplate: tasks
+            });
+        } catch (e) {
+            console.error("Error updating onboarding template: ", e);
         }
     }
 }

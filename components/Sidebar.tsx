@@ -23,6 +23,13 @@ const NavItem = ({ to, icon: Icon, label, active, extraClass = '' }: { to: strin
 export const Sidebar = () => {
   const location = useLocation();
   const p = location.pathname;
+  const [branding, setBranding] = React.useState(store.getState().branding);
+
+  React.useEffect(() => {
+    return store.subscribe(() => {
+      setBranding(store.getState().branding);
+    });
+  }, []);
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200 h-screen fixed left-0 top-0 flex flex-col z-20">
@@ -69,7 +76,7 @@ export const Sidebar = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-900 truncate">{auth.currentUser?.displayName || 'User'}</p>
-            <p className="text-xs text-slate-500 truncate">{store.getState().branding?.companyName || 'Free Plan'}</p>
+            <p className="text-xs text-slate-500 truncate">{branding?.companyName || 'Free Plan'}</p>
           </div>
         </div>
         <button

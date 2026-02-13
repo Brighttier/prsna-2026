@@ -19,14 +19,52 @@ import { PublicCareerPage } from './pages/PublicCareerPage';
 import { DynamicBranding } from './components/DynamicBranding';
 import { LockdownOverlay } from './components/LockdownOverlay';
 
+import { store } from './services/store';
+import { auth } from './services/firebase';
+import { Loader2 } from 'lucide-react';
+
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
+  const [isLoaded, setIsLoaded] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const unsubAuth = auth.onAuthStateChanged((user) => {
+      setCurrentUser(user);
+      if (!user) setIsLoaded(true);
+    });
+
+    const unsubStore = store.subscribe(() => {
+      const state = store.getState();
+      // If we have a user, wait until orgId AND hydration is complete
+      if (auth.currentUser) {
+        if (state.orgId && state.isHydrated) setIsLoaded(true);
+      } else {
+        setIsLoaded(true);
+      }
+    });
+
+    return () => {
+      unsubAuth();
+      unsubStore();
+    };
+  }, []);
+
   const isFullScreen = location.pathname.includes('/interview') ||
     location.pathname.includes('/offer') ||
     location.pathname === '/login' ||
     location.pathname === '/' ||
     location.pathname === '/onboarding' ||
     location.pathname.startsWith('/career/');
+
+  if (!isLoaded && !isFullScreen) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+        <Loader2 className="w-12 h-12 text-brand-600 animate-spin mb-4" />
+        <p className="text-slate-500 font-medium animate-pulse">Syncing with workspace...</p>
+      </div>
+    );
+  }
 
   if (isFullScreen) return <>{children}</>;
 

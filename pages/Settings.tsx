@@ -32,13 +32,14 @@ const MOCK_ONBOARDING_TASKS: OnboardingTask[] = [
 
 const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => void }) => {
     const tabs = [
-        { id: 'general', label: 'Career Page', icon: LayoutTemplate },
+        { id: 'general', label: 'General', icon: SettingsIcon },
+        { id: 'branding', label: 'Career Site', icon: LayoutTemplate },
         { id: 'integrations', label: 'Integrations', icon: Code },
         { id: 'persona', label: 'AI Persona', icon: Zap },
         { id: 'library', label: 'Assessments', icon: Library },
         { id: 'onboarding', label: 'Onboarding', icon: ClipboardList },
         { id: 'team', label: 'Team', icon: Users },
-        { id: 'profile', label: 'Profile', icon: SettingsIcon },
+        { id: 'profile', label: 'Profile', icon: UserCheck },
     ];
 
     return (
@@ -61,7 +62,7 @@ const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => v
 };
 
 export const Settings = () => {
-    const [activeTab, setActiveTab] = useState('onboarding');
+    const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
 
@@ -77,10 +78,14 @@ export const Settings = () => {
 
         return store.subscribe(() => {
             const state = store.getState();
+            console.log(`[Settings] Store update received. invitations count: ${state.invitations?.length}`);
             setBranding(state.branding);
             setOrgId(state.orgId);
             setPersona(state.settings.persona);
             setInvitations(state.invitations || []);
+            if (state.onboardingTemplate.length > 0) {
+                setOnboardingTasks(state.onboardingTemplate);
+            }
         });
     }, []);
 
@@ -172,7 +177,11 @@ export const Settings = () => {
     const [showCreateModule, setShowCreateModule] = useState(false);
 
     // --- ONBOARDING STATE ---
-    const [onboardingTasks, setOnboardingTasks] = useState(MOCK_ONBOARDING_TASKS);
+    const [onboardingTasks, setOnboardingTasks] = useState<OnboardingTask[]>(
+        store.getState().onboardingTemplate.length > 0
+            ? store.getState().onboardingTemplate
+            : MOCK_ONBOARDING_TASKS
+    );
     const [newTaskCategory, setNewTaskCategory] = useState<OnboardingCategory>('Legal & Compliance');
     const [newTaskName, setNewTaskName] = useState('');
     const [newTaskType, setNewTaskType] = useState<'checkbox' | 'upload'>('checkbox');
@@ -230,6 +239,7 @@ export const Settings = () => {
             outro,
             interviewTimeLimit
         });
+        store.updateOnboardingTemplate(onboardingTasks);
         setTimeout(() => {
             setLoading(false);
             setSaved(true);
@@ -240,14 +250,26 @@ export const Settings = () => {
     const handleSendInvite = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!inviteEmail) return;
+
+        if (!orgId) {
+            alert("Error: Organization ID not loaded. Please refresh the page.");
+            return;
+        }
+
         setIsInviting(true);
+        console.log(`[Settings] Sending invite to ${inviteEmail} for org ${orgId}`);
+
         try {
             await store.inviteTeamMember(inviteEmail, inviteRole);
+            console.log("[Settings] Invite call completed");
             setInviteEmail('');
             setInviteRole('Recruiter');
             setShowInviteModal(false);
-        } catch (error) {
+            // Simple success feedback
+            alert(`Invitation sent to ${inviteEmail}`);
+        } catch (error: any) {
             console.error("Failed to send invite:", error);
+            alert(`Error: ${error.message}`);
         } finally {
             setIsInviting(false);
         }
@@ -457,26 +479,73 @@ export const Settings = () => {
                 </div>
             )}
 
-            {/* --- GENERAL / CAREER BUILDER TAB --- */}
+            {/* --- GENERAL SETTINGS --- */}
             {activeTab === 'general' && (
+                <div className="max-w-2xl space-y-6">
+                    <Card className="p-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+                            <SettingsIcon className="w-6 h-6 text-slate-400" />
+                            General Settings
+                        </h2>
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Company Name</label>
+                                <input
+                                    value={companyName}
+                                    onChange={(e) => setCompanyName(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                    placeholder="e.g. Acme Corp"
+                                />
+                                <p className="text-xs text-slate-500 mt-2">This is the public-facing name of your organization. It updates everywhere instantly including the sidebar.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Workspace ID</label>
+                                <div className="p-3 bg-slate-100 rounded-xl font-mono text-xs text-slate-600 border border-slate-200">
+                                    {orgId}
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100">
+                                <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">Platform Security</h3>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div>
+                                            <p className="font-bold text-slate-900 text-sm">Enhanced Encryption</p>
+                                            <p className="text-xs text-slate-500">Enable AES-256 at rest for all candidate documents.</p>
+                                        </div>
+                                        <div className="w-12 h-6 bg-brand-600 rounded-full relative">
+                                            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 opacity-60">
+                                        <div>
+                                            <p className="font-bold text-slate-900 text-sm italic">Two-Factor Auth (Coming Soon)</p>
+                                            <p className="text-xs text-slate-500">Enforce 2FA for all team members.</p>
+                                        </div>
+                                        <div className="w-12 h-6 bg-slate-200 rounded-full relative">
+                                            <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
+            {/* --- CAREER SITE / BRANDING TAB --- */}
+            {activeTab === 'branding' && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                     <div className="xl:col-span-4 space-y-6">
-                        {/* Identity */}
+                        {/* Domain */}
                         <Card className="p-5">
                             <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
-                                <Globe className="w-4 h-4 text-slate-400" /> Identity
+                                <Globe className="w-4 h-4 text-slate-400" /> Career Site Domain
                             </div>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Company Name</label>
-                                    <input
-                                        value={companyName}
-                                        onChange={(e) => setCompanyName(e.target.value)}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Domain</label>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Subdomain</label>
                                     <div className="flex">
                                         <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-sm">
                                             careers.

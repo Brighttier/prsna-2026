@@ -61,6 +61,9 @@ export const Onboarding = () => {
     const handleComplete = async () => {
         setLoading(true);
         try {
+            // Ensure Org ID is loaded
+            await store.waitForOrgId();
+
             // Updated Branding
             await store.updateBranding({
                 companyName: formData.companyName,
