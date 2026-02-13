@@ -3,6 +3,7 @@ import { Job } from '../types';
 import { X, Upload, Video, Mic, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, doc, auth } from '../services/firebase';
 import { signInAnonymously } from 'firebase/auth';
+import { query, where, getDocs } from 'firebase/firestore';
 
 interface JobApplicationModalProps {
     job: Job;
@@ -107,7 +108,20 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
         setIsSubmitting(true);
 
         try {
-            const candidateId = doc(collection(db, 'organizations', orgId, 'candidates')).id;
+            const candidateRef = doc(collection(db, 'organizations', orgId, 'candidates'));
+            const candidateId = candidateRef.id;
+
+            // Check for duplicate application
+            const q = query(collection(db, 'organizations', orgId, 'candidates'), where('email', '==', email));
+            const snapshot = await getDocs(q);
+            const existing = snapshot.docs.find(d => d.data().jobId === job.id);
+
+            if (existing) {
+                setError("You have already applied for this position with this email.");
+                setIsSubmitting(false);
+                return;
+            }
+
             let resumeUrl = '';
             let videoUrl = '';
 
@@ -126,7 +140,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
             }
 
             // Create Candidate Doc
-            await setDoc(doc(db, 'organizations', orgId, 'candidates', candidateId), {
+            await setDoc(candidateRef, {
                 id: candidateId,
                 name: `${firstName} ${lastName}`,
                 email,

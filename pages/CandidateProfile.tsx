@@ -9,6 +9,8 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip, Cell
 } from 'recharts';
 import { store, ExtendedCandidate, InterviewSession, TranscriptEntry, VideoHighlight } from '../services/store';
+import { db, collection } from '../services/firebase';
+import { query, where, getDocs } from 'firebase/firestore';
 import { generateCandidateReport } from '../services/ai';
 
 
@@ -995,8 +997,10 @@ const FileManager = ({ candidate }: { candidate: any }) => {
 // --- MAIN PROFILE COMPONENT ---
 
 export const CandidateProfile = () => {
-    const { id } = useParams();
+    const { id, orgId } = useParams();
     const navigate = useNavigate();
+
+    const [relatedApps, setRelatedApps] = useState<any[]>([]);
 
     const [candidate, setCandidate] = useState(id ? store.getState().candidates.find(c => c.id === id) : null);
 
@@ -1009,6 +1013,24 @@ export const CandidateProfile = () => {
         });
         return unsubscribe;
     }, [id]);
+
+    useEffect(() => {
+        if (candidate?.email && orgId) {
+            const fetchRelated = async () => {
+                try {
+                    const q = query(collection(db, 'organizations', orgId, 'candidates'), where('email', '==', candidate.email));
+                    const snap = await getDocs(q);
+                    const others = snap.docs
+                        .map(d => ({ id: d.id, ...d.data() }))
+                        .filter((d: any) => d.id !== candidate.id);
+                    setRelatedApps(others);
+                } catch (e) {
+                    console.error("Failed to fetch related apps", e);
+                }
+            };
+            fetchRelated();
+        }
+    }, [candidate?.email, orgId, candidate?.id]);
     const [activeTab, setActiveTab] = useState<'resume' | 'analysis' | 'interviews' | 'offer' | 'onboarding' | 'files'>('resume');
     const [transcriptSession, setTranscriptSession] = useState<InterviewSession | null>(null);
     const [recordingSession, setRecordingSession] = useState<InterviewSession | null>(null);
@@ -1320,6 +1342,32 @@ RecruiteAI`;
                                     {candidate.skills.map(s => <span key={s} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium border border-slate-200">{s}</span>)}
                                 </div>
                             </Card>
+
+                            {/* Related Applications */}
+                            {relatedApps.length > 0 && (
+                                <Card className="p-6 border-l-4 border-brand-500">
+                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                        <Briefcase className="w-4 h-4 text-brand-600" /> Related Applications
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {relatedApps.map(app => (
+                                            <div key={app.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-brand-200 transition-colors cursor-pointer" onClick={() => window.location.href = `/org/${orgId}/candidate/${app.id}`}>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <p className="font-bold text-slate-900 text-sm truncate w-[70%]">{app.role || 'Unknown Role'}</p>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${app.stage === 'Hired' ? 'bg-emerald-100 text-emerald-700' :
+                                                        app.stage === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                            'bg-blue-100 text-blue-700'
+                                                        }`}>{app.stage || 'New'}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs text-slate-500">
+                                                    <span>Match: {app.score || 0}%</span>
+                                                    <span>{new Date(app.appliedDate || Date.now()).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            )}
                         </div>
                         <div className="lg:col-span-2 space-y-6">
                             <Card className="p-8">

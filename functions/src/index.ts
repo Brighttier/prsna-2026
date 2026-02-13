@@ -1,9 +1,15 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onObjectFinalized } from "firebase-functions/v2/storage";
 import * as logger from "firebase-functions/logger";
 import { defineSecret } from "firebase-functions/params";
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+const pdf = require('pdf-parse');
+const mammoth = require('mammoth');
+const WordExtractor = require('word-extractor');
 
 initializeApp();
 
@@ -31,29 +37,11 @@ const getGenAIClient = () => {
     return new GoogleGenAI({ apiKey });
 };
 
-/**
- * 1. AI-POWERED RESUME SCREENING
- * 
- * Analyzes a candidate's resume against a job description.
- */
-export const screenResume = onCall(functionConfig as any, async (request) => {
-    // 1. Authentication Check (Optional, enabled for enterprise security)
-    // if (!request.auth) {
-    //     throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
-    // }
+// --- HELPER: Analyze Resume Logic (Shared) ---
+async function analyzeResumeContent(resumeText: string, jobDescription: string, autoReportThreshold: number = 80) {
+    const genAI = getGenAIClient();
 
-    const { resumeText, jobDescription, autoReportThreshold } = request.data;
-
-    if (!resumeText || !jobDescription) {
-        throw new HttpsError('invalid-argument', 'The function must be called with "resumeText" and "jobDescription".');
-    }
-
-    logger.info("Screening resume", { resumeLength: resumeText.length });
-
-    try {
-        const genAI = getGenAIClient();
-
-        const prompt = `
+    const prompt = `
       You are an expert technical recruiter known as "The Gatekeeper".
       
       Job Description:
@@ -76,21 +64,21 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
       Do not include markdown formatting(like \`\`\`json). Just the raw JSON string.
     `;
 
-        const response = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-            }
-        });
+    const response = await genAI.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+        }
+    });
 
-        const text = response.text || "{}";
-        const result = JSON.parse(text);
+    const text = response.text || "{}";
+    const result = JSON.parse(text);
 
-        // --- AUTO-REPORT GENERATION LOGIC ---
-        if (autoReportThreshold && typeof result.score === 'number' && result.score >= autoReportThreshold) {
-            logger.info(`Score ${result.score} >= ${autoReportThreshold}. Generating Deep Report.`);
-            const reportPrompt = `
+    // --- AUTO-REPORT GENERATION LOGIC ---
+    if (autoReportThreshold && typeof result.score === 'number' && result.score >= autoReportThreshold) {
+        logger.info(`Score ${result.score} >= ${autoReportThreshold}. Generating Deep Report.`);
+        const reportPrompt = `
                 You are an expert HR AI Assistant. Generate a detailed analysis report based on the resume and job description.
                 
                 JOB DESCRIPTION: ${jobDescription}
@@ -108,23 +96,165 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
                 }
              `;
 
-            try {
-                const reportResponse = await genAI.models.generateContent({
-                    model: 'gemini-2.0-flash-exp',
-                    contents: reportPrompt,
-                    config: { responseMimeType: 'application/json' }
-                });
-                result.report = JSON.parse(reportResponse.text || "{}");
-            } catch (e) {
-                logger.error("Error generating auto-report", e);
-            }
+        try {
+            const reportResponse = await genAI.models.generateContent({
+                model: 'gemini-2.0-flash-exp',
+                contents: reportPrompt,
+                config: { responseMimeType: 'application/json' }
+            });
+            result.report = JSON.parse(reportResponse.text || "{}");
+        } catch (e) {
+            logger.error("Error generating auto-report", e);
         }
+    }
 
-        return result;
+    return result;
+}
 
+/**
+ * 1. AI-POWERED RESUME SCREENING (Manual Trigger)
+ */
+export const screenResume = onCall(functionConfig as any, async (request) => {
+    const { resumeText, jobDescription, autoReportThreshold } = request.data;
+
+    if (!resumeText || !jobDescription) {
+        throw new HttpsError('invalid-argument', 'The function must be called with "resumeText" and "jobDescription".');
+    }
+
+    logger.info("Screening resume (Manual Trigger)", { resumeLength: resumeText.length });
+
+    try {
+        return await analyzeResumeContent(resumeText, jobDescription, autoReportThreshold);
     } catch (error: any) {
         logger.error("Error screening resume", error);
         throw new HttpsError('internal', error.message || 'Failed to screen resume');
+    }
+});
+
+/**
+ * 1.5 AUTOMATIC RESUME PARSER (Storage Trigger)
+ * 
+ * Triggered when a file is uploaded to: organizations/{orgId}/candidates/{candidateId}/resume_*
+ * 1. Parses PDF to Text.
+ * 2. Updates Candidate Doc.
+ * 3. Runs AI Analysis automatically.
+ */
+export const onNewResumeUpload = onObjectFinalized({
+    memory: "1GiB",
+    timeoutSeconds: 300,
+    bucket: "persona-recruit-new.firebasestorage.app"
+}, async (event) => {
+    const filePath = event.data.name; // organization/orgId/candidates/candidateId/resume_name
+    const contentType = event.data.contentType;
+    const isPdf = contentType?.includes('pdf') || filePath.toLowerCase().endsWith('.pdf');
+    const isDocx = contentType?.includes('officedocument.wordprocessingml.document') || filePath.toLowerCase().endsWith('.docx');
+    const isDoc = contentType?.includes('application/msword') || filePath.toLowerCase().endsWith('.doc');
+
+    // 1. Validation: Must be a resume in the candidate path and a supported format
+    if (!filePath.match(/organizations\/.*\/candidates\/.*\/resume_.*/) || (!isPdf && !isDocx && !isDoc)) {
+        return; // Ignore
+    }
+
+    const fileBucket = event.data.bucket;
+    const segments = filePath.split('/');
+    const orgId = segments[1];
+    const candidateId = segments[3];
+
+    logger.info(`Processing new resume for Candidate: ${candidateId} in Org: ${orgId}`);
+
+    try {
+        // 2. Download File to Memory
+        const bucket = getStorage().bucket(fileBucket);
+        const [fileBuffer] = await bucket.file(filePath).download();
+
+        // 3. Extract Text based on format
+        let resumeText = '';
+
+        if (isPdf) {
+            logger.info("Parsing PDF resume...");
+            const data = await pdf(fileBuffer);
+            resumeText = data.text;
+        } else if (isDocx) {
+            logger.info("Parsing DOCX resume...");
+            const result = await mammoth.extractRawText({ buffer: fileBuffer });
+            resumeText = result.value;
+        } else if (isDoc) {
+            logger.info("Parsing DOC resume...");
+            const extractor = new WordExtractor();
+            const doc = await extractor.extract(fileBuffer);
+            resumeText = doc.getBody();
+        }
+
+        if (!resumeText || resumeText.length < 50) {
+            logger.warn("Resume text empty or too short.");
+            return;
+        }
+
+        // 4. Update Candidate with Text (so manual trigger works too)
+        const db = getFirestore();
+        const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+
+        await candidateRef.update({
+            resumeText: resumeText,
+            parsedAt: new Date().toISOString()
+        });
+
+        // 5. Fetch Job Description for Analysis
+        // We need to know WHICH job this candidate applied for.
+        // The candidate doc has 'jobId'.
+        const candidateSnap = await candidateRef.get();
+        const candidateData = candidateSnap.data();
+
+        if (!candidateData || !candidateData.jobId) {
+            logger.warn("Candidate data missing or no jobId found.");
+            return;
+        }
+
+        const jobRef = db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId);
+        const jobSnap = await jobRef.get();
+        const jobData = jobSnap.data();
+
+        if (!jobData || (!jobData.description && !jobData.title)) {
+            logger.warn("Job data missing.");
+            return;
+        }
+
+        const jobDescription = jobData.description || jobData.title; // Fallback
+
+        // 6. Auto-Score (Run AI)
+        logger.info("Auto-scoring resume...");
+        const result = await analyzeResumeContent(resumeText, jobDescription, 80);
+
+        // 7. Save Results
+        const updateData: any = {
+            score: result.score,
+            matchReason: result.reasoning,
+            aiVerdict: result.verdict,
+            analysis: {
+                matchScore: result.score,
+                verdict: result.verdict,
+                metrics: {},
+                missingSkills: result.missingSkills || []
+            }
+        };
+
+        if (result.report) {
+            updateData.analysis = {
+                ...updateData.analysis,
+                technicalScore: result.report.technicalScore,
+                culturalScore: result.report.culturalScore,
+                communicationScore: result.report.communicationScore,
+                strengths: result.report.strengths,
+                weaknesses: result.report.weaknesses,
+                summary: result.report.summary
+            };
+        }
+
+        await candidateRef.update(updateData);
+        logger.info("Auto-scoring complete!", { score: result.score });
+
+    } catch (error) {
+        logger.error("Error processing resume upload", error);
     }
 });
 
