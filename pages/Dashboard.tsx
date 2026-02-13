@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '../components/Card';
 import { Users, Briefcase, CheckCircle, Clock, TrendingUp, Activity, FileText, LayoutDashboard, PenTool, ExternalLink, BellRing, Mail } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { store } from '../services/store';
 import { auth } from '../services/firebase';
+import { LogoutButton } from '../components/LogoutButton';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <Card className="p-6">
@@ -80,9 +82,12 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500 mt-1">Welcome back, {auth.currentUser?.displayName?.split(' ')[0] || 'Admin'}. Here's what's happening today.</p>
+      <header className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Welcome back, {auth.currentUser?.displayName?.split(' ')[0] || 'Admin'}. Here's what's happening today.</p>
+        </div>
+        <LogoutButton variant="ghost" className="mt-2" />
       </header>
 
       {/* Stats Grid */}

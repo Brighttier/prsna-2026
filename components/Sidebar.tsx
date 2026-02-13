@@ -1,11 +1,10 @@
 
 import React from 'react';
-import { LayoutDashboard, Briefcase, Users, FileText, Video, BarChart2, Settings, UserCheck, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, FileText, Video, BarChart2, Settings, ShieldAlert } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { store } from '../services/store';
-import { logout } from '../services/auth';
-import { LogOut } from 'lucide-react';
+import { LogoutButton } from './LogoutButton';
 
 const NavItem = ({ to, icon: Icon, label, active, extraClass = '' }: { to: string, icon: any, label: string, active: boolean, extraClass?: string }) => (
   <Link
@@ -79,13 +78,7 @@ export const Sidebar = () => {
             <p className="text-xs text-slate-500 truncate">{branding?.companyName || 'Free Plan'}</p>
           </div>
         </div>
-        <button
-          onClick={() => logout()}
-          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="Logout"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
+        <LogoutButton variant="icon" />
       </div>
     </aside>
   );
