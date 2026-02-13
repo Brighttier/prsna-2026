@@ -167,6 +167,7 @@ class Store {
                             this.orgId = newOrgId;
                             this.state.orgId = newOrgId; // Update state
                             console.log(`[Store] Organization ID found: ${this.orgId}`);
+                            this.notifyListeners(); // Validate link update
                             // Re-init org listeners if org changes
                             // Note: We might need to clear previous org listeners specifically if we supported switching orgs,
                             // but for now simplistic approach is fine or we can add a specific cleanup for org listeners.
