@@ -82,15 +82,18 @@ export const Settings = () => {
     const [fontStyle, setFontStyle] = useState(branding.fontStyle);
     const [cornerStyle, setCornerStyle] = useState(branding.cornerStyle);
 
+    const [domain, setDomain] = useState(branding.domain || 'acme');
+
     useEffect(() => {
         setCompanyName(branding.companyName);
         setBrandColor(branding.brandColor);
         setFontStyle(branding.fontStyle);
         setCornerStyle(branding.cornerStyle);
+        setDomain(branding.domain || 'acme');
     }, [branding]);
 
     // Other UI-only state
-    const [domain, setDomain] = useState('acme.com');
+    // const [domain, setDomain] = useState('acme.com'); // Removed redundant state
     const [heroHeadline, setHeroHeadline] = useState('Build the future with us.');
     const [heroSubhead, setHeroSubhead] = useState('Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.');
     const [coverStyle, setCoverStyle] = useState<'gradient' | 'minimal'>('gradient');
@@ -184,1201 +187,1212 @@ export const Settings = () => {
             companyName,
             brandColor,
             fontStyle,
-            cornerStyle
+            cornerStyle,
+            domain
         });
+    setTimeout(() => {
+        setLoading(false);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+    }, 800);
+};
 
-        setTimeout(() => {
-            setLoading(false);
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
-        }, 800);
+const handleSendInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsInviting(true);
+    setTimeout(() => {
+        setIsInviting(false);
+        setShowInviteModal(false);
+        setInviteEmail('');
+        setInviteRole('Recruiter');
+    }, 1500);
+};
+
+// Onboarding Helpers
+const handleAddOnboardingTask = () => {
+    if (!newTaskName) return;
+    const task: OnboardingTask = {
+        id: Date.now().toString(),
+        category: newTaskCategory,
+        task: newTaskName,
+        type: newTaskType,
+        completed: false,
+        assignee: 'HR'
     };
+    setOnboardingTasks([...onboardingTasks, task]);
+    setNewTaskName('');
+};
 
-    const handleSendInvite = (e: React.FormEvent) => {
+const handleDeleteOnboardingTask = (id: string) => {
+    setOnboardingTasks(onboardingTasks.filter(t => t.id !== id));
+};
+
+const handleAddQuestion = () => {
+    if (!currentQuestion.text) return;
+    setNewModule(prev => ({
+        ...prev,
+        questions: [...(prev.questions || []), {
+            id: Date.now().toString(),
+            text: currentQuestion.text,
+            aiEvaluationCriteria: currentQuestion.criteria
+        }]
+    }));
+    setCurrentQuestion({ text: '', criteria: '' });
+};
+
+const generateKbPreview = () => {
+    if (!newModule.knowledgeBase?.content) return;
+    setIsGeneratingPreview(true);
+    setKbPreviewQuestions([]);
+
+    // Simulate AI Generation
+    setTimeout(() => {
+        setKbPreviewQuestions([
+            "Can you explain how the proposed caching strategy in section 3.2 handles race conditions?",
+            "Based on the project constraints, why would you choose NoSQL over SQL for the user session data?",
+            "The documentation mentions 'eventual consistency' for the inventory system. How would you handle a user checkout during a sync delay?"
+        ]);
+        setIsGeneratingPreview(false);
+    }, 1500);
+};
+
+const handlePublishModule = () => {
+    setAssessments(prev => [...prev, {
+        id: Date.now().toString(),
+        name: newModule.name || 'Untitled Module',
+        type: newModule.type || 'QuestionBank',
+        description: newModule.description || '',
+        difficulty: newModule.difficulty || 'Mid',
+        estimatedDuration: newModule.estimatedDuration || 15,
+        tags: newModule.tags || [],
+        sourceMode: newModule.sourceMode,
+        itemsCount: newModule.type === 'QuestionBank' ? (newModule.sourceMode === 'knowledgeBase' ? 1 : (newModule.questions?.length || 0)) : 1,
+        knowledgeBase: newModule.knowledgeBase
+    }]);
+    setShowCreateModule(false);
+    setModuleStep(1);
+    setNewModule({ name: '', type: 'QuestionBank', difficulty: 'Mid', estimatedDuration: 15, tags: [], questions: [], sourceMode: 'manual', knowledgeBase: { content: '', fileName: '' } });
+};
+
+const addTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && tagInput) {
         e.preventDefault();
-        setIsInviting(true);
-        setTimeout(() => {
-            setIsInviting(false);
-            setShowInviteModal(false);
-            setInviteEmail('');
-            setInviteRole('Recruiter');
-        }, 1500);
-    };
+        setNewModule(prev => ({ ...prev, tags: [...(prev.tags || []), tagInput] }));
+        setTagInput('');
+    }
+};
 
-    // Onboarding Helpers
-    const handleAddOnboardingTask = () => {
-        if (!newTaskName) return;
-        const task: OnboardingTask = {
-            id: Date.now().toString(),
-            category: newTaskCategory,
-            task: newTaskName,
-            type: newTaskType,
-            completed: false,
-            assignee: 'HR'
-        };
-        setOnboardingTasks([...onboardingTasks, task]);
-        setNewTaskName('');
-    };
+// --- STYLING HELPERS ---
+const getFontFamily = () => {
+    if (fontStyle === 'serif') return 'font-serif';
+    if (fontStyle === 'mono') return 'font-mono tracking-tight';
+    return 'font-sans';
+};
 
-    const handleDeleteOnboardingTask = (id: string) => {
-        setOnboardingTasks(onboardingTasks.filter(t => t.id !== id));
-    };
+const getRadius = (size: 'sm' | 'md' | 'lg' | 'xl' | 'full') => {
+    if (cornerStyle === 'sharp') return 'rounded-none';
+    if (size === 'full') return 'rounded-full';
+    if (cornerStyle === 'round') {
+        if (size === 'sm') return 'rounded-lg';
+        if (size === 'md') return 'rounded-xl';
+        if (size === 'lg') return 'rounded-2xl';
+        if (size === 'xl') return 'rounded-3xl';
+    }
+    return size === 'sm' ? 'rounded' : size === 'md' ? 'rounded-lg' : size === 'lg' ? 'rounded-xl' : 'rounded-2xl';
+};
 
-    const handleAddQuestion = () => {
-        if (!currentQuestion.text) return;
-        setNewModule(prev => ({
-            ...prev,
-            questions: [...(prev.questions || []), {
-                id: Date.now().toString(),
-                text: currentQuestion.text,
-                aiEvaluationCriteria: currentQuestion.criteria
-            }]
-        }));
-        setCurrentQuestion({ text: '', criteria: '' });
-    };
-
-    const generateKbPreview = () => {
-        if (!newModule.knowledgeBase?.content) return;
-        setIsGeneratingPreview(true);
-        setKbPreviewQuestions([]);
-
-        // Simulate AI Generation
-        setTimeout(() => {
-            setKbPreviewQuestions([
-                "Can you explain how the proposed caching strategy in section 3.2 handles race conditions?",
-                "Based on the project constraints, why would you choose NoSQL over SQL for the user session data?",
-                "The documentation mentions 'eventual consistency' for the inventory system. How would you handle a user checkout during a sync delay?"
-            ]);
-            setIsGeneratingPreview(false);
-        }, 1500);
-    };
-
-    const handlePublishModule = () => {
-        setAssessments(prev => [...prev, {
-            id: Date.now().toString(),
-            name: newModule.name || 'Untitled Module',
-            type: newModule.type || 'QuestionBank',
-            description: newModule.description || '',
-            difficulty: newModule.difficulty || 'Mid',
-            estimatedDuration: newModule.estimatedDuration || 15,
-            tags: newModule.tags || [],
-            sourceMode: newModule.sourceMode,
-            itemsCount: newModule.type === 'QuestionBank' ? (newModule.sourceMode === 'knowledgeBase' ? 1 : (newModule.questions?.length || 0)) : 1,
-            knowledgeBase: newModule.knowledgeBase
-        }]);
-        setShowCreateModule(false);
-        setModuleStep(1);
-        setNewModule({ name: '', type: 'QuestionBank', difficulty: 'Mid', estimatedDuration: 15, tags: [], questions: [], sourceMode: 'manual', knowledgeBase: { content: '', fileName: '' } });
-    };
-
-    const addTag = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && tagInput) {
-            e.preventDefault();
-            setNewModule(prev => ({ ...prev, tags: [...(prev.tags || []), tagInput] }));
-            setTagInput('');
-        }
-    };
-
-    // --- STYLING HELPERS ---
-    const getFontFamily = () => {
-        if (fontStyle === 'serif') return 'font-serif';
-        if (fontStyle === 'mono') return 'font-mono tracking-tight';
-        return 'font-sans';
-    };
-
-    const getRadius = (size: 'sm' | 'md' | 'lg' | 'xl' | 'full') => {
-        if (cornerStyle === 'sharp') return 'rounded-none';
-        if (size === 'full') return 'rounded-full';
-        if (cornerStyle === 'round') {
-            if (size === 'sm') return 'rounded-lg';
-            if (size === 'md') return 'rounded-xl';
-            if (size === 'lg') return 'rounded-2xl';
-            if (size === 'xl') return 'rounded-3xl';
-        }
-        return size === 'sm' ? 'rounded' : size === 'md' ? 'rounded-lg' : size === 'lg' ? 'rounded-xl' : 'rounded-2xl';
-    };
-
-    return (
-        <div className="max-w-[1600px] mx-auto animate-fade-in-up">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-                    <p className="text-slate-500 mt-1">Configure your recruitment ecosystem.</p>
-                </div>
-                <button
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="flex items-center gap-2 bg-brand-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 active:scale-95 disabled:opacity-70"
-                >
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                    {loading ? 'Publishing...' : saved ? 'Published!' : 'Publish Changes'}
-                </button>
+return (
+    <div className="max-w-[1600px] mx-auto animate-fade-in-up">
+        <div className="flex justify-between items-center mb-6">
+            <div>
+                <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
+                <p className="text-slate-500 mt-1">Configure your recruitment ecosystem.</p>
             </div>
+            <button
+                onClick={handleSave}
+                disabled={loading}
+                className="flex items-center gap-2 bg-brand-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 active:scale-95 disabled:opacity-70"
+            >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                {loading ? 'Publishing...' : saved ? 'Published!' : 'Publish Changes'}
+            </button>
+        </div>
 
-            <Tabs active={activeTab} onChange={setActiveTab} />
+        <Tabs active={activeTab} onChange={setActiveTab} />
 
-            {/* --- ONBOARDING TAB --- */}
-            {activeTab === 'onboarding' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white p-6 rounded-xl border border-slate-200">
-                            <h2 className="text-xl font-bold text-slate-900 mb-2">Onboarding Checklist</h2>
-                            <p className="text-slate-500 text-sm mb-6">Configure the tasks and documents required for new hires. These will appear in the candidate's profile after they accept an offer.</p>
+        {/* --- ONBOARDING TAB --- */}
+        {activeTab === 'onboarding' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white p-6 rounded-xl border border-slate-200">
+                        <h2 className="text-xl font-bold text-slate-900 mb-2">Onboarding Checklist</h2>
+                        <p className="text-slate-500 text-sm mb-6">Configure the tasks and documents required for new hires. These will appear in the candidate's profile after they accept an offer.</p>
 
-                            {['Legal & Compliance', 'IT & Equipment', 'Culture & Orientation'].map((cat) => (
-                                <div key={cat} className="mb-8 last:mb-0">
-                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">{cat}</h3>
-                                    <div className="space-y-3">
-                                        {onboardingTasks.filter(t => t.category === cat).map(task => (
-                                            <div key={task.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 group">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-lg ${task.type === 'upload' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                        {task.type === 'upload' ? <UploadCloud className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-medium text-slate-900">{task.task}</div>
-                                                        <div className="text-xs text-slate-500">{task.type === 'upload' ? 'Document Upload Required' : 'Standard Task'}</div>
-                                                    </div>
+                        {['Legal & Compliance', 'IT & Equipment', 'Culture & Orientation'].map((cat) => (
+                            <div key={cat} className="mb-8 last:mb-0">
+                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">{cat}</h3>
+                                <div className="space-y-3">
+                                    {onboardingTasks.filter(t => t.category === cat).map(task => (
+                                        <div key={task.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 group">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-lg ${task.type === 'upload' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                    {task.type === 'upload' ? <UploadCloud className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                                                 </div>
-                                                <button onClick={() => handleDeleteOnboardingTask(task.id)} className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                        {onboardingTasks.filter(t => t.category === cat).length === 0 && (
-                                            <div className="text-xs text-slate-400 italic py-2">No tasks configured for this category.</div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="lg:col-span-1">
-                        <Card className="p-6 sticky top-6">
-                            <h3 className="font-bold text-slate-900 mb-4">Add New Task</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Category</label>
-                                    <select
-                                        value={newTaskCategory}
-                                        onChange={(e) => setNewTaskCategory(e.target.value as any)}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                                    >
-                                        <option value="Legal & Compliance">Legal & Compliance</option>
-                                        <option value="IT & Equipment">IT & Equipment</option>
-                                        <option value="Culture & Orientation">Culture & Orientation</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Task Name</label>
-                                    <input
-                                        value={newTaskName}
-                                        onChange={(e) => setNewTaskName(e.target.value)}
-                                        placeholder="e.g. Upload Passport Copy"
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Action Type</label>
-                                    <div className="flex bg-slate-100 p-1 rounded-lg">
-                                        <button
-                                            onClick={() => setNewTaskType('checkbox')}
-                                            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 ${newTaskType === 'checkbox' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                                        >
-                                            <CheckCircle className="w-3 h-3" /> Checkbox
-                                        </button>
-                                        <button
-                                            onClick={() => setNewTaskType('upload')}
-                                            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 ${newTaskType === 'upload' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                                        >
-                                            <UploadCloud className="w-3 h-3" /> Upload
-                                        </button>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handleAddOnboardingTask}
-                                    disabled={!newTaskName}
-                                    className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Plus className="w-4 h-4" /> Add Task
-                                </button>
-                            </div>
-                        </Card>
-                    </div>
-                </div>
-            )}
-
-            {/* --- GENERAL / CAREER BUILDER TAB --- */}
-            {activeTab === 'general' && (
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-                    <div className="xl:col-span-4 space-y-6">
-                        {/* Identity */}
-                        <Card className="p-5">
-                            <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
-                                <Globe className="w-4 h-4 text-slate-400" /> Identity
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Company Name</label>
-                                    <input
-                                        value={companyName}
-                                        onChange={(e) => setCompanyName(e.target.value)}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Domain</label>
-                                    <div className="flex">
-                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-sm">
-                                            careers.
-                                        </span>
-                                        <input
-                                            value={domain}
-                                            onChange={(e) => setDomain(e.target.value)}
-                                            className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-r-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-
-                        {/* Visual Style */}
-                        <Card className="p-5">
-                            <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
-                                <Palette className="w-4 h-4 text-slate-400" /> Visual Style
-                            </div>
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Brand Color</label>
-                                    <div className="flex gap-3">
-                                        <input
-                                            type="color"
-                                            value={brandColor}
-                                            onChange={(e) => setBrandColor(e.target.value)}
-                                            className="w-10 h-10 p-1 rounded-lg cursor-pointer border border-slate-200"
-                                        />
-                                        <div className="flex-1 flex gap-2">
-                                            {['#16a34a', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0f172a'].map(c => (
-                                                <button
-                                                    key={c}
-                                                    onClick={() => setBrandColor(c)}
-                                                    className={`w-10 h-10 rounded-lg border-2 transition-all ${brandColor === c ? 'border-slate-400 scale-110' : 'border-transparent hover:scale-105'}`}
-                                                    style={{ backgroundColor: c }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Typography</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {['sans', 'serif', 'mono'].map((font) => (
-                                            <button
-                                                key={font}
-                                                onClick={() => setFontStyle(font as any)}
-                                                className={`p-2 border rounded-lg text-sm capitalize ${fontStyle === font ? 'border-brand-500 bg-brand-50 text-brand-700 font-bold ring-1 ring-brand-500' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                                            >
-                                                {font}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Corner Radius</label>
-                                    <div className="flex bg-slate-100 p-1 rounded-lg">
-                                        {['sharp', 'soft', 'round'].map((s) => (
-                                            <button
-                                                key={s}
-                                                onClick={() => setCornerStyle(s as any)}
-                                                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all capitalize ${cornerStyle === s ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                            >
-                                                {s}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-
-                        {/* Hero Content */}
-                        <Card className="p-5">
-                            <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
-                                <ImageIcon className="w-4 h-4 text-slate-400" /> Hero Section
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Headline</label>
-                                    <input
-                                        value={heroHeadline}
-                                        onChange={(e) => setHeroHeadline(e.target.value)}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Sub-headline</label>
-                                    <textarea
-                                        value={heroSubhead}
-                                        onChange={(e) => setHeroSubhead(e.target.value)}
-                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium h-24 resize-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Background Style</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {['gradient', 'minimal'].map((style) => (
-                                            <button
-                                                key={style}
-                                                onClick={() => setCoverStyle(style as any)}
-                                                className={`p-3 border rounded-lg text-xs font-medium text-center transition-all capitalize ${coverStyle === style ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600'}`}
-                                            >
-                                                {style}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-
-                    {/* LIVE PREVIEW (Right) */}
-                    <div className="xl:col-span-8 sticky top-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                <Monitor className="w-4 h-4" /> Live Preview
-                            </h2>
-                            <div className="flex bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
-                                <button
-                                    onClick={() => setPreviewMode('desktop')}
-                                    className={`p-2 rounded-md transition-all ${previewMode === 'desktop' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                                >
-                                    <Monitor className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => setPreviewMode('mobile')}
-                                    className={`p-2 rounded-md transition-all ${previewMode === 'mobile' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                                >
-                                    <Smartphone className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* BROWSER MOCKUP */}
-                        <div className={`transition-all duration-500 mx-auto ${previewMode === 'mobile' ? 'max-w-[375px]' : 'w-full'}`}>
-                            <div className={`bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col ${getRadius('lg')} ring-1 ring-black/5`}>
-
-                                {/* Browser Toolbar */}
-                                <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center gap-4">
-                                    <div className="flex gap-1.5">
-                                        <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                                        <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                                        <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                                    </div>
-                                    <div className="flex-1 bg-white border border-slate-200 rounded-md px-3 py-1 text-xs text-slate-400 flex items-center justify-center font-mono">
-                                        <Shield className="w-3 h-3 mr-1.5" />
-                                        https://careers.{domain}
-                                    </div>
-                                </div>
-
-                                {/* WEBSITE CONTENT */}
-                                <div className={`h-[600px] overflow-y-auto bg-white ${getFontFamily()}`}>
-
-                                    {/* Header */}
-                                    <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur z-10 border-b border-transparent">
-                                        <div className="font-bold text-xl tracking-tight text-slate-900 flex items-center gap-2">
-                                            <div className={`w-8 h-8 ${getRadius('sm')} flex items-center justify-center text-white font-bold`} style={{ backgroundColor: brandColor }}>
-                                                {companyName.charAt(0)}
-                                            </div>
-                                            {companyName}
-                                        </div>
-                                        <div className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
-                                            <span className="cursor-pointer hover:text-slate-900">About</span>
-                                            <span className="cursor-pointer hover:text-slate-900">Team</span>
-                                            <span className="cursor-pointer hover:text-slate-900">Benefits</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Hero */}
-                                    <div
-                                        className={`px-8 py-20 text-center relative overflow-hidden`}
-                                        style={{
-                                            background: coverStyle === 'gradient'
-                                                ? `linear-gradient(135deg, ${brandColor}15 0%, #ffffff 100%)`
-                                                : '#ffffff'
-                                        }}
-                                    >
-                                        <div className="max-w-2xl mx-auto relative z-10">
-                                            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
-                                                {heroHeadline}
-                                            </h1>
-                                            <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
-                                                {heroSubhead}
-                                            </p>
-                                            <button
-                                                className={`px-8 py-4 text-white font-bold text-lg transition-transform hover:scale-105 shadow-xl shadow-brand-500/20 ${getRadius('full')}`}
-                                                style={{ backgroundColor: brandColor }}
-                                            >
-                                                View Open Roles
-                                            </button>
-                                        </div>
-
-                                        {/* Decorative Blobs */}
-                                        {coverStyle === 'gradient' && (
-                                            <>
-                                                <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-40 blur-3xl rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
-                                                <div className="absolute bottom-0 right-0 w-64 h-64 mix-blend-multiply opacity-10 blur-3xl rounded-full transform translate-x-1/2 translate-y-1/2" style={{ backgroundColor: brandColor }}></div>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {/* Open Roles */}
-                                    <div className="max-w-4xl mx-auto px-6 py-16">
-                                        <div className="text-center mb-12">
-                                            <h2 className="text-2xl font-bold text-slate-900">Open Positions</h2>
-                                            <p className="text-slate-500 mt-2">Come do the best work of your career.</p>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            {[
-                                                { title: 'Senior React Engineer', dept: 'Engineering', loc: 'Remote' },
-                                                { title: 'Product Designer', dept: 'Design', loc: 'New York' },
-                                                { title: 'Marketing Manager', dept: 'Growth', loc: 'London' }
-                                            ].map((job, i) => (
-                                                <div key={i} className={`group border border-slate-200 p-6 flex items-center justify-between hover:border-slate-300 hover:shadow-lg transition-all cursor-pointer bg-white ${getRadius('lg')}`}>
-                                                    <div>
-                                                        <h3 className="font-bold text-lg text-slate-900 group-hover:text-brand-600 transition-colors" style={{ color: 'inherit' }}>
-                                                            {job.title}
-                                                        </h3>
-                                                        <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
-                                                            <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> {job.dept}</span>
-                                                            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {job.loc}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className={`p-2 ${getRadius('full')} bg-slate-50 group-hover:bg-brand-50 transition-colors`}>
-                                                        <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-brand-600" style={{ color: 'inherit' }} />
-                                                    </div>
+                                                <div>
+                                                    <div className="font-medium text-slate-900">{task.task}</div>
+                                                    <div className="text-xs text-slate-500">{task.type === 'upload' ? 'Document Upload Required' : 'Standard Task'}</div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* --- INTEGRATIONS TAB --- */}
-            {activeTab === 'integrations' && (
-                <div className="space-y-6">
-                    <Card className="p-6">
-                        <div className="flex gap-4 mb-6">
-                            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                <Video className="w-6 h-6 text-indigo-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Meeting Connectivity</h2>
-                                <p className="text-slate-500 text-sm mt-1">Connect your calendar accounts to automatically generate interview links.</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {/* Google Meet */}
-                            <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-white">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
-                                        <Globe className="w-5 h-5 text-red-500" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-slate-900 text-sm">Google Workspace</h3>
-                                            {googleConnected && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200">Connected</span>}
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-0.5">Google Meet, Calendar & Gmail API (OAuth 2.0)</p>
-                                    </div>
-                                </div>
-                                {googleConnected ? (
-                                    <button onClick={() => handleDisconnect('google')} className="text-sm text-red-600 font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
-                                        Disconnect
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleConnectGoogle}
-                                        disabled={isConnectingGoogle}
-                                        className="text-sm bg-white border border-slate-200 text-slate-900 font-medium px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
-                                    >
-                                        {isConnectingGoogle ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                                        Connect Account
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Microsoft Teams */}
-                            <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-white">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
-                                        <div className="text-blue-600 font-black text-sm">T</div>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-slate-900 text-sm">Microsoft 365 (Teams & Outlook)</h3>
-                                            {microsoftConnected && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200">Connected</span>}
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-0.5">Outlook Calendar, Mail & Teams API (Graph OAuth 2.0)</p>
-                                    </div>
-                                </div>
-                                {microsoftConnected ? (
-                                    <button onClick={() => handleDisconnect('microsoft')} className="text-sm text-red-600 font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
-                                        Disconnect
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleConnectMicrosoft}
-                                        disabled={isConnectingMicrosoft}
-                                        className="text-sm bg-white border border-slate-200 text-slate-900 font-medium px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
-                                    >
-                                        {isConnectingMicrosoft ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                                        Connect Account
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6 border-l-4 border-l-emerald-500">
-                        <div className="flex items-start justify-between">
-                            <div className="flex gap-4">
-                                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <span className="font-bold text-emerald-700 text-lg">Sage</span>
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                        Sage HR Integration
-                                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">Active</span>
-                                    </h2>
-                                    <p className="text-slate-500 text-sm mt-1">Automatically sync "Hired" candidates and export interview transcripts.</p>
-                                </div>
-                            </div>
-                            <button className="text-sm text-red-600 font-medium hover:underline">Disconnect</button>
-                        </div>
-
-                        <div className="mt-6 pt-6 border-t border-slate-100">
-                            <label className="block text-sm font-medium text-slate-700 mb-2">API Token</label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                                    <input
-                                        type="password"
-                                        value={sageToken}
-                                        onChange={(e) => setSageToken(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-mono text-sm"
-                                    />
-                                </div>
-                                <button className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-50">Test</button>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6">
-                        <div className="flex gap-4 mb-6">
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <Code className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Embeddable Widget</h2>
-                                <p className="text-slate-500 text-sm mt-1">Add your job board to any website (WordPress, Webflow, React) with one line of code.</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-900 rounded-xl p-4 relative group">
-                            <code className="text-green-400 text-sm font-mono break-all">
-                                &lt;script src="https://cdn.recruite.ai/widget/v2/loader.js" data-company-id="acme-corp-829"&gt;&lt;/script&gt;
-                            </code>
-                            <button className="absolute top-2 right-2 p-2 bg-slate-800 text-slate-400 rounded hover:text-white hover:bg-slate-700 transition-colors" title="Copy Code">
-                                <Copy className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </Card>
-                </div>
-            )}
-
-            {/* --- AI PERSONA TAB --- */}
-            {activeTab === 'persona' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <Card className="p-6">
-                        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                            <Zap className="w-5 h-5 text-brand-600" /> Interview Dynamics
-                        </h2>
-
-                        <div className="space-y-8">
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="text-sm font-medium text-slate-700">Stress Level / Difficulty</label>
-                                    <span className="text-xs font-bold px-2 py-1 bg-slate-100 rounded text-slate-600">{intensity}%</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={intensity}
-                                    onChange={(e) => setIntensity(parseInt(e.target.value))}
-                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
-                                />
-                                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                    <span>Casual Chat</span>
-                                    <span>Balanced</span>
-                                    <span>Technical Grill</span>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Interviewer Voice</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {['Kore (Neutral)', 'Fenrir (Deep)', 'Puck (Energetic)', 'Aoede (Soft)'].map((voice) => (
-                                        <div key={voice} className={`p-3 border rounded-lg text-sm cursor-pointer transition-all ${voice.includes('Kore') ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium ring-1 ring-brand-500' : 'border-slate-200 hover:border-slate-300'}`}>
-                                            {voice}
+                                            </div>
+                                            <button onClick={() => handleDeleteOnboardingTask(task.id)} className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     ))}
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6">
-                        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-                            <Shield className="w-5 h-5 text-brand-600" /> Compliance & Safety
-                        </h2>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
-                                <div>
-                                    <div className="font-medium text-slate-900 text-sm">Bias Masking</div>
-                                    <div className="text-xs text-slate-500">Hide names/photos during initial screening</div>
-                                </div>
-                                <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
-                            </div>
-                            <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
-                                <div>
-                                    <div className="font-medium text-slate-900 text-sm">GDPR Data Retention</div>
-                                    <div className="text-xs text-slate-500">Auto-delete video after 90 days</div>
-                                </div>
-                                <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
-                            </div>
-                            <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
-                                <div>
-                                    <div className="font-medium text-slate-900 text-sm">Transcript Logging</div>
-                                    <div className="text-xs text-slate-500">Store text logs for audit trails</div>
-                                </div>
-                                <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            )}
-
-            {/* --- TEAM TAB --- */}
-            {activeTab === 'team' && (
-                <Card>
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h2 className="text-lg font-bold text-slate-900">Team Members</h2>
-                        <button
-                            onClick={() => setShowInviteModal(true)}
-                            className="text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
-                        >
-                            <Mail className="w-4 h-4" /> Invite Member
-                        </button>
-                    </div>
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-slate-500 font-medium">
-                            <tr>
-                                <th className="px-6 py-3">User</th>
-                                <th className="px-6 py-3">Role</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {/* Current User */}
-                            <tr className="hover:bg-slate-50">
-                                <td className="px-6 py-4">
-                                    <div className="font-medium text-slate-900">You</div>
-                                    <div className="text-xs text-slate-500">{auth.currentUser?.email}</div>
-                                </td>
-                                <td className="px-6 py-4"><span className="px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-bold">Owner</span></td>
-                                <td className="px-6 py-4 text-emerald-600 font-medium flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div> Active</td>
-                                <td className="px-6 py-4 text-right"></td>
-                            </tr>
-
-                            {/* Invited Members */}
-                            {invitations.map((inv) => (
-                                <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-slate-900">{inv.email.split('@')[0]}</div>
-                                        <div className="text-xs text-slate-500">{inv.email}</div>
-                                    </td>
-                                    <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs font-bold">{inv.role}</span></td>
-                                    <td className="px-6 py-4">
-                                        {inv.status === 'pending' ? (
-                                            <span className="flex items-center gap-1.5 text-amber-600 text-xs font-bold bg-amber-50 px-2 py-1 rounded w-fit">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Pending
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-500">{inv.status}</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="text-slate-400 hover:text-red-500 text-xs font-medium transition-colors">Revoke</button>
-                                    </td>
-                                </tr>
-                            ))}
-
-                            {invitations.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-slate-500 italic">
-                                        No team members invited yet.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </Card>
-            )}
-
-            {/* --- ASSESSMENT LIBRARY TAB --- */}
-            {activeTab === 'library' && (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-900">Assessment Library</h2>
-                            <p className="text-slate-500 text-sm mt-1">Create and manage reusable question banks and coding challenges.</p>
-                        </div>
-                        <button
-                            onClick={() => setShowCreateModule(true)}
-                            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800"
-                        >
-                            <Plus className="w-4 h-4" /> Create Module
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {assessments.map((mod) => (
-                            <Card key={mod.id} className="p-6 hover:border-brand-300 transition-colors group cursor-pointer relative">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mod.type === 'QuestionBank' ? (mod.sourceMode === 'knowledgeBase' ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600') :
-                                        mod.type === 'CodingChallenge' ? 'bg-purple-100 text-purple-600' :
-                                            'bg-orange-100 text-orange-600'
-                                        }`}>
-                                        {mod.type === 'QuestionBank' && (mod.sourceMode === 'knowledgeBase' ? <BrainCircuit className="w-5 h-5" /> : <FileQuestion className="w-5 h-5" />)}
-                                        {mod.type === 'CodingChallenge' && <Terminal className="w-5 h-5" />}
-                                        {mod.type === 'SystemDesign' && <LayoutTemplate className="w-5 h-5" />}
-                                    </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500"><Edit2 className="w-4 h-4" /></button>
-                                        <button className="p-1.5 hover:bg-red-50 rounded text-red-500"><Trash2 className="w-4 h-4" /></button>
-                                    </div>
-                                </div>
-
-                                <h3 className="font-bold text-slate-900 mb-1">{mod.name}</h3>
-                                <p className="text-xs text-slate-500 mb-4 line-clamp-2">{mod.description}</p>
-
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {mod.tags.map(tag => (
-                                        <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase rounded border border-slate-200">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                    {mod.sourceMode === 'knowledgeBase' && (
-                                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase rounded border border-indigo-100 flex items-center gap-1">
-                                            <BrainCircuit className="w-3 h-3" /> AI Driven
-                                        </span>
+                                    {onboardingTasks.filter(t => t.category === cat).length === 0 && (
+                                        <div className="text-xs text-slate-400 italic py-2">No tasks configured for this category.</div>
                                     )}
                                 </div>
-
-                                <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-500">
-                                    <span className="flex items-center gap-1">
-                                        <Zap className="w-3 h-3 text-brand-500" /> {mod.difficulty}
-                                    </span>
-                                    <span>{mod.sourceMode === 'knowledgeBase' ? 'Dynamic' : `${mod.itemsCount} Items`} • {mod.estimatedDuration}m</span>
-                                </div>
-                            </Card>
+                            </div>
                         ))}
                     </div>
                 </div>
-            )}
 
-            {/* --- CREATE MODULE MODAL --- */}
-            {showCreateModule && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
-                        {/* Modal Header */}
-                        <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold">
-                                    <Plus className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-900">Create Assessment Module</h2>
-                                    <p className="text-sm text-slate-500">Define knowledge banks and technical challenges.</p>
+                <div className="lg:col-span-1">
+                    <Card className="p-6 sticky top-6">
+                        <h3 className="font-bold text-slate-900 mb-4">Add New Task</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Category</label>
+                                <select
+                                    value={newTaskCategory}
+                                    onChange={(e) => setNewTaskCategory(e.target.value as any)}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                >
+                                    <option value="Legal & Compliance">Legal & Compliance</option>
+                                    <option value="IT & Equipment">IT & Equipment</option>
+                                    <option value="Culture & Orientation">Culture & Orientation</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Task Name</label>
+                                <input
+                                    value={newTaskName}
+                                    onChange={(e) => setNewTaskName(e.target.value)}
+                                    placeholder="e.g. Upload Passport Copy"
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Action Type</label>
+                                <div className="flex bg-slate-100 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => setNewTaskType('checkbox')}
+                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 ${newTaskType === 'checkbox' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                                    >
+                                        <CheckCircle className="w-3 h-3" /> Checkbox
+                                    </button>
+                                    <button
+                                        onClick={() => setNewTaskType('upload')}
+                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 ${newTaskType === 'upload' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                                    >
+                                        <UploadCloud className="w-3 h-3" /> Upload
+                                    </button>
                                 </div>
                             </div>
-                            <button onClick={() => setShowCreateModule(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600">
-                                <X className="w-5 h-5" />
+                            <button
+                                onClick={handleAddOnboardingTask}
+                                disabled={!newTaskName}
+                                className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" /> Add Task
                             </button>
                         </div>
+                    </Card>
+                </div>
+            </div>
+        )}
 
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-10">
-                            {/* Step 1: General Details */}
-                            {moduleStep === 1 && (
-                                <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Module Name</label>
-                                        <input
-                                            value={newModule.name}
-                                            onChange={(e) => setNewModule({ ...newModule, name: e.target.value })}
-                                            placeholder="e.g. React Deep Dive"
-                                            className="w-full p-4 text-lg bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
-                                        />
+        {/* --- GENERAL / CAREER BUILDER TAB --- */}
+        {activeTab === 'general' && (
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                <div className="xl:col-span-4 space-y-6">
+                    {/* Identity */}
+                    <Card className="p-5">
+                        <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
+                            <Globe className="w-4 h-4 text-slate-400" /> Identity
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Company Name</label>
+                                <input
+                                    value={companyName}
+                                    onChange={(e) => setCompanyName(e.target.value)}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Domain</label>
+                                <div className="flex">
+                                    <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-sm">
+                                        careers.
+                                    </span>
+                                    <input
+                                        value={domain}
+                                        onChange={(e) => setDomain(e.target.value)}
+                                        className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-r-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                    />
+                                </div>
+                                <div className="mt-3 p-3 bg-slate-100 rounded-lg flex justify-between items-center text-xs">
+                                    <div className="truncate text-slate-500">
+                                        <span className="font-bold text-slate-700">Public Link:</span> {window.location.origin}/#/career/{auth.currentUser?.uid}
                                     </div>
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(`${window.location.origin}/#/career/${auth.currentUser?.uid}`)}
+                                        className="text-brand-600 font-bold hover:underline ml-2 flex-shrink-0"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
 
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">Type</label>
-                                            <select
-                                                value={newModule.type}
-                                                onChange={(e) => setNewModule({ ...newModule, type: e.target.value as AssessmentType })}
-                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                                            >
-                                                <option value="QuestionBank">Question Bank</option>
-                                                <option value="CodingChallenge">Coding Challenge</option>
-                                                <option value="SystemDesign">System Design</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">Difficulty</label>
-                                            <div className="flex bg-slate-100 p-1 rounded-lg">
-                                                {['Junior', 'Mid', 'Senior', 'Expert'].map((l) => (
-                                                    <button
-                                                        key={l}
-                                                        onClick={() => setNewModule({ ...newModule, difficulty: l as any })}
-                                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${newModule.difficulty === l ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                                    >
-                                                        {l}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Tags (Press Enter)</label>
-                                        <div className="flex flex-wrap gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg focus-within:ring-2 focus-within:ring-brand-500">
-                                            {newModule.tags?.map(tag => (
-                                                <span key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-600 flex items-center gap-1">
-                                                    {tag} <button onClick={() => setNewModule(prev => ({ ...prev, tags: prev.tags?.filter(t => t !== tag) }))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
-                                                </span>
-                                            ))}
-                                            <input
-                                                value={tagInput}
-                                                onChange={(e) => setTagInput(e.target.value)}
-                                                onKeyDown={addTag}
-                                                placeholder="Add tags..."
-                                                className="flex-1 bg-transparent outline-none text-sm p-1"
+                    {/* Visual Style */}
+                    <Card className="p-5">
+                        <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
+                            <Palette className="w-4 h-4 text-slate-400" /> Visual Style
+                        </div>
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Brand Color</label>
+                                <div className="flex gap-3">
+                                    <input
+                                        type="color"
+                                        value={brandColor}
+                                        onChange={(e) => setBrandColor(e.target.value)}
+                                        className="w-10 h-10 p-1 rounded-lg cursor-pointer border border-slate-200"
+                                    />
+                                    <div className="flex-1 flex gap-2">
+                                        {['#16a34a', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0f172a'].map(c => (
+                                            <button
+                                                key={c}
+                                                onClick={() => setBrandColor(c)}
+                                                className={`w-10 h-10 rounded-lg border-2 transition-all ${brandColor === c ? 'border-slate-400 scale-110' : 'border-transparent hover:scale-105'}`}
+                                                style={{ backgroundColor: c }}
                                             />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
-                                        <textarea
-                                            value={newModule.description}
-                                            onChange={(e) => setNewModule({ ...newModule, description: e.target.value })}
-                                            placeholder="Briefly describe what this module assesses..."
-                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
-                                        />
+                                        ))}
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Step 2: Content Configuration */}
-                            {moduleStep === 2 && (
-                                <div className="max-w-4xl mx-auto animate-fade-in">
-                                    {newModule.type === 'QuestionBank' && (
-                                        <div className="space-y-6">
-                                            <div className="flex justify-center mb-6">
-                                                <div className="bg-slate-100 p-1 rounded-lg inline-flex">
-                                                    <button
-                                                        onClick={() => setNewModule({ ...newModule, sourceMode: 'manual' })}
-                                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${newModule.sourceMode === 'manual' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
-                                                    >
-                                                        Manual Entry
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setNewModule({ ...newModule, sourceMode: 'knowledgeBase' })}
-                                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${newModule.sourceMode === 'knowledgeBase' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-                                                    >
-                                                        <BrainCircuit className="w-4 h-4" /> AI Generator
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {newModule.sourceMode === 'manual' ? (
-                                                <div className="space-y-6">
-                                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
-                                                        <div>
-                                                            <input
-                                                                value={currentQuestion.text}
-                                                                onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
-                                                                placeholder="Enter question text..."
-                                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-medium"
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <textarea
-                                                                value={currentQuestion.criteria}
-                                                                onChange={(e) => setCurrentQuestion({ ...currentQuestion, criteria: e.target.value })}
-                                                                placeholder="Evaluation criteria for AI (what makes a good answer?)"
-                                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm h-20 resize-none"
-                                                            />
-                                                        </div>
-                                                        <button onClick={handleAddQuestion} disabled={!currentQuestion.text} className="w-full py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 disabled:opacity-50">
-                                                            Add Question
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Questions ({newModule.questions?.length || 0})</h4>
-                                                        {newModule.questions?.map((q, i) => (
-                                                            <div key={q.id} className="p-4 bg-white border border-slate-200 rounded-lg flex gap-4">
-                                                                <span className="font-bold text-slate-300">{i + 1}</span>
-                                                                <div className="flex-1">
-                                                                    <p className="font-medium text-slate-900">{q.text}</p>
-                                                                    <p className="text-xs text-slate-500 mt-1">{q.aiEvaluationCriteria}</p>
-                                                                </div>
-                                                                <button onClick={() => setNewModule(prev => ({ ...prev, questions: prev.questions?.filter(qi => qi.id !== q.id) }))} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                                                            </div>
-                                                        ))}
-                                                        {(!newModule.questions || newModule.questions.length === 0) && (
-                                                            <div className="text-center py-8 text-slate-400 italic">No questions added yet.</div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-6">
-                                                    <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
-                                                        <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2"><BookOpen className="w-5 h-5" /> Knowledge Base Source</h4>
-                                                        <p className="text-sm text-indigo-700 mb-4">Paste text content (e.g. documentation, handbook) and Lumina will dynamically generate relevant questions during the interview.</p>
-                                                        <textarea
-                                                            value={newModule.knowledgeBase?.content}
-                                                            onChange={(e) => setNewModule({ ...newModule, knowledgeBase: { ...newModule.knowledgeBase, content: e.target.value } })}
-                                                            placeholder="Paste content here..."
-                                                            className="w-full p-4 bg-white border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-40 font-mono text-sm"
-                                                        />
-                                                        <div className="flex justify-end mt-4">
-                                                            <button onClick={generateKbPreview} disabled={!newModule.knowledgeBase?.content || isGeneratingPreview} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
-                                                                {isGeneratingPreview ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                                                                Generate Preview
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {kbPreviewQuestions.length > 0 && (
-                                                        <div className="space-y-3">
-                                                            <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Preview: Potential Questions</h4>
-                                                            {kbPreviewQuestions.map((q, i) => (
-                                                                <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 flex gap-3">
-                                                                    <span className="text-indigo-500 font-bold">Q{i + 1}</span>
-                                                                    {q}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {newModule.type === 'CodingChallenge' && (
-                                        <div className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-2">Language</label>
-                                                    <select
-                                                        value={newModule.codingConfig?.language}
-                                                        onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, language: e.target.value as any } })}
-                                                        className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                                                    >
-                                                        <option value="javascript">JavaScript</option>
-                                                        <option value="python">Python</option>
-                                                        <option value="go">Go</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Problem Statement</label>
-                                                <textarea
-                                                    value={newModule.codingConfig?.problemStatement}
-                                                    onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, problemStatement: e.target.value } })}
-                                                    className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-32"
-                                                    placeholder="Describe the coding task..."
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Starter Code</label>
-                                                <textarea
-                                                    value={newModule.codingConfig?.starterCode}
-                                                    onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, starterCode: e.target.value } })}
-                                                    className="w-full p-4 bg-slate-900 text-green-400 font-mono text-sm rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-48"
-                                                    placeholder="// Start typing code here..."
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {newModule.type === 'SystemDesign' && (
-                                        <div className="space-y-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Scenario</label>
-                                                <textarea
-                                                    value={newModule.caseStudyConfig?.scenario}
-                                                    onChange={(e) => setNewModule({ ...newModule, caseStudyConfig: { ...newModule.caseStudyConfig!, scenario: e.target.value } })}
-                                                    className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-40"
-                                                    placeholder="Describe the system to be designed (e.g. Design a URL shortener)..."
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Typography</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {['sans', 'serif', 'mono'].map((font) => (
+                                        <button
+                                            key={font}
+                                            onClick={() => setFontStyle(font as any)}
+                                            className={`p-2 border rounded-lg text-sm capitalize ${fontStyle === font ? 'border-brand-500 bg-brand-50 text-brand-700 font-bold ring-1 ring-brand-500' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                        >
+                                            {font}
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Step 3: Review */}
-                            {moduleStep === 3 && (
-                                <div className="max-w-2xl mx-auto text-center animate-fade-in">
-                                    <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <CheckCircle className="w-10 h-10" />
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
-                                    <p className="text-slate-500 mb-8">Review the details below before adding to the library.</p>
-
-                                    <div className="bg-slate-50 rounded-xl p-6 text-left border border-slate-200 space-y-4">
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Name</span>
-                                            <span className="font-bold text-slate-900">{newModule.name}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Type</span>
-                                            <span className="font-bold text-slate-900">{newModule.type}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Duration</span>
-                                            <span className="font-bold text-slate-900">{newModule.estimatedDuration} mins</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Items</span>
-                                            <span className="font-bold text-slate-900">
-                                                {newModule.type === 'QuestionBank'
-                                                    ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic (AI)' : `${newModule.questions?.length} Fixed`)
-                                                    : '1 Scenario'}
-                                            </span>
-                                        </div>
-                                    </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Corner Radius</label>
+                                <div className="flex bg-slate-100 p-1 rounded-lg">
+                                    {['sharp', 'soft', 'round'].map((s) => (
+                                        <button
+                                            key={s}
+                                            onClick={() => setCornerStyle(s as any)}
+                                            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all capitalize ${cornerStyle === s ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
                         </div>
+                    </Card>
 
-                        {/* Footer */}
-                        <div className="px-8 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
+                    {/* Hero Content */}
+                    <Card className="p-5">
+                        <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
+                            <ImageIcon className="w-4 h-4 text-slate-400" /> Hero Section
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Headline</label>
+                                <input
+                                    value={heroHeadline}
+                                    onChange={(e) => setHeroHeadline(e.target.value)}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Sub-headline</label>
+                                <textarea
+                                    value={heroSubhead}
+                                    onChange={(e) => setHeroSubhead(e.target.value)}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium h-24 resize-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Background Style</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {['gradient', 'minimal'].map((style) => (
+                                        <button
+                                            key={style}
+                                            onClick={() => setCoverStyle(style as any)}
+                                            className={`p-3 border rounded-lg text-xs font-medium text-center transition-all capitalize ${coverStyle === style ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-600'}`}
+                                        >
+                                            {style}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* LIVE PREVIEW (Right) */}
+                <div className="xl:col-span-8 sticky top-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                            <Monitor className="w-4 h-4" /> Live Preview
+                        </h2>
+                        <div className="flex bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
                             <button
-                                onClick={() => moduleStep > 1 ? setModuleStep(moduleStep - 1) : setShowCreateModule(false)}
-                                className="px-6 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                                onClick={() => setPreviewMode('desktop')}
+                                className={`p-2 rounded-md transition-all ${previewMode === 'desktop' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                {moduleStep > 1 ? 'Back' : 'Cancel'}
+                                <Monitor className="w-4 h-4" />
                             </button>
                             <button
-                                onClick={() => moduleStep < 3 ? setModuleStep(moduleStep + 1) : handlePublishModule()}
-                                className="px-8 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                                onClick={() => setPreviewMode('mobile')}
+                                className={`p-2 rounded-md transition-all ${previewMode === 'mobile' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                {moduleStep === 3 ? 'Publish Module' : 'Continue'}
+                                <Smartphone className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* --- INVITE MODAL --- */}
-            {showInviteModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
-                            <button
-                                onClick={() => setShowInviteModal(false)}
-                                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                    {/* BROWSER MOCKUP */}
+                    <div className={`transition-all duration-500 mx-auto ${previewMode === 'mobile' ? 'max-w-[375px]' : 'w-full'}`}>
+                        <div className={`bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col ${getRadius('lg')} ring-1 ring-black/5`}>
+
+                            {/* Browser Toolbar */}
+                            <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center gap-4">
+                                <div className="flex gap-1.5">
+                                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                                </div>
+                                <div className="flex-1 bg-white border border-slate-200 rounded-md px-3 py-1 text-xs text-slate-400 flex items-center justify-center font-mono">
+                                    <Shield className="w-3 h-3 mr-1.5" />
+                                    https://careers.{domain}
+                                </div>
+                            </div>
+
+                            {/* WEBSITE CONTENT */}
+                            <div className={`h-[600px] overflow-y-auto bg-white ${getFontFamily()}`}>
+
+                                {/* Header */}
+                                <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur z-10 border-b border-transparent">
+                                    <div className="font-bold text-xl tracking-tight text-slate-900 flex items-center gap-2">
+                                        <div className={`w-8 h-8 ${getRadius('sm')} flex items-center justify-center text-white font-bold`} style={{ backgroundColor: brandColor }}>
+                                            {companyName.charAt(0)}
+                                        </div>
+                                        {companyName}
+                                    </div>
+                                    <div className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
+                                        <span className="cursor-pointer hover:text-slate-900">About</span>
+                                        <span className="cursor-pointer hover:text-slate-900">Team</span>
+                                        <span className="cursor-pointer hover:text-slate-900">Benefits</span>
+                                    </div>
+                                </div>
+
+                                {/* Hero */}
+                                <div
+                                    className={`px-8 py-20 text-center relative overflow-hidden`}
+                                    style={{
+                                        background: coverStyle === 'gradient'
+                                            ? `linear-gradient(135deg, ${brandColor}15 0%, #ffffff 100%)`
+                                            : '#ffffff'
+                                    }}
+                                >
+                                    <div className="max-w-2xl mx-auto relative z-10">
+                                        <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+                                            {heroHeadline}
+                                        </h1>
+                                        <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
+                                            {heroSubhead}
+                                        </p>
+                                        <button
+                                            className={`px-8 py-4 text-white font-bold text-lg transition-transform hover:scale-105 shadow-xl shadow-brand-500/20 ${getRadius('full')}`}
+                                            style={{ backgroundColor: brandColor }}
+                                        >
+                                            View Open Roles
+                                        </button>
+                                    </div>
+
+                                    {/* Decorative Blobs */}
+                                    {coverStyle === 'gradient' && (
+                                        <>
+                                            <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-40 blur-3xl rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                                            <div className="absolute bottom-0 right-0 w-64 h-64 mix-blend-multiply opacity-10 blur-3xl rounded-full transform translate-x-1/2 translate-y-1/2" style={{ backgroundColor: brandColor }}></div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Open Roles */}
+                                <div className="max-w-4xl mx-auto px-6 py-16">
+                                    <div className="text-center mb-12">
+                                        <h2 className="text-2xl font-bold text-slate-900">Open Positions</h2>
+                                        <p className="text-slate-500 mt-2">Come do the best work of your career.</p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {[
+                                            { title: 'Senior React Engineer', dept: 'Engineering', loc: 'Remote' },
+                                            { title: 'Product Designer', dept: 'Design', loc: 'New York' },
+                                            { title: 'Marketing Manager', dept: 'Growth', loc: 'London' }
+                                        ].map((job, i) => (
+                                            <div key={i} className={`group border border-slate-200 p-6 flex items-center justify-between hover:border-slate-300 hover:shadow-lg transition-all cursor-pointer bg-white ${getRadius('lg')}`}>
+                                                <div>
+                                                    <h3 className="font-bold text-lg text-slate-900 group-hover:text-brand-600 transition-colors" style={{ color: 'inherit' }}>
+                                                        {job.title}
+                                                    </h3>
+                                                    <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                                                        <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> {job.dept}</span>
+                                                        <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {job.loc}</span>
+                                                    </div>
+                                                </div>
+                                                <div className={`p-2 ${getRadius('full')} bg-slate-50 group-hover:bg-brand-50 transition-colors`}>
+                                                    <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-brand-600" style={{ color: 'inherit' }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* --- INTEGRATIONS TAB --- */}
+        {activeTab === 'integrations' && (
+            <div className="space-y-6">
+                <Card className="p-6">
+                    <div className="flex gap-4 mb-6">
+                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                            <Video className="w-6 h-6 text-indigo-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">Meeting Connectivity</h2>
+                            <p className="text-slate-500 text-sm mt-1">Connect your calendar accounts to automatically generate interview links.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* Google Meet */}
+                        <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-white">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
+                                    <Globe className="w-5 h-5 text-red-500" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-slate-900 text-sm">Google Workspace</h3>
+                                        {googleConnected && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200">Connected</span>}
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-0.5">Google Meet, Calendar & Gmail API (OAuth 2.0)</p>
+                                </div>
+                            </div>
+                            {googleConnected ? (
+                                <button onClick={() => handleDisconnect('google')} className="text-sm text-red-600 font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
+                                    Disconnect
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleConnectGoogle}
+                                    disabled={isConnectingGoogle}
+                                    className="text-sm bg-white border border-slate-200 text-slate-900 font-medium px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+                                >
+                                    {isConnectingGoogle ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                                    Connect Account
+                                </button>
+                            )}
                         </div>
 
-                        <form onSubmit={handleSendInvite} className="p-6 space-y-5">
+                        {/* Microsoft Teams */}
+                        <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-white">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
+                                    <div className="text-blue-600 font-black text-sm">T</div>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-slate-900 text-sm">Microsoft 365 (Teams & Outlook)</h3>
+                                        {microsoftConnected && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200">Connected</span>}
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-0.5">Outlook Calendar, Mail & Teams API (Graph OAuth 2.0)</p>
+                                </div>
+                            </div>
+                            {microsoftConnected ? (
+                                <button onClick={() => handleDisconnect('microsoft')} className="text-sm text-red-600 font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
+                                    Disconnect
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleConnectMicrosoft}
+                                    disabled={isConnectingMicrosoft}
+                                    className="text-sm bg-white border border-slate-200 text-slate-900 font-medium px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+                                >
+                                    {isConnectingMicrosoft ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                                    Connect Account
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-6 border-l-4 border-l-emerald-500">
+                    <div className="flex items-start justify-between">
+                        <div className="flex gap-4">
+                            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <span className="font-bold text-emerald-700 text-lg">Sage</span>
+                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    Sage HR Integration
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">Active</span>
+                                </h2>
+                                <p className="text-slate-500 text-sm mt-1">Automatically sync "Hired" candidates and export interview transcripts.</p>
+                            </div>
+                        </div>
+                        <button className="text-sm text-red-600 font-medium hover:underline">Disconnect</button>
+                    </div>
+
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">API Token</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                <input
+                                    type="password"
+                                    value={sageToken}
+                                    onChange={(e) => setSageToken(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-mono text-sm"
+                                />
+                            </div>
+                            <button className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-50">Test</button>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-6">
+                    <div className="flex gap-4 mb-6">
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Code className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">Embeddable Widget</h2>
+                            <p className="text-slate-500 text-sm mt-1">Add your job board to any website (WordPress, Webflow, React) with one line of code.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900 rounded-xl p-4 relative group">
+                        <code className="text-green-400 text-sm font-mono break-all">
+                            &lt;script src="https://cdn.recruite.ai/widget/v2/loader.js" data-company-id="acme-corp-829"&gt;&lt;/script&gt;
+                        </code>
+                        <button className="absolute top-2 right-2 p-2 bg-slate-800 text-slate-400 rounded hover:text-white hover:bg-slate-700 transition-colors" title="Copy Code">
+                            <Copy className="w-4 h-4" />
+                        </button>
+                    </div>
+                </Card>
+            </div>
+        )}
+
+        {/* --- AI PERSONA TAB --- */}
+        {activeTab === 'persona' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Card className="p-6">
+                    <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-brand-600" /> Interview Dynamics
+                    </h2>
+
+                    <div className="space-y-8">
+                        <div>
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-sm font-medium text-slate-700">Stress Level / Difficulty</label>
+                                <span className="text-xs font-bold px-2 py-1 bg-slate-100 rounded text-slate-600">{intensity}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={intensity}
+                                onChange={(e) => setIntensity(parseInt(e.target.value))}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                            />
+                            <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                <span>Casual Chat</span>
+                                <span>Balanced</span>
+                                <span>Technical Grill</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Interviewer Voice</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {['Kore (Neutral)', 'Fenrir (Deep)', 'Puck (Energetic)', 'Aoede (Soft)'].map((voice) => (
+                                    <div key={voice} className={`p-3 border rounded-lg text-sm cursor-pointer transition-all ${voice.includes('Kore') ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium ring-1 ring-brand-500' : 'border-slate-200 hover:border-slate-300'}`}>
+                                        {voice}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-6">
+                    <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-brand-600" /> Compliance & Safety
+                    </h2>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
+                            <div>
+                                <div className="font-medium text-slate-900 text-sm">Bias Masking</div>
+                                <div className="text-xs text-slate-500">Hide names/photos during initial screening</div>
+                            </div>
+                            <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
+                            <div>
+                                <div className="font-medium text-slate-900 text-sm">GDPR Data Retention</div>
+                                <div className="text-xs text-slate-500">Auto-delete video after 90 days</div>
+                            </div>
+                            <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
+                            <div>
+                                <div className="font-medium text-slate-900 text-sm">Transcript Logging</div>
+                                <div className="text-xs text-slate-500">Store text logs for audit trails</div>
+                            </div>
+                            <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+        )}
+
+        {/* --- TEAM TAB --- */}
+        {activeTab === 'team' && (
+            <Card>
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-slate-900">Team Members</h2>
+                    <button
+                        onClick={() => setShowInviteModal(true)}
+                        className="text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+                    >
+                        <Mail className="w-4 h-4" /> Invite Member
+                    </button>
+                </div>
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-medium">
+                        <tr>
+                            <th className="px-6 py-3">User</th>
+                            <th className="px-6 py-3">Role</th>
+                            <th className="px-6 py-3">Status</th>
+                            <th className="px-6 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {/* Current User */}
+                        <tr className="hover:bg-slate-50">
+                            <td className="px-6 py-4">
+                                <div className="font-medium text-slate-900">You</div>
+                                <div className="text-xs text-slate-500">{auth.currentUser?.email}</div>
+                            </td>
+                            <td className="px-6 py-4"><span className="px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-bold">Owner</span></td>
+                            <td className="px-6 py-4 text-emerald-600 font-medium flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div> Active</td>
+                            <td className="px-6 py-4 text-right"></td>
+                        </tr>
+
+                        {/* Invited Members */}
+                        {invitations.map((inv) => (
+                            <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-6 py-4">
+                                    <div className="font-medium text-slate-900">{inv.email.split('@')[0]}</div>
+                                    <div className="text-xs text-slate-500">{inv.email}</div>
+                                </td>
+                                <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs font-bold">{inv.role}</span></td>
+                                <td className="px-6 py-4">
+                                    {inv.status === 'pending' ? (
+                                        <span className="flex items-center gap-1.5 text-amber-600 text-xs font-bold bg-amber-50 px-2 py-1 rounded w-fit">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Pending
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-500">{inv.status}</span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button className="text-slate-400 hover:text-red-500 text-xs font-medium transition-colors">Revoke</button>
+                                </td>
+                            </tr>
+                        ))}
+
+                        {invitations.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="px-6 py-8 text-center text-slate-500 italic">
+                                    No team members invited yet.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </Card>
+        )}
+
+        {/* --- ASSESSMENT LIBRARY TAB --- */}
+        {activeTab === 'library' && (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900">Assessment Library</h2>
+                        <p className="text-slate-500 text-sm mt-1">Create and manage reusable question banks and coding challenges.</p>
+                    </div>
+                    <button
+                        onClick={() => setShowCreateModule(true)}
+                        className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800"
+                    >
+                        <Plus className="w-4 h-4" /> Create Module
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {assessments.map((mod) => (
+                        <Card key={mod.id} className="p-6 hover:border-brand-300 transition-colors group cursor-pointer relative">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mod.type === 'QuestionBank' ? (mod.sourceMode === 'knowledgeBase' ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600') :
+                                    mod.type === 'CodingChallenge' ? 'bg-purple-100 text-purple-600' :
+                                        'bg-orange-100 text-orange-600'
+                                    }`}>
+                                    {mod.type === 'QuestionBank' && (mod.sourceMode === 'knowledgeBase' ? <BrainCircuit className="w-5 h-5" /> : <FileQuestion className="w-5 h-5" />)}
+                                    {mod.type === 'CodingChallenge' && <Terminal className="w-5 h-5" />}
+                                    {mod.type === 'SystemDesign' && <LayoutTemplate className="w-5 h-5" />}
+                                </div>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500"><Edit2 className="w-4 h-4" /></button>
+                                    <button className="p-1.5 hover:bg-red-50 rounded text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+
+                            <h3 className="font-bold text-slate-900 mb-1">{mod.name}</h3>
+                            <p className="text-xs text-slate-500 mb-4 line-clamp-2">{mod.description}</p>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {mod.tags.map(tag => (
+                                    <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase rounded border border-slate-200">
+                                        {tag}
+                                    </span>
+                                ))}
+                                {mod.sourceMode === 'knowledgeBase' && (
+                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase rounded border border-indigo-100 flex items-center gap-1">
+                                        <BrainCircuit className="w-3 h-3" /> AI Driven
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs text-slate-500">
+                                <span className="flex items-center gap-1">
+                                    <Zap className="w-3 h-3 text-brand-500" /> {mod.difficulty}
+                                </span>
+                                <span>{mod.sourceMode === 'knowledgeBase' ? 'Dynamic' : `${mod.itemsCount} Items`} • {mod.estimatedDuration}m</span>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* --- CREATE MODULE MODAL --- */}
+        {showCreateModule && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
+                    {/* Modal Header */}
+                    <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold">
+                                <Plus className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900">Create Assessment Module</h2>
+                                <p className="text-sm text-slate-500">Define knowledge banks and technical challenges.</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setShowCreateModule(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto p-10">
+                        {/* Step 1: General Details */}
+                        {moduleStep === 1 && (
+                            <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Module Name</label>
                                     <input
-                                        type="email"
-                                        required
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                        placeholder="colleague@acme.com"
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                                        value={newModule.name}
+                                        onChange={(e) => setNewModule({ ...newModule, name: e.target.value })}
+                                        placeholder="e.g. React Deep Dive"
+                                        className="w-full p-4 text-lg bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Type</label>
+                                        <select
+                                            value={newModule.type}
+                                            onChange={(e) => setNewModule({ ...newModule, type: e.target.value as AssessmentType })}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                                        >
+                                            <option value="QuestionBank">Question Bank</option>
+                                            <option value="CodingChallenge">Coding Challenge</option>
+                                            <option value="SystemDesign">System Design</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Difficulty</label>
+                                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                                            {['Junior', 'Mid', 'Senior', 'Expert'].map((l) => (
+                                                <button
+                                                    key={l}
+                                                    onClick={() => setNewModule({ ...newModule, difficulty: l as any })}
+                                                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${newModule.difficulty === l ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                                >
+                                                    {l}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Tags (Press Enter)</label>
+                                    <div className="flex flex-wrap gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg focus-within:ring-2 focus-within:ring-brand-500">
+                                        {newModule.tags?.map(tag => (
+                                            <span key={tag} className="px-2 py-1 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-600 flex items-center gap-1">
+                                                {tag} <button onClick={() => setNewModule(prev => ({ ...prev, tags: prev.tags?.filter(t => t !== tag) }))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                                            </span>
+                                        ))}
+                                        <input
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={addTag}
+                                            placeholder="Add tags..."
+                                            className="flex-1 bg-transparent outline-none text-sm p-1"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
+                                    <textarea
+                                        value={newModule.description}
+                                        onChange={(e) => setNewModule({ ...newModule, description: e.target.value })}
+                                        placeholder="Briefly describe what this module assesses..."
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-24 resize-none"
                                     />
                                 </div>
                             </div>
+                        )}
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Role & Permissions</label>
-                                <div className="relative">
-                                    <select
-                                        value={inviteRole}
-                                        onChange={(e) => setInviteRole(e.target.value)}
-                                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none cursor-pointer"
-                                    >
-                                        <option value="Admin">Admin (Full Access)</option>
-                                        <option value="Recruiter">Recruiter (Manage Jobs & Candidates)</option>
-                                        <option value="Viewer">Viewer (Read Only)</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                        {/* Step 2: Content Configuration */}
+                        {moduleStep === 2 && (
+                            <div className="max-w-4xl mx-auto animate-fade-in">
+                                {newModule.type === 'QuestionBank' && (
+                                    <div className="space-y-6">
+                                        <div className="flex justify-center mb-6">
+                                            <div className="bg-slate-100 p-1 rounded-lg inline-flex">
+                                                <button
+                                                    onClick={() => setNewModule({ ...newModule, sourceMode: 'manual' })}
+                                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${newModule.sourceMode === 'manual' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                                                >
+                                                    Manual Entry
+                                                </button>
+                                                <button
+                                                    onClick={() => setNewModule({ ...newModule, sourceMode: 'knowledgeBase' })}
+                                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${newModule.sourceMode === 'knowledgeBase' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                                                >
+                                                    <BrainCircuit className="w-4 h-4" /> AI Generator
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {newModule.sourceMode === 'manual' ? (
+                                            <div className="space-y-6">
+                                                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+                                                    <div>
+                                                        <input
+                                                            value={currentQuestion.text}
+                                                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
+                                                            placeholder="Enter question text..."
+                                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <textarea
+                                                            value={currentQuestion.criteria}
+                                                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, criteria: e.target.value })}
+                                                            placeholder="Evaluation criteria for AI (what makes a good answer?)"
+                                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm h-20 resize-none"
+                                                        />
+                                                    </div>
+                                                    <button onClick={handleAddQuestion} disabled={!currentQuestion.text} className="w-full py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 disabled:opacity-50">
+                                                        Add Question
+                                                    </button>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Questions ({newModule.questions?.length || 0})</h4>
+                                                    {newModule.questions?.map((q, i) => (
+                                                        <div key={q.id} className="p-4 bg-white border border-slate-200 rounded-lg flex gap-4">
+                                                            <span className="font-bold text-slate-300">{i + 1}</span>
+                                                            <div className="flex-1">
+                                                                <p className="font-medium text-slate-900">{q.text}</p>
+                                                                <p className="text-xs text-slate-500 mt-1">{q.aiEvaluationCriteria}</p>
+                                                            </div>
+                                                            <button onClick={() => setNewModule(prev => ({ ...prev, questions: prev.questions?.filter(qi => qi.id !== q.id) }))} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                                        </div>
+                                                    ))}
+                                                    {(!newModule.questions || newModule.questions.length === 0) && (
+                                                        <div className="text-center py-8 text-slate-400 italic">No questions added yet.</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6">
+                                                <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+                                                    <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2"><BookOpen className="w-5 h-5" /> Knowledge Base Source</h4>
+                                                    <p className="text-sm text-indigo-700 mb-4">Paste text content (e.g. documentation, handbook) and Lumina will dynamically generate relevant questions during the interview.</p>
+                                                    <textarea
+                                                        value={newModule.knowledgeBase?.content}
+                                                        onChange={(e) => setNewModule({ ...newModule, knowledgeBase: { ...newModule.knowledgeBase, content: e.target.value } })}
+                                                        placeholder="Paste content here..."
+                                                        className="w-full p-4 bg-white border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-40 font-mono text-sm"
+                                                    />
+                                                    <div className="flex justify-end mt-4">
+                                                        <button onClick={generateKbPreview} disabled={!newModule.knowledgeBase?.content || isGeneratingPreview} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+                                                            {isGeneratingPreview ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                                                            Generate Preview
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {kbPreviewQuestions.length > 0 && (
+                                                    <div className="space-y-3">
+                                                        <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Preview: Potential Questions</h4>
+                                                        {kbPreviewQuestions.map((q, i) => (
+                                                            <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 flex gap-3">
+                                                                <span className="text-indigo-500 font-bold">Q{i + 1}</span>
+                                                                {q}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {newModule.type === 'CodingChallenge' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Language</label>
+                                                <select
+                                                    value={newModule.codingConfig?.language}
+                                                    onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, language: e.target.value as any } })}
+                                                    className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                                                >
+                                                    <option value="javascript">JavaScript</option>
+                                                    <option value="python">Python</option>
+                                                    <option value="go">Go</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Problem Statement</label>
+                                            <textarea
+                                                value={newModule.codingConfig?.problemStatement}
+                                                onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, problemStatement: e.target.value } })}
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-32"
+                                                placeholder="Describe the coding task..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Starter Code</label>
+                                            <textarea
+                                                value={newModule.codingConfig?.starterCode}
+                                                onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, starterCode: e.target.value } })}
+                                                className="w-full p-4 bg-slate-900 text-green-400 font-mono text-sm rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-48"
+                                                placeholder="// Start typing code here..."
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {newModule.type === 'SystemDesign' && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Scenario</label>
+                                            <textarea
+                                                value={newModule.caseStudyConfig?.scenario}
+                                                onChange={(e) => setNewModule({ ...newModule, caseStudyConfig: { ...newModule.caseStudyConfig!, scenario: e.target.value } })}
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-40"
+                                                placeholder="Describe the system to be designed (e.g. Design a URL shortener)..."
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Step 3: Review */}
+                        {moduleStep === 3 && (
+                            <div className="max-w-2xl mx-auto text-center animate-fade-in">
+                                <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <CheckCircle className="w-10 h-10" />
                                 </div>
-                                <p className="text-xs text-slate-500 mt-2">
-                                    {inviteRole === 'Admin' && "Can manage billing, team members, and all settings."}
-                                    {inviteRole === 'Recruiter' && "Can create jobs, invite candidates, and conduct interviews."}
-                                    {inviteRole === 'Viewer' && "Can view job listings and candidate profiles but cannot edit."}
-                                </p>
-                            </div>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
+                                <p className="text-slate-500 mb-8">Review the details below before adding to the library.</p>
 
-                            <div className="pt-2 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowInviteModal(false)}
-                                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isInviting || !inviteEmail}
-                                    className="flex-1 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {isInviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                                    {isInviting ? 'Sending...' : 'Send Invite'}
-                                </button>
+                                <div className="bg-slate-50 rounded-xl p-6 text-left border border-slate-200 space-y-4">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Name</span>
+                                        <span className="font-bold text-slate-900">{newModule.name}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Type</span>
+                                        <span className="font-bold text-slate-900">{newModule.type}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Duration</span>
+                                        <span className="font-bold text-slate-900">{newModule.estimatedDuration} mins</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Items</span>
+                                        <span className="font-bold text-slate-900">
+                                            {newModule.type === 'QuestionBank'
+                                                ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic (AI)' : `${newModule.questions?.length} Fixed`)
+                                                : '1 Scenario'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                        </form>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-8 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
+                        <button
+                            onClick={() => moduleStep > 1 ? setModuleStep(moduleStep - 1) : setShowCreateModule(false)}
+                            className="px-6 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                        >
+                            {moduleStep > 1 ? 'Back' : 'Cancel'}
+                        </button>
+                        <button
+                            onClick={() => moduleStep < 3 ? setModuleStep(moduleStep + 1) : handlePublishModule()}
+                            className="px-8 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                        >
+                            {moduleStep === 3 ? 'Publish Module' : 'Continue'}
+                        </button>
                     </div>
                 </div>
-            )}
-        </div>
-    );
+            </div>
+        )}
+
+        {/* --- INVITE MODAL --- */}
+        {showInviteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
+                    <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
+                        <button
+                            onClick={() => setShowInviteModal(false)}
+                            className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleSendInvite} className="p-6 space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                <input
+                                    type="email"
+                                    required
+                                    value={inviteEmail}
+                                    onChange={(e) => setInviteEmail(e.target.value)}
+                                    placeholder="colleague@acme.com"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Role & Permissions</label>
+                            <div className="relative">
+                                <select
+                                    value={inviteRole}
+                                    onChange={(e) => setInviteRole(e.target.value)}
+                                    className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none cursor-pointer"
+                                >
+                                    <option value="Admin">Admin (Full Access)</option>
+                                    <option value="Recruiter">Recruiter (Manage Jobs & Candidates)</option>
+                                    <option value="Viewer">Viewer (Read Only)</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2">
+                                {inviteRole === 'Admin' && "Can manage billing, team members, and all settings."}
+                                {inviteRole === 'Recruiter' && "Can create jobs, invite candidates, and conduct interviews."}
+                                {inviteRole === 'Viewer' && "Can view job listings and candidate profiles but cannot edit."}
+                            </p>
+                        </div>
+
+                        <div className="pt-2 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowInviteModal(false)}
+                                className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isInviting || !inviteEmail}
+                                className="flex-1 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isInviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                                {isInviting ? 'Sending...' : 'Send Invite'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+    </div>
+);
 };

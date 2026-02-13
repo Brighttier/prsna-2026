@@ -15,6 +15,7 @@ import { OfferPortal } from './pages/OfferPortal';
 import { Login } from './pages/Login';
 import { Landing } from './pages/Landing';
 import { Onboarding } from './pages/Onboarding';
+import { PublicCareerPage } from './pages/PublicCareerPage';
 import { DynamicBranding } from './components/DynamicBranding';
 import { LockdownOverlay } from './components/LockdownOverlay';
 
@@ -24,7 +25,8 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname.includes('/offer') ||
     location.pathname === '/login' ||
     location.pathname === '/' ||
-    location.pathname === '/onboarding';
+    location.pathname === '/onboarding' ||
+    location.pathname.startsWith('/career/');
 
   if (isFullScreen) return <>{children}</>;
 
@@ -59,6 +61,7 @@ export default function App() {
           <Route path="/offer/:token" element={<OfferPortal />} />
           <Route path="/login" element={<Login />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/career/:orgId" element={<PublicCareerPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

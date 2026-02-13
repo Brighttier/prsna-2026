@@ -89,6 +89,7 @@ interface BrandingSettings {
     brandColor: string;
     fontStyle: 'sans' | 'serif' | 'mono';
     cornerStyle: 'sharp' | 'soft' | 'round';
+    domain?: string;
 }
 
 interface AppState {
@@ -127,7 +128,8 @@ const INITIAL_STATE: AppState = {
         companyName: 'Acme Corp',
         brandColor: '#16a34a',
         fontStyle: 'sans',
-        cornerStyle: 'soft'
+        cornerStyle: 'soft',
+        domain: 'acme'
     },
     invitations: []
 };
