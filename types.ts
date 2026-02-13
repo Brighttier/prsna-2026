@@ -86,10 +86,10 @@ export interface Candidate {
   matchReason?: string;
   source?: string; // New: Source of application
   analysis?: {
-    matchScore: number;
-    verdict: string;
-    metrics: any;
-    missingSkills: string[];
+    matchScore?: number;
+    verdict?: string;
+    metrics?: any;
+    missingSkills?: string[];
     sentimentScore?: number; // New
   };
   // New Fields
