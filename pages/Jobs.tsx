@@ -50,6 +50,9 @@ export const Jobs = () => {
          status: JobStatus.OPEN,
          applicants: 0,
          postedDate: 'Just now',
+         salaryMin: parseInt(newJob.salaryMin) || 0,
+         salaryMax: parseInt(newJob.salaryMax) || 0,
+         currency: newJob.currency,
          workflow: {
             screening: newJob.screening,
             technical: newJob.technical
@@ -118,8 +121,8 @@ export const Jobs = () => {
                      key={f}
                      onClick={() => setFilter(f as any)}
                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${filter === f
-                           ? 'bg-slate-900 text-white shadow-md'
-                           : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'
+                        ? 'bg-slate-900 text-white shadow-md'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'
                         }`}
                   >
                      {f}
@@ -166,6 +169,12 @@ export const Jobs = () => {
                               <Clock className="w-4 h-4 text-slate-400" />
                               {job.postedDate}
                            </div>
+                           {job.salaryMin && job.salaryMax && (
+                              <div className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                                 <DollarSign className="w-4 h-4" />
+                                 {job.currency} {job.salaryMin.toLocaleString()} - {job.salaryMax.toLocaleString()}
+                              </div>
+                           )}
                         </div>
                      </div>
 
@@ -324,6 +333,7 @@ export const Jobs = () => {
                                           onChange={e => setNewJob({ ...newJob, currency: e.target.value })}
                                        >
                                           <option value="USD">USD ($)</option>
+                                          <option value="INR">INR (₹)</option>
                                           <option value="EUR">EUR (€)</option>
                                           <option value="GBP">GBP (£)</option>
                                           <option value="CAD">CAD ($)</option>

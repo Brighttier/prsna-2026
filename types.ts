@@ -14,6 +14,9 @@ export interface Job {
   status: JobStatus;
   applicants: number;
   postedDate: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  currency?: string;
   // New: Workflow Configuration
   workflow?: {
     screening?: string; // ID of the screening questionnaire
