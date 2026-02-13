@@ -105,6 +105,24 @@ export interface BrandingSettings {
     coverStyle?: 'gradient' | 'minimal';
 }
 
+export interface Tenant {
+    id: string;
+    name: string;
+    plan: 'Starter' | 'Pro' | 'Enterprise';
+    usersCount: number;
+    apiUsage: 'Low' | 'Medium' | 'High' | 'Critical';
+    status: 'Active' | 'Suspended';
+    spend: number;
+    createdAt: string;
+}
+
+interface PlatformStats {
+    totalRevenue: number;
+    infraOverhead: number;
+    computeCredits: number;
+    netProfit: number;
+}
+
 interface AppState {
     jobs: Job[];
     candidates: ExtendedCandidate[];
@@ -113,6 +131,8 @@ interface AppState {
     branding: BrandingSettings;
     invitations: Invitation[];
     orgId?: string; // Expose orgId for UI
+    tenants: Tenant[];
+    platformStats: PlatformStats;
 }
 
 export interface Invitation {
@@ -158,7 +178,14 @@ const INITIAL_STATE: AppState = {
         coverStyle: 'gradient'
     },
     invitations: [],
-    orgId: undefined
+    orgId: undefined,
+    tenants: [],
+    platformStats: {
+        totalRevenue: 0,
+        infraOverhead: 0,
+        computeCredits: 0,
+        netProfit: 0
+    }
 };
 
 class Store {
@@ -192,14 +219,13 @@ class Store {
                             this.orgId = newOrgId;
                             this.state.orgId = newOrgId; // Update state
                             console.log(`[Store] Organization ID found: ${this.orgId}`);
+
+                            const role = userDoc.data().role;
+                            if (role === 'platform_admin' || role === 'admin') {
+                                this.initPlatformAdminListeners();
+                            }
+
                             this.notifyListeners(); // Validate link update
-                            // Re-init org listeners if org changes
-                            // Note: We might need to clear previous org listeners specifically if we supported switching orgs,
-                            // but for now simplistic approach is fine or we can add a specific cleanup for org listeners.
-                            // Since this is a singleton and top-level listeners are cleared on auth change, 
-                            // we should probably clear *org* listeners before adding new ones if this fires multiple times.
-                            // However, likely it fires once real orgId is written.
-                            // Ideally we keep track of orgUnsubs separately.
                             this.initOrgListeners(this.orgId!);
                         }
                     } else {
@@ -260,6 +286,39 @@ class Store {
             this.notifyListeners();
         });
         this.unsubscribeListeners.push(invitesUnsub);
+    }
+
+    private initPlatformAdminListeners() {
+        console.log("[Store] Initializing Platform Admin Listeners...");
+        const tenantsUnsub = onSnapshot(collection(db, 'organizations'), (snapshot) => {
+            this.state.tenants = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    name: data.name || data.settings?.branding?.companyName || 'Unknown',
+                    plan: data.plan || 'Enterprise',
+                    usersCount: data.usersCount || 5, // Mocking if not present
+                    apiUsage: data.apiUsage || 'Medium',
+                    status: data.status || 'Active',
+                    spend: data.spend || 0,
+                    createdAt: data.createdAt || new Date().toISOString()
+                } as Tenant;
+            });
+
+            // Calculate aggregate stats
+            const stats = this.state.tenants.reduce((acc, tenant) => {
+                acc.totalRevenue += tenant.spend * 1.5; // Example calc
+                acc.infraOverhead += tenant.spend;
+                acc.computeCredits += (tenant.apiUsage === 'High' ? 500000 : 100000);
+                return acc;
+            }, { totalRevenue: 0, infraOverhead: 0, computeCredits: 0, netProfit: 0 });
+
+            stats.netProfit = stats.totalRevenue - stats.infraOverhead;
+            this.state.platformStats = stats;
+
+            this.notifyListeners();
+        });
+        this.unsubscribeListeners.push(tenantsUnsub);
     }
 
     private async seedJobs(orgId: string) {
@@ -484,6 +543,23 @@ class Store {
         if (feature === 'resume' && this.state.settings.killSwitches.resume) return false;
         if (feature === 'interview' && this.state.settings.killSwitches.interview) return false;
         return true;
+    }
+
+    // Platform Admin Actions
+    async updateTenantStatus(tenantId: string, status: 'Active' | 'Suspended') {
+        try {
+            await updateDoc(doc(db, 'organizations', tenantId), { status });
+        } catch (e) {
+            console.error("Error updating tenant status: ", e);
+        }
+    }
+
+    async updateTenantPlan(tenantId: string, plan: string) {
+        try {
+            await updateDoc(doc(db, 'organizations', tenantId), { plan });
+        } catch (e) {
+            console.error("Error updating tenant plan: ", e);
+        }
     }
 }
 

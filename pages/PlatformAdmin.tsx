@@ -20,14 +20,6 @@ const API_USAGE_DATA = [
    { time: '23:59', tokens: 150000, cost: 0.60 },
 ];
 
-const TENANTS = [
-   { id: '1', name: 'Acme Corp', plan: 'Enterprise', users: 12, apiUsage: 'High', status: 'Active', spend: '$450.00' },
-   { id: '2', name: 'TechFlow Inc', plan: 'Pro', users: 5, apiUsage: 'Medium', status: 'Active', spend: '$120.00' },
-   { id: '3', name: 'StartUp Hustle', plan: 'Starter', users: 2, apiUsage: 'Low', status: 'Suspended', spend: '$25.00' },
-   { id: '4', name: 'Global Logistics', plan: 'Enterprise', users: 45, apiUsage: 'Critical', status: 'Active', spend: '$1,200.00' },
-   { id: '5', name: 'Designify', plan: 'Pro', users: 8, apiUsage: 'Medium', status: 'Active', spend: '$145.00' },
-];
-
 const SERVICE_STATUS = [
    { name: 'Resume Parser (Gemini 2.0 Flash)', status: 'Operational', latency: '450ms', errorRate: '0.01%' },
    { name: 'Lumina Live (Gemini Live API)', status: 'High Load', latency: '120ms', errorRate: '0.5%' },
@@ -38,17 +30,22 @@ const SERVICE_STATUS = [
 export const PlatformAdmin = () => {
    // State for Kill Switches synced with Store
    const [killSwitches, setKillSwitches] = useState(store.getState().settings.killSwitches);
+   const [tenants, setTenants] = useState(store.getState().tenants);
+   const [platformStats, setPlatformStats] = useState(store.getState().platformStats);
    const [activeTab, setActiveTab] = useState<'emergency' | 'integrations' | 'analytics' | 'tenants'>('emergency');
    const [currentPage, setCurrentPage] = useState(1);
    const itemsPerPage = 5;
-   const [selectedTenant, setSelectedTenant] = useState<typeof TENANTS[0] | null>(null);
+   const [selectedTenant, setSelectedTenant] = useState<any | null>(null);
    const [showTenantModal, setShowTenantModal] = useState(false);
    const [expandedSection, setExpandedSection] = useState<'limits' | 'billing' | null>(null);
 
    useEffect(() => {
-      return store.subscribe(() => {
+      const unsub = store.subscribe(() => {
          setKillSwitches(store.getState().settings.killSwitches);
+         setTenants(store.getState().tenants);
+         setPlatformStats(store.getState().platformStats);
       });
+      return unsub;
    }, []);
 
    const toggleKillSwitch = (key: 'global' | 'resume' | 'interview') => {
@@ -63,18 +60,24 @@ export const PlatformAdmin = () => {
    ];
 
    // Pagination logic for tenants
-   const totalPages = Math.ceil(TENANTS.length / itemsPerPage);
+   const totalPages = Math.ceil(tenants.length / itemsPerPage);
    const startIndex = (currentPage - 1) * itemsPerPage;
    const endIndex = startIndex + itemsPerPage;
-   const paginatedTenants = TENANTS.slice(startIndex, endIndex);
+   const paginatedTenants = tenants.slice(startIndex, endIndex);
 
    const goToPage = (page: number) => {
       setCurrentPage(Math.max(1, Math.min(page, totalPages)));
    };
 
-   const handleManageTenant = (tenant: typeof TENANTS[0]) => {
+   const handleManageTenant = (tenant: any) => {
       setSelectedTenant(tenant);
       setShowTenantModal(true);
+   };
+
+   const handleToggleStatus = async (tenantId: string, currentStatus: string) => {
+      const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
+      await store.updateTenantStatus(tenantId, newStatus);
+      // Wait for store to update via sub
    };
 
    return (
@@ -356,7 +359,7 @@ export const PlatformAdmin = () => {
                            <p className="text-sm text-slate-500">Real-time usage across all tenants (Last 24h).</p>
                         </div>
                         <div className="text-right">
-                           <div className="text-2xl font-bold text-slate-900">2.4M</div>
+                           <div className="text-2xl font-bold text-slate-900">{(platformStats.computeCredits / 1000000).toFixed(1)}M</div>
                            <div className="text-xs text-emerald-600 font-medium">+12% vs yesterday</div>
                         </div>
                      </div>
@@ -392,9 +395,9 @@ export const PlatformAdmin = () => {
                            <p className="text-slate-400 text-sm">Estimated Google Cloud spend</p>
                         </div>
                      </div>
-                     <div className="text-4xl font-bold mb-2">$1,245.80</div>
+                     <div className="text-4xl font-bold mb-2">${platformStats.infraOverhead.toLocaleString()}</div>
                      <div className="w-full bg-white/10 rounded-full h-2 mb-2">
-                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: '65%' }}></div>
+                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, (platformStats.infraOverhead / 2000) * 100)}%` }}></div>
                      </div>
                      <div className="flex justify-between text-xs text-slate-400">
                         <span>Current</span>
@@ -460,7 +463,7 @@ export const PlatformAdmin = () => {
                                     {tenant.plan}
                                  </span>
                               </td>
-                              <td className="px-6 py-4 text-slate-600">{tenant.users}</td>
+                              <td className="px-6 py-4 text-slate-600">{tenant.usersCount}</td>
                               <td className="px-6 py-4">
                                  <span className={`flex items-center gap-1.5 ${tenant.apiUsage === 'Critical' ? 'text-red-600 font-bold' :
                                     tenant.apiUsage === 'High' ? 'text-orange-600 font-medium' : 'text-slate-600'
@@ -469,7 +472,7 @@ export const PlatformAdmin = () => {
                                     {tenant.apiUsage}
                                  </span>
                               </td>
-                              <td className="px-6 py-4 font-mono text-slate-600">{tenant.spend}</td>
+                              <td className="px-6 py-4 font-mono text-slate-600">${tenant.spend.toLocaleString()}</td>
                               <td className="px-6 py-4">
                                  {tenant.status === 'Active' ? (
                                     <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
@@ -498,7 +501,7 @@ export const PlatformAdmin = () => {
                {/* Pagination Controls */}
                <div className="p-4 border-t border-slate-100 flex items-center justify-between">
                   <div className="text-sm text-slate-500">
-                     Showing {startIndex + 1} to {Math.min(endIndex, TENANTS.length)} of {TENANTS.length} tenants
+                     Showing {startIndex + 1} to {Math.min(endIndex, tenants.length)} of {tenants.length} tenants
                   </div>
                   <div className="flex items-center gap-2">
                      <button
@@ -560,7 +563,7 @@ export const PlatformAdmin = () => {
                         </div>
                         <div>
                            <label className="text-xs font-bold text-slate-400 uppercase">Users</label>
-                           <p className="text-lg font-bold text-slate-900 mt-1">{selectedTenant.users}</p>
+                           <p className="text-lg font-bold text-slate-900 mt-1">{selectedTenant.usersCount}</p>
                         </div>
                         <div>
                            <label className="text-xs font-bold text-slate-400 uppercase">API Usage</label>
@@ -568,7 +571,7 @@ export const PlatformAdmin = () => {
                         </div>
                         <div>
                            <label className="text-xs font-bold text-slate-400 uppercase">Monthly Spend</label>
-                           <p className="text-lg font-bold text-slate-900 mt-1">{selectedTenant.spend}</p>
+                           <p className="text-lg font-bold text-slate-900 mt-1">${selectedTenant.spend.toLocaleString()}</p>
                         </div>
                      </div>
 
@@ -580,10 +583,12 @@ export const PlatformAdmin = () => {
                               {selectedTenant.status}
                            </p>
                         </div>
-                        <button className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${selectedTenant.status === 'Active'
-                           ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                           : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                           }`}>
+                        <button
+                           onClick={() => handleToggleStatus(selectedTenant.id, selectedTenant.status)}
+                           className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${selectedTenant.status === 'Active'
+                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                              : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                              }`}>
                            {selectedTenant.status === 'Active' ? 'Suspend Account' : 'Activate Account'}
                         </button>
                      </div>
@@ -624,7 +629,7 @@ export const PlatformAdmin = () => {
                                     <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Max Concurrent Users</label>
                                     <input
                                        type="number"
-                                       defaultValue={selectedTenant?.users || 10}
+                                       defaultValue={selectedTenant?.usersCount || 10}
                                        className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                                     />
                                  </div>
@@ -662,7 +667,7 @@ export const PlatformAdmin = () => {
                                           <tr>
                                              <td className="px-3 py-2 text-slate-600">Jan 2026</td>
                                              <td className="px-3 py-2 text-slate-900">API Usage - {selectedTenant?.plan}</td>
-                                             <td className="px-3 py-2 text-right font-mono font-bold text-slate-900">{selectedTenant?.spend}</td>
+                                             <td className="px-3 py-2 text-right font-mono font-bold text-slate-900">${selectedTenant?.spend.toLocaleString()}</td>
                                           </tr>
                                           <tr>
                                              <td className="px-3 py-2 text-slate-600">Dec 2025</td>
