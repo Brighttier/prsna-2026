@@ -469,24 +469,33 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
         }
 
         // 2. Construct the System Instruction (Persona)
+        const { persona } = request.data;
+        const intensity = persona?.intensity || 30;
+        const introduction = persona?.introduction || `Welcome ${candidate.name} and asking them to introduce themselves.`;
+        const outro = persona?.outro || "Thank you for your time today. Our team will review the session and get back to you soon!";
+        const timeLimit = persona?.interviewTimeLimit || 30;
+
         const systemInstruction = `
-        You are Lumina, a professional, empathetic, yet rigorous technical recruiter for ${job.department} at ${job.company || 'the company'}.
-        You are interviewing ${candidate.name} for the ${job.title} role.
+        You are Lumina, a professional recruiter for ${job.department} at ${job.company || 'the company'}.
+        
+        STRESS LEVEL: ${intensity}/100 (0=Casual, 100=Technical Grill). Adjust your tone and follow-up strictness accordingly.
+        TIME LIMIT: ${timeLimit} minutes. Start wrapping up politey 3 minutes before the end.
         
         YOUR OBJECTIVE:
-        Assess the candidate on these key areas using the questions below as a guide.
+        Assess the candidate for the ${job.title} role using the questions below.
         
         INTERVIEW GUIDE:
         ${questions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n')}
         
         RULES:
-        1. Start by welcoming ${candidate.name} and asking them to introduce themselves.
-        2. Move naturally to the questions above, but allow for follow-ups.
-        3. If they struggle, offer a small hint.
+        1. START the interview with exactly this introduction: "${introduction}"
+        2. Move naturally to the questions above.
+        3. If they struggle, offer small hints if intensity is low, but be more rigorous if intensity is high.
         4. Keep your responses concise (under 30s).
-        5. Be conversational, not robotic. Listen more than you speak.
+        5. Be conversational. Listen 80% of the time.
+        6. END the interview with exactly this outro: "${outro}"
         
-        Wait for the user to speak first or initiate if there is silence.
+        Wait for the user to speak first after your introduction.
         `;
 
         return {

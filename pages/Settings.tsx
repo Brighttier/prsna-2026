@@ -142,6 +142,9 @@ export const Settings = () => {
     const [voice, setVoice] = useState(persona?.voice || 'Kore (Neutral)');
     const [autoReportThreshold, setAutoReportThreshold] = useState(persona?.autoReportThreshold ?? 80);
     const [autoReportEnabled, setAutoReportEnabled] = useState(persona?.autoReportEnabled ?? true);
+    const [introduction, setIntroduction] = useState(persona?.introduction || 'Hello! I am Lumina, your AI interviewer today. I am excited to learn more about your experience and skills.');
+    const [outro, setOutro] = useState(persona?.outro || 'Thank you for your time today. Our team will review the session and get back to you soon!');
+    const [interviewTimeLimit, setInterviewTimeLimit] = useState(persona?.interviewTimeLimit || 30);
 
     useEffect(() => {
         if (persona) {
@@ -149,6 +152,9 @@ export const Settings = () => {
             setVoice(persona.voice);
             setAutoReportThreshold(persona.autoReportThreshold ?? 80);
             setAutoReportEnabled(persona.autoReportEnabled ?? true);
+            setIntroduction(persona.introduction || '');
+            setOutro(persona.outro || '');
+            setInterviewTimeLimit(persona.interviewTimeLimit || 30);
         }
     }, [persona]);
 
@@ -216,7 +222,10 @@ export const Settings = () => {
             intensity,
             voice,
             autoReportThreshold,
-            autoReportEnabled
+            autoReportEnabled,
+            introduction,
+            outro,
+            interviewTimeLimit
         });
         setTimeout(() => {
             setLoading(false);
@@ -922,7 +931,100 @@ export const Settings = () => {
                         </div>
                     </Card>
 
-                    {/* Auto-Report Threshold Card (Spans full width on md) */}
+                    {/* Lumina Scripting Card */}
+                    <Card className="col-span-1 md:col-span-2 p-6 border-l-4 border-l-brand-500">
+                        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-brand-600" /> Lumina Interview Scripting
+                        </h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Opening Introduction</label>
+                                    <textarea
+                                        value={introduction}
+                                        onChange={(e) => setIntroduction(e.target.value)}
+                                        placeholder="Enter how Lumina should introduce the interview..."
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm h-32 resize-none leading-relaxed"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wider">Greeting & Context Setting</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Closing Outro</label>
+                                    <textarea
+                                        value={outro}
+                                        onChange={(e) => setOutro(e.target.value)}
+                                        placeholder="Enter how Lumina should end the interview..."
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm h-32 resize-none leading-relaxed"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wider">Wrap-up & Next Steps</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 bg-brand-100 text-brand-600 rounded-lg flex items-center justify-center">
+                                                <Monitor className="w-4 h-4" />
+                                            </div>
+                                            <label className="text-sm font-bold text-slate-900">Session Guardrails</label>
+                                        </div>
+                                        <span className="text-xs font-bold px-2 py-1 bg-white border border-slate-200 rounded text-brand-600 shadow-sm">{interviewTimeLimit} min</span>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <div className="flex justify-between text-xs font-medium text-slate-500 mb-2">
+                                                <span>Interview Time Limit</span>
+                                                <span>{interviewTimeLimit} minutes</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="10"
+                                                max="90"
+                                                step="5"
+                                                value={interviewTimeLimit}
+                                                onChange={(e) => setInterviewTimeLimit(parseInt(e.target.value))}
+                                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                                            />
+                                            <div className="flex justify-between text-[10px] text-slate-400 mt-2">
+                                                <span>10m (Quick)</span>
+                                                <span>30m (Standard)</span>
+                                                <span>90m (Deep Dive)</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 bg-white rounded-xl border border-slate-100 mt-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                                                    <AlertCircle className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">Hard Limit Warning</p>
+                                                    <p className="text-[10px] text-slate-500 leading-tight mt-0.5">Lumina will politely start wrapping up the conversation 3 minutes before this limit is reached.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-brand-600 text-white p-6 rounded-2xl shadow-xl shadow-brand-600/20 relative overflow-hidden">
+                                    <div className="relative z-10">
+                                        <h4 className="font-bold mb-2">Persona Pro-Tip</h4>
+                                        <p className="text-xs text-brand-50 mb-4 leading-relaxed opacity-90">
+                                            Lumina's voice and intensity work in tandem with these scripts. A "Soft" voice with a friendly introduction creates a welcoming onboarding vibe, while "Technical Grill" with a direct script is best for high-stakes screening.
+                                        </p>
+                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest bg-white/20 w-fit px-3 py-1 rounded-full">
+                                            <Zap className="w-3 h-3" /> Optimize Reach
+                                        </div>
+                                    </div>
+                                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
                     <Card className="col-span-1 md:col-span-2 p-6 border-l-4 border-l-purple-500">
                         <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                             <FileText className="w-5 h-5 text-purple-600" /> Automated Analysis Reporting

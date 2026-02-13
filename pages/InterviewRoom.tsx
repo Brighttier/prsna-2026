@@ -60,9 +60,10 @@ export const InterviewRoom = () => {
    useEffect(() => {
       if (candidate) {
          import('../services/ai').then(({ startInterviewSession }) => {
+            const persona = store.getState().settings.persona;
             // Mock job for now, or fetch if available
             const mockJob = { title: candidate.role, department: 'Engineering', company: 'RenovateMySite' };
-            startInterviewSession(candidate, mockJob as any).then(data => {
+            startInterviewSession(candidate, mockJob as any, persona).then(data => {
                setSystemInstruction(data.systemInstruction);
             }).catch(err => console.error("Failed to init Lumina session:", err));
          });

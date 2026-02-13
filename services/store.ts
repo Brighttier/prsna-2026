@@ -87,6 +87,9 @@ interface PlatformSettings {
         voice: string;
         autoReportThreshold: number;
         autoReportEnabled: boolean;
+        introduction?: string;
+        outro?: string;
+        interviewTimeLimit?: number;
     };
 }
 
@@ -138,7 +141,10 @@ const INITIAL_STATE: AppState = {
             intensity: 30,
             voice: 'Kore (Neutral)',
             autoReportThreshold: 80,
-            autoReportEnabled: true
+            autoReportEnabled: true,
+            introduction: 'Hello! I am Lumina, your AI interviewer today. I am excited to learn more about your experience and skills.',
+            outro: 'Thank you for your time today. Our team will review the session and get back to you soon!',
+            interviewTimeLimit: 30
         }
     },
     branding: {
@@ -375,7 +381,15 @@ class Store {
         }
     }
 
-    async updatePersona(updates: { intensity?: number; voice?: string; autoReportThreshold?: number; autoReportEnabled?: boolean }) {
+    async updatePersona(updates: {
+        intensity?: number;
+        voice?: string;
+        autoReportThreshold?: number;
+        autoReportEnabled?: boolean;
+        introduction?: string;
+        outro?: string;
+        interviewTimeLimit?: number;
+    }) {
         if (!this.orgId) return;
         const currentPersona = this.state.settings.persona || { intensity: 30, voice: 'Kore (Neutral)', autoReportThreshold: 80, autoReportEnabled: true };
         const newPersona = { ...currentPersona, ...updates };
