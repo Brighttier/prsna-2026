@@ -4,6 +4,7 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, getDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth } from "firebase/auth";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -22,6 +23,7 @@ const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const functions = getFunctions(app, 'us-central1');
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 // Export db for use in store
-export { db, collection, doc, setDoc, updateDoc, onSnapshot, getDoc, functions, httpsCallable, auth };
+export { db, collection, doc, setDoc, updateDoc, onSnapshot, getDoc, functions, httpsCallable, auth, storage, ref, uploadBytes, getDownloadURL };

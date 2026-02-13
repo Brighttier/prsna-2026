@@ -5,12 +5,14 @@ import { db } from '../services/firebase';
 import { BrandingSettings } from '../services/store';
 import { Job, JobStatus } from '../types';
 import { Briefcase, MapPin, ArrowRight, Globe, Building2 } from 'lucide-react';
+import { JobApplicationModal } from '../components/JobApplicationModal';
 
 export const PublicCareerPage = () => {
     const { orgId } = useParams();
     const [branding, setBranding] = useState<BrandingSettings | null>(null);
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -145,7 +147,7 @@ export const PublicCareerPage = () => {
 
                 <div className="space-y-4">
                     {jobs.length > 0 ? jobs.map((job) => (
-                        <div key={job.id} className={`group border border-slate-200 p-6 flex items-center justify-between hover:border-slate-300 hover:shadow-lg transition-all cursor-pointer bg-white ${getRadius('lg')}`}>
+                        <div key={job.id} onClick={() => setSelectedJob(job)} className={`group border border-slate-200 p-6 flex items-center justify-between hover:border-slate-300 hover:shadow-lg transition-all cursor-pointer bg-white ${getRadius('lg')}`}>
                             <div>
                                 <h3 className="font-bold text-lg text-slate-900 group-hover:text-brand-600 transition-colors" style={{ color: 'inherit' }}>
                                     {job.title}
@@ -181,6 +183,15 @@ export const PublicCareerPage = () => {
                     </div>
                 </div>
             </div>
+            {/* Application Modal */}
+            {selectedJob && orgId && (
+                <JobApplicationModal
+                    job={selectedJob}
+                    orgId={orgId}
+                    onClose={() => setSelectedJob(null)}
+                    brandingColor={branding.brandColor}
+                />
+            )}
         </div>
     );
 };
