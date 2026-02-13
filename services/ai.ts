@@ -99,3 +99,14 @@ export const startInterviewSession = async (candidate: ExtendedCandidate, job: J
         throw error;
     }
 };
+
+export const generateJobDescription = async (title: string, department?: string, location?: string) => {
+    try {
+        const genFn = httpsCallable<any, { description: string }>(functions, 'generateJobDescription');
+        const result = await genFn({ title, department, location });
+        return result.data.description;
+    } catch (error) {
+        console.error("Job Description Generation Failed:", error);
+        throw error;
+    }
+};

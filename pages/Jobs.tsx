@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Job, JobStatus } from '../types';
 import { store } from '../services/store';
 import { useEffect } from 'react';
+import { generateJobDescription } from '../services/ai';
 
 
 export const Jobs = () => {
@@ -83,17 +84,20 @@ export const Jobs = () => {
       }
    };
 
-   const handleGenerateDescription = () => {
+   const handleGenerateDescription = async () => {
       if (!newJob.title) return;
       setIsGeneratingDesc(true);
-      // Simulate AI Generation
-      setTimeout(() => {
+      try {
+         const description = await generateJobDescription(newJob.title, newJob.dept, newJob.loc);
          setNewJob(prev => ({
             ...prev,
-            description: `We are seeking a talented ${prev.title} to join our ${prev.dept || 'dynamic'} team. \n\nResponsibilities:\n- Build scalable solutions\n- Collaborate with cross-functional teams\n- Drive innovation in ${prev.dept || 'our product'}\n\nRequirements:\n- 5+ years of experience\n- Strong problem-solving skills\n- Passion for quality code`
+            description
          }));
+      } catch (error) {
+         console.error("Failed to generate description:", error);
+      } finally {
          setIsGeneratingDesc(false);
-      }, 1500);
+      }
    };
 
    return (
