@@ -13,9 +13,8 @@ export const PublicCareerPage = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!orgId) return;
-
         const fetchData = async () => {
+            if (!orgId) return;
             try {
                 // Fetch Org Branding
                 const orgDoc = await getDoc(doc(db, 'organizations', orgId));
@@ -39,134 +38,149 @@ export const PublicCareerPage = () => {
         fetchData();
     }, [orgId]);
 
+    const getRadius = (size: 'sm' | 'md' | 'lg' | 'xl' | 'full') => {
+        const style = branding?.cornerStyle || 'soft';
+        if (style === 'sharp') return 'rounded-none';
+        if (size === 'full') return 'rounded-full';
+        if (style === 'round') {
+            if (size === 'sm') return 'rounded-lg';
+            if (size === 'md') return 'rounded-xl';
+            if (size === 'lg') return 'rounded-2xl';
+            if (size === 'xl') return 'rounded-3xl';
+        }
+        return size === 'sm' ? 'rounded' : size === 'md' ? 'rounded-lg' : size === 'lg' ? 'rounded-xl' : 'rounded-2xl';
+    };
+
+    const getFontFamily = () => {
+        const style = branding?.fontStyle || 'sans';
+        if (style === 'serif') return '"Outfit", serif';
+        if (style === 'mono') return 'monospace';
+        return '"Inter", sans-serif';
+    };
+
     if (loading) return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
         </div>
     );
 
     if (!branding) return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 font-medium">
             Organization not found or setup incomplete.
         </div>
     );
 
-    const getFontFamily = () => {
-        if (branding.fontStyle === 'serif') return 'font-serif';
-        if (branding.fontStyle === 'mono') return 'font-mono tracking-tight';
-        return 'font-sans';
-    };
+    const customStyles = {
+        '--brand-600': branding.brandColor,
+        '--brand-500': branding.brandColor,
+        '--font-family': getFontFamily(),
+    } as React.CSSProperties;
 
-    const getRadius = (size: 'sm' | 'md' | 'lg' | 'xl' | 'full') => {
-        if (branding.cornerStyle === 'sharp') return 'rounded-none';
-        if (size === 'full') return 'rounded-full';
-        // Simplified mapping
-        const radii = {
-            sharp: { sm: 'rounded-none', md: 'rounded-none', lg: 'rounded-none', xl: 'rounded-none' },
-            soft: { sm: 'rounded', md: 'rounded-lg', lg: 'rounded-xl', xl: 'rounded-2xl' },
-            round: { sm: 'rounded-lg', md: 'rounded-xl', lg: 'rounded-2xl', xl: 'rounded-3xl' }
-        };
-        return radii[branding.cornerStyle || 'soft'][size];
-    };
+    const coverStyle = branding.coverStyle || 'gradient';
+    const heroHeadline = branding.heroHeadline || 'Build the future with us.';
+    const heroSubhead = branding.heroSubhead || "Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world's hardest problems.";
 
-    const primaryColor = branding.brandColor || '#10b981';
+    // Helper for brand color transparency used in gradient
+    // Assuming brandColor is HEX.
 
     return (
-        <div className={`min-h-screen bg-slate-50 ${getFontFamily()}`}>
-            {/* Header / Nav */}
-            <nav className="bg-white border-b border-slate-100 sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div
-                            className={`w-10 h-10 ${getRadius('md')} flex items-center justify-center text-white font-bold shadow-lg`}
-                            style={{ backgroundColor: primaryColor }}
-                        >
-                            <Building2 className="w-6 h-6" />
-                        </div>
-                        <span className="font-bold text-xl text-slate-900">{branding.companyName || 'Careers'}</span>
+        <div
+            className="min-h-screen bg-white font-sans text-slate-900"
+            style={customStyles}
+        >
+            {/* Header */}
+            <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur z-20 border-b border-transparent">
+                <div className="font-bold text-xl tracking-tight text-slate-900 flex items-center gap-2">
+                    <div className={`w-8 h-8 ${getRadius('sm')} flex items-center justify-center text-white font-bold`} style={{ backgroundColor: branding.brandColor }}>
+                        {branding.companyName.charAt(0)}
                     </div>
-                    <a
-                        href={`https://${branding.domain || 'www'}.com`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm font-medium text-slate-500 hover:text-slate-900 flex items-center gap-2 transition-colors"
-                    >
-                        <Globe className="w-4 h-4" /> Company Website
-                    </a>
+                    {branding.companyName}
                 </div>
-            </nav>
-
-            {/* Hero Section */}
-            <div className="relative bg-slate-900 py-32 overflow-hidden">
-                <div className="absolute inset-0 opacity-20">
-                    <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(circle,rgba(255,255,255,0.1)_0%,transparent_70%)] animate-pulse"></div>
-                </div>
-                <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-                    <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                        {branding.heroHeadline || <span>Join Our Team at <span style={{ color: primaryColor }}>{branding.companyName}</span></span>}
-                    </h1>
-                    <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-                        {branding.heroSubhead || "We are looking for exceptional talent to solve the world's hardest problems. Build your career with us."}
-                    </p>
-                    <button
-                        className={`bg-white text-slate-900 px-8 py-4 ${getRadius('full')} font-bold text-lg hover:bg-slate-100 transition-all shadow-xl active:scale-95`}
-                        onClick={() => document.getElementById('jobs')?.scrollIntoView({ behavior: 'smooth' })}
-                    >
-                        Browse Open Positions
-                    </button>
+                <div className="hidden md:flex gap-6 text-sm font-medium text-slate-600">
+                    <span className="cursor-pointer hover:text-slate-900">About</span>
+                    <span className="cursor-pointer hover:text-slate-900">Team</span>
+                    <span className="cursor-pointer hover:text-slate-900">Benefits</span>
                 </div>
             </div>
 
-            {/* Jobs List */}
-            <div id="jobs" className="max-w-5xl mx-auto px-6 py-24">
-                <div className="flex items-center gap-4 mb-12">
-                    <div className="h-px bg-slate-200 flex-1"></div>
-                    <h2 className="text-2xl font-bold text-slate-400 uppercase tracking-widest text-sm">Open Roles</h2>
-                    <div className="h-px bg-slate-200 flex-1"></div>
+            {/* Hero */}
+            <div
+                className="px-8 py-20 text-center relative overflow-hidden"
+                style={{
+                    background: coverStyle === 'gradient'
+                        ? `linear-gradient(135deg, ${branding.brandColor}15 0%, #ffffff 100%)`
+                        : '#ffffff'
+                }}
+            >
+                <div className="max-w-2xl mx-auto relative z-10">
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+                        {heroHeadline}
+                    </h1>
+                    <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed">
+                        {heroSubhead}
+                    </p>
+                    <button
+                        className={`px-8 py-4 text-white font-bold text-lg transition-transform hover:scale-105 shadow-xl shadow-brand-500/20 ${getRadius('full')}`}
+                        style={{ backgroundColor: branding.brandColor }}
+                    >
+                        View Open Roles
+                    </button>
                 </div>
 
-                <div className="space-y-6">
-                    {jobs.length === 0 ? (
-                        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-                            <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-bold text-slate-900">No open positions right now</h3>
-                            <p className="text-slate-500">Check back later for new opportunities.</p>
-                        </div>
-                    ) : (
-                        jobs.map(job => (
-                            <div
-                                key={job.id}
-                                className={`group bg-white p-8 ${getRadius('xl')} border border-slate-200 hover:border-slate-300 transition-all hover:shadow-xl hover:shadow-slate-200/50 flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer`}
-                                style={{ borderColor: 'transparent', outline: '1px solid #e2e8f0' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = primaryColor; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent'; }}
-                            >
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition-colors" style={{ color: 'inherit' }}>
-                                        {job.title}
-                                    </h3>
-                                    <div className="flex items-center gap-6 text-sm text-slate-500">
-                                        <span className="flex items-center gap-1.5"><Briefcase className="w-4 h-4" /> {job.dept}</span>
-                                        <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {job.loc}</span>
-                                        <span className={`px-2 py-0.5 ${getRadius('md')} bg-slate-100 text-slate-600 text-xs font-bold uppercase`}>{job.type}</span>
-                                    </div>
-                                </div>
-                                <div
-                                    className={`w-12 h-12 ${getRadius('full')} bg-slate-50 flex items-center justify-center group-hover:bg-brand-50 transition-colors`}
-                                    style={{ color: primaryColor }}
-                                >
-                                    <ArrowRight className="w-6 h-6" />
+                {/* Decorative Blobs */}
+                {coverStyle === 'gradient' && (
+                    <>
+                        <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-40 blur-3xl rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                        <div className="absolute bottom-0 right-0 w-64 h-64 mix-blend-multiply opacity-10 blur-3xl rounded-full transform translate-x-1/2 translate-y-1/2" style={{ backgroundColor: branding.brandColor }}></div>
+                    </>
+                )}
+            </div>
+
+            {/* Open Roles */}
+            <div className="max-w-4xl mx-auto px-6 py-16">
+                <div className="text-center mb-12">
+                    <h2 className="text-2xl font-bold text-slate-900">Open Positions</h2>
+                    <p className="text-slate-500 mt-2">Come do the best work of your career.</p>
+                </div>
+
+                <div className="space-y-4">
+                    {jobs.length > 0 ? jobs.map((job) => (
+                        <div key={job.id} className={`group border border-slate-200 p-6 flex items-center justify-between hover:border-slate-300 hover:shadow-lg transition-all cursor-pointer bg-white ${getRadius('lg')}`}>
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-900 group-hover:text-brand-600 transition-colors" style={{ color: 'inherit' }}>
+                                    {job.title}
+                                </h3>
+                                <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                                    <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> {job.department}</span>
+                                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {job.location}</span>
+                                    <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" /> {job.type}</span>
                                 </div>
                             </div>
-                        ))
+                            <div className={`p-2 ${getRadius('full')} bg-slate-50 group-hover:bg-brand-50 transition-colors`}>
+                                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-brand-600" style={{ color: 'inherit' }} />
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="text-center py-12 text-slate-400">
+                            No open positions at the moment. Check back soon!
+                        </div>
                     )}
                 </div>
             </div>
 
-            <footer className="bg-white border-t border-slate-100 py-12 text-center text-slate-400 text-sm">
-                <p>&copy; {new Date().getFullYear()} {branding.companyName}. All rights reserved.</p>
-                <p className="mt-2">Powered by <span className="font-bold text-emerald-600">RecruiteAI</span></p>
-            </footer>
+            {/* Footer */}
+            <div className="bg-slate-50 border-t border-slate-200 py-12 px-6">
+                <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
+                    <div className="flex items-center gap-2 mb-4 md:mb-0">
+                        <Building2 className="w-4 h-4" />
+                        © {new Date().getFullYear()} {branding.companyName}. All rights reserved.
+                    </div>
+                    <div className="flex gap-6">
+                        <span className="hover:text-slate-900 cursor-pointer">Privacy Policy</span>
+                        <span className="hover:text-slate-900 cursor-pointer">Terms</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

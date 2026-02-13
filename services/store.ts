@@ -91,7 +91,9 @@ export interface BrandingSettings {
     cornerStyle: 'sharp' | 'soft' | 'round';
     domain?: string;
     heroHeadline?: string;
+    heroHeadline?: string;
     heroSubhead?: string;
+    coverStyle?: 'gradient' | 'minimal';
 }
 
 interface AppState {
@@ -134,7 +136,8 @@ const INITIAL_STATE: AppState = {
         cornerStyle: 'soft',
         domain: 'acme',
         heroHeadline: 'Build the future with us.',
-        heroSubhead: 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.'
+        heroSubhead: 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.',
+        coverStyle: 'gradient'
     },
     invitations: [],
     orgId: undefined
