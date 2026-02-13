@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
+exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
@@ -487,6 +487,49 @@ exports.startInterviewSession = (0, https_1.onCall)(functionConfig, async (reque
     }
     catch (error) {
         logger.error("Error starting interview session", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 6. GENERATE JOB DESCRIPTION
+ *
+ * Generates a comprehensive and professional job description based on title and department.
+ */
+exports.generateJobDescription = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { title, department, location } = request.data;
+    if (!title) {
+        throw new https_1.HttpsError('invalid-argument', 'The function must be called with "title".');
+    }
+    try {
+        const genAI = getGenAIClient();
+        const prompt = `
+        You are an expert Executive Recruiter and Job Description Writer.
+        Your task is to create a comprehensive, professional, and compelling job description for the following role:
+        
+        ROLE TITLE: ${title}
+        DEPARTMENT: ${department || 'General'}
+        LOCATION: ${location || 'Remote'}
+
+        The job description should include the following sections:
+        1. **Role Overview**: A high-level summary of the position and its impact on the company.
+        2. **Key Responsibilities**: A detailed list of what the person will do daily (6-8 bullets).
+        3. **Technical Requirements**: Specific skills, tools, and experience levels required (5-7 bullets).
+        4. **Soft Skills & Cultural Fit**: Desired behavioral traits (3-4 bullets).
+        5. **What We Offer**: Generic but professional benefits and growth opportunities.
+
+        TONE: Professional, modern, and high-standard (Fortune 500 level).
+        FORMAT: Markdown.
+        
+        Return ONLY the job description text. No preamble or JSON wrapping.
+        `;
+        const response = await genAI.models.generateContent({
+            model: 'gemini-2.0-flash-exp',
+            contents: prompt
+        });
+        return { description: response.text || "Failed to generate description." };
+    }
+    catch (error) {
+        logger.error("Error generating job description", error);
         throw new https_1.HttpsError('internal', error.message);
     }
 });
