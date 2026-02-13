@@ -42,7 +42,7 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
     //     throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
     // }
 
-    const { resumeText, jobDescription } = request.data;
+    const { resumeText, jobDescription, autoReportThreshold } = request.data;
 
     if (!resumeText || !jobDescription) {
         throw new HttpsError('invalid-argument', 'The function must be called with "resumeText" and "jobDescription".');
@@ -85,7 +85,42 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
         });
 
         const text = response.text || "{}";
-        return JSON.parse(text);
+        const result = JSON.parse(text);
+
+        // --- AUTO-REPORT GENERATION LOGIC ---
+        if (autoReportThreshold && typeof result.score === 'number' && result.score >= autoReportThreshold) {
+            logger.info(`Score ${result.score} >= ${autoReportThreshold}. Generating Deep Report.`);
+            const reportPrompt = `
+                You are an expert HR AI Assistant. Generate a detailed analysis report based on the resume and job description.
+                
+                JOB DESCRIPTION: ${jobDescription}
+                RESUME CONTENT: ${resumeText}
+
+                OUTPUT SCHEMA (JSON ONLY):
+                {
+                  "technicalScore": number, 
+                  "culturalScore": number, 
+                  "communicationScore": number, 
+                  "strengths": string[], 
+                  "weaknesses": string[], 
+                  "summary": string, 
+                  "matchReason": string 
+                }
+             `;
+
+            try {
+                const reportResponse = await genAI.models.generateContent({
+                    model: 'gemini-2.0-flash-exp',
+                    contents: reportPrompt,
+                    config: { responseMimeType: 'application/json' }
+                });
+                result.report = JSON.parse(reportResponse.text || "{}");
+            } catch (e) {
+                logger.error("Error generating auto-report", e);
+            }
+        }
+
+        return result;
 
     } catch (error: any) {
         logger.error("Error screening resume", error);

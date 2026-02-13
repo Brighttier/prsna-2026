@@ -140,11 +140,15 @@ export const Settings = () => {
     // --- PERSONA STATE ---
     const [intensity, setIntensity] = useState(persona?.intensity || 30);
     const [voice, setVoice] = useState(persona?.voice || 'Kore (Neutral)');
+    const [autoReportThreshold, setAutoReportThreshold] = useState(persona?.autoReportThreshold ?? 80);
+    const [autoReportEnabled, setAutoReportEnabled] = useState(persona?.autoReportEnabled ?? true);
 
     useEffect(() => {
         if (persona) {
             setIntensity(persona.intensity);
             setVoice(persona.voice);
+            setAutoReportThreshold(persona.autoReportThreshold ?? 80);
+            setAutoReportEnabled(persona.autoReportEnabled ?? true);
         }
     }, [persona]);
 
@@ -210,7 +214,9 @@ export const Settings = () => {
         });
         store.updatePersona({
             intensity,
-            voice
+            voice,
+            autoReportThreshold,
+            autoReportEnabled
         });
         setTimeout(() => {
             setLoading(false);
@@ -914,6 +920,46 @@ export const Settings = () => {
                                 <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
                             </div>
                         </div>
+                    </Card>
+
+                    {/* Auto-Report Threshold Card (Spans full width on md) */}
+                    <Card className="col-span-1 md:col-span-2 p-6 border-l-4 border-l-purple-500">
+                        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-purple-600" /> Automated Analysis Reporting
+                        </h2>
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="font-medium text-slate-900">Auto-Generate Deep Reports</h3>
+                                <p className="text-sm text-slate-500">Automatically generate detailed AI analysis for high-match candidates.</p>
+                            </div>
+                            <div
+                                onClick={() => setAutoReportEnabled(!autoReportEnabled)}
+                                className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${autoReportEnabled ? 'bg-purple-600' : 'bg-slate-200'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${autoReportEnabled ? 'right-1' : 'left-1'}`}></div>
+                            </div>
+                        </div>
+
+                        {autoReportEnabled && (
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="text-sm font-semibold text-slate-700">Minimum Match Score Threshold</label>
+                                    <span className="text-xs font-bold px-2 py-1 bg-purple-100 text-purple-700 rounded border border-purple-200">{autoReportThreshold}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="50"
+                                    max="100"
+                                    step="5"
+                                    value={autoReportThreshold}
+                                    onChange={(e) => setAutoReportThreshold(parseInt(e.target.value))}
+                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                />
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Only candidates scoring <strong>above {autoReportThreshold}%</strong> in initial screening will receive an automated Deep Analysis Report.
+                                </p>
+                            </div>
+                        )}
                     </Card>
                 </div>
             )}

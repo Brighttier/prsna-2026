@@ -45,10 +45,10 @@ export const generateCandidateReport = async (candidate: ExtendedCandidate, job:
     }
 };
 
-export const screenResume = async (resumeText: string, jobDescription: string) => {
+export const screenResume = async (resumeText: string, jobDescription: string, autoReportThreshold?: number) => {
     try {
         const screenFn = httpsCallable<any, any>(functions, 'screenResume');
-        const result = await screenFn({ resumeText, jobDescription });
+        const result = await screenFn({ resumeText, jobDescription, autoReportThreshold });
         return result.data;
     } catch (error) {
         console.error("Resume Screening Failed:", error);

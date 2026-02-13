@@ -85,6 +85,8 @@ interface PlatformSettings {
     persona?: {
         intensity: number;
         voice: string;
+        autoReportThreshold: number;
+        autoReportEnabled: boolean;
     };
 }
 
@@ -134,7 +136,9 @@ const INITIAL_STATE: AppState = {
         },
         persona: {
             intensity: 30,
-            voice: 'Kore (Neutral)'
+            voice: 'Kore (Neutral)',
+            autoReportThreshold: 80,
+            autoReportEnabled: true
         }
     },
     branding: {
@@ -371,9 +375,9 @@ class Store {
         }
     }
 
-    async updatePersona(updates: { intensity?: number; voice?: string }) {
+    async updatePersona(updates: { intensity?: number; voice?: string; autoReportThreshold?: number; autoReportEnabled?: boolean }) {
         if (!this.orgId) return;
-        const currentPersona = this.state.settings.persona || { intensity: 30, voice: 'Kore (Neutral)' };
+        const currentPersona = this.state.settings.persona || { intensity: 30, voice: 'Kore (Neutral)', autoReportThreshold: 80, autoReportEnabled: true };
         const newPersona = { ...currentPersona, ...updates };
 
         try {

@@ -25,13 +25,16 @@ export const ResumeScreener = () => {
       setIsAnalyzing(true);
       setResult(null);
       try {
-         const jsonStr = await screenResume(resumeText, jobDescription);
-         const data: ScreeningResult = JSON.parse(jsonStr);
+         const { autoReportEnabled, autoReportThreshold } = store.getState().settings.persona || {};
+         const threshold = (autoReportEnabled !== false) ? (autoReportThreshold || 80) : undefined;
+
+         const response = await screenResume(resumeText, jobDescription, threshold);
+         const data: any = typeof response === 'string' ? JSON.parse(response) : response;
          setResult(data);
 
          // Update candidate in store if selected
          if (selectedCandidateId) {
-            store.updateCandidate(selectedCandidateId, {
+            const updateData: any = {
                score: data.score,
                matchReason: data.reasoning, // Use reasoning as matchReason
                analysis: {
@@ -40,7 +43,22 @@ export const ResumeScreener = () => {
                   metrics: {},
                   missingSkills: data.missingSkills || []
                }
-            });
+            };
+
+            // If Deep Report was auto-generated, save it
+            if (data.report) {
+               updateData.analysis = {
+                  ...updateData.analysis,
+                  technicalScore: data.report.technicalScore,
+                  culturalScore: data.report.culturalScore,
+                  communicationScore: data.report.communicationScore,
+                  strengths: data.report.strengths,
+                  weaknesses: data.report.weaknesses,
+                  summary: data.report.summary
+               };
+            }
+
+            store.updateCandidate(selectedCandidateId, updateData);
          }
       } catch (e: any) {
          console.error("Analysis failed:", e);
