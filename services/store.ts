@@ -61,11 +61,17 @@ export interface ExtendedCandidate extends Candidate {
     experience?: Experience[];
     education?: Education[];
     analysis?: {
-        strengths: string[];
-        weaknesses: string[];
-        technicalScore: number;
-        culturalScore: number;
-        communicationScore: number;
+        strengths?: string[];
+        weaknesses?: string[];
+        technicalScore?: number;
+        culturalScore?: number;
+        communicationScore?: number;
+        // Merged fields
+        matchScore?: number;
+        verdict?: string;
+        metrics?: any;
+        missingSkills?: string[];
+        sentimentScore?: number;
     };
     interviews?: InterviewSession[];
 }

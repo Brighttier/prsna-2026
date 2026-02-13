@@ -75,6 +75,13 @@ export const Settings = () => {
     const [fontStyle, setFontStyle] = useState(branding.fontStyle);
     const [cornerStyle, setCornerStyle] = useState(branding.cornerStyle);
 
+    useEffect(() => {
+        setCompanyName(branding.companyName);
+        setBrandColor(branding.brandColor);
+        setFontStyle(branding.fontStyle);
+        setCornerStyle(branding.cornerStyle);
+    }, [branding]);
+
     // Other UI-only state
     const [domain, setDomain] = useState('acme.com');
     const [heroHeadline, setHeroHeadline] = useState('Build the future with us.');

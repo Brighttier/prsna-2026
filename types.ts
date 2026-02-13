@@ -84,6 +84,14 @@ export interface Candidate {
   score: number;
   match?: number;
   matchReason?: string;
+  source?: string; // New: Source of application
+  analysis?: {
+    matchScore: number;
+    verdict: string;
+    metrics: any;
+    missingSkills: string[];
+    sentimentScore?: number; // New
+  };
   // New Fields
   offer?: OfferDetails;
   onboarding?: {

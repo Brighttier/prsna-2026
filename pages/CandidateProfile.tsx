@@ -1415,9 +1415,9 @@ RecruiteAI`;
                                         <div className="h-64 w-full md:w-1/2 flex-shrink-0">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                                                    { subject: 'Technical', A: candidate.analysis.technicalScore, fullMark: 100 },
-                                                    { subject: 'Cultural', A: candidate.analysis.culturalScore, fullMark: 100 },
-                                                    { subject: 'Communication', A: candidate.analysis.communicationScore, fullMark: 100 },
+                                                    { subject: 'Technical', A: candidate.analysis.technicalScore || 0, fullMark: 100 },
+                                                    { subject: 'Cultural', A: candidate.analysis.culturalScore || 0, fullMark: 100 },
+                                                    { subject: 'Communication', A: candidate.analysis.communicationScore || 0, fullMark: 100 },
                                                     { subject: 'Experience', A: 90, fullMark: 100 },
                                                     { subject: 'Leadership', A: 85, fullMark: 100 },
                                                 ]}>
@@ -1435,28 +1435,28 @@ RecruiteAI`;
                                                 <div className="space-y-3">
                                                     <div className="flex justify-between items-center text-sm">
                                                         <span className="text-slate-600 font-medium">Technical Capability</span>
-                                                        <span className="font-bold text-slate-900">{candidate.analysis.technicalScore}/100</span>
+                                                        <span className="font-bold text-slate-900">{candidate.analysis.technicalScore || 0}/100</span>
                                                     </div>
                                                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${candidate.analysis.technicalScore}%` }}></div>
+                                                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${candidate.analysis.technicalScore || 0}%` }}></div>
                                                     </div>
                                                 </div>
                                                 <div className="space-y-3 mt-4">
                                                     <div className="flex justify-between items-center text-sm">
                                                         <span className="text-slate-600 font-medium">Cultural Alignment</span>
-                                                        <span className="font-bold text-slate-900">{candidate.analysis.culturalScore}/100</span>
+                                                        <span className="font-bold text-slate-900">{candidate.analysis.culturalScore || 0}/100</span>
                                                     </div>
                                                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${candidate.analysis.culturalScore}%` }}></div>
+                                                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${candidate.analysis.culturalScore || 0}%` }}></div>
                                                     </div>
                                                 </div>
                                                 <div className="space-y-3 mt-4">
                                                     <div className="flex justify-between items-center text-sm">
                                                         <span className="text-slate-600 font-medium">Communication</span>
-                                                        <span className="font-bold text-slate-900">{candidate.analysis.communicationScore}/100</span>
+                                                        <span className="font-bold text-slate-900">{candidate.analysis.communicationScore || 0}/100</span>
                                                     </div>
                                                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${candidate.analysis.communicationScore}%` }}></div>
+                                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${candidate.analysis.communicationScore || 0}%` }}></div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1475,7 +1475,7 @@ RecruiteAI`;
                                             <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">Top 5%</span>
                                         </div>
                                         <div className="space-y-4">
-                                            {candidate.analysis.strengths.map((s, i) => (
+                                            {(candidate.analysis.strengths || []).map((s, i) => (
                                                 <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50/50 transition-colors border border-transparent hover:border-emerald-100">
                                                     <div className="mt-1">
                                                         <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
@@ -1500,7 +1500,7 @@ RecruiteAI`;
                                             <span className="px-2 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded">Attention Needed</span>
                                         </div>
                                         <div className="space-y-4">
-                                            {candidate.analysis.weaknesses.map((w, i) => (
+                                            {(candidate.analysis.weaknesses || []).map((w, i) => (
                                                 <div key={i} className="flex gap-4 p-3 rounded-xl bg-slate-50 hover:bg-amber-50/50 transition-colors border border-transparent hover:border-amber-100">
                                                     <div className="mt-1">
                                                         <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">

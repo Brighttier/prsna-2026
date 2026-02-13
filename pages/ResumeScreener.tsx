@@ -33,8 +33,13 @@ export const ResumeScreener = () => {
          if (selectedCandidateId) {
             store.updateCandidate(selectedCandidateId, {
                score: data.score,
-               aiVerdict: data.verdict as any,
-               matchReason: data.matchReason
+               matchReason: data.reasoning, // Use reasoning as matchReason
+               analysis: {
+                  matchScore: data.score,
+                  verdict: data.verdict,
+                  metrics: {},
+                  missingSkills: data.missingSkills || []
+               }
             });
          }
       } catch (e: any) {

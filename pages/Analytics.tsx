@@ -1,42 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '../components/Card';
-import { TrendingUp, Users, DollarSign, Activity, Target, Award, Clock, CheckCircle } from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  PieChart, Pie, Cell, AreaChart, Area
+import { TrendingUp, Users, DollarSign, Activity, Target, Award, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
+import { store } from '../services/store';
+import { Candidate, Job } from '../types';
 
-// Mock Data
-const funnelData = [
-  { stage: 'Applied', count: 1250, fill: '#64748b' },
-  { stage: 'AI Screened', count: 850, fill: '#3b82f6' },
-  { stage: 'Interview', count: 320, fill: '#8b5cf6' },
-  { stage: 'Offer', count: 85, fill: '#f59e0b' },
-  { stage: 'Hired', count: 68, fill: '#10b981' },
-];
-
-const missingSkillsData = [
-  { skill: 'Kubernetes', count: 45 },
-  { skill: 'System Design', count: 38 },
-  { skill: 'GraphQL', count: 30 },
-  { skill: 'AWS', count: 25 },
-  { skill: 'Rust', count: 15 },
-];
-
-const sentimentData = [
-  { day: '1', score: 7.2 }, { day: '5', score: 7.5 }, { day: '10', score: 6.8 },
-  { day: '15', score: 8.1 }, { day: '20', score: 7.9 }, { day: '25', score: 8.5 },
-  { day: '30', score: 8.2 },
-];
-
-const sourceData = [
-  { name: 'LinkedIn', value: 45 },
-  { name: 'Referral', value: 25 },
-  { name: 'Website', value: 20 },
-  { name: 'Agency', value: 10 },
-];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const Stat = ({ label, value, subtext, icon: Icon, color }: any) => (
     <Card className="p-6">
@@ -54,19 +26,112 @@ const Stat = ({ label, value, subtext, icon: Icon, color }: any) => (
 );
 
 export const Analytics = () => {
+    const [candidates, setCandidates] = useState<Candidate[]>([]);
+
+    useEffect(() => {
+        setCandidates(store.getState().candidates);
+        return store.subscribe(() => {
+            setCandidates(store.getState().candidates);
+        });
+    }, []);
+
+    // --- DERIVED METRICS ---
+    const metrics = useMemo(() => {
+        const total = candidates.length;
+        const hired = candidates.filter(c => c.stage === 'Hired').length;
+        const offers = candidates.filter(c => c.stage === 'Offer').length + hired; // Assuming Hired passed Offer
+
+        const acceptanceRate = offers > 0 ? Math.round((hired / offers) * 100) : 0;
+
+        // Avg Match Score
+        const scores = candidates.filter(c => c.score > 0).map(c => c.score);
+        const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+        return { total, hired, acceptanceRate, avgScore };
+    }, [candidates]);
+
+    // --- CHART DATA ---
+    const funnelData = useMemo(() => {
+        const stages = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'];
+        const counts = stages.map(stage => ({
+            stage,
+            count: candidates.filter(c => c.stage === stage).length,
+            fill: stage === 'Hired' ? '#10b981' : stage === 'Offer' ? '#f59e0b' : '#3b82f6'
+        }));
+        return counts;
+    }, [candidates]);
+
+    const missingSkillsData = useMemo(() => {
+        const skills: Record<string, number> = {};
+        candidates.forEach(c => {
+            c.analysis?.missingSkills?.forEach(skill => {
+                skills[skill] = (skills[skill] || 0) + 1;
+            });
+        });
+        return Object.entries(skills)
+            .map(([skill, count]) => ({ skill, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+    }, [candidates]);
+
+    const sourceData = useMemo(() => {
+        const sources: Record<string, number> = {};
+        candidates.forEach(c => {
+            const s = c.source || 'Unknown';
+            sources[s] = (sources[s] || 0) + 1;
+        });
+        return Object.entries(sources).map(([name, value]) => ({ name, value }));
+    }, [candidates]);
+
+    // Mock Sentiment Trend (keep as placeholder or hide if empty)
+    // For now, let's show Score Distribution instead of Sentiment Trend
+    const scoreDistData = useMemo(() => {
+        const dist = [
+            { range: '0-20', count: 0 },
+            { range: '21-40', count: 0 },
+            { range: '41-60', count: 0 },
+            { range: '61-80', count: 0 },
+            { range: '81-100', count: 0 },
+        ];
+        candidates.forEach(c => {
+            const s = c.score || 0;
+            if (s <= 20) dist[0].count++;
+            else if (s <= 40) dist[1].count++;
+            else if (s <= 60) dist[2].count++;
+            else if (s <= 80) dist[3].count++;
+            else dist[4].count++;
+        });
+        return dist;
+    }, [candidates]);
+
+
+    if (candidates.length === 0) {
+        return (
+            <div className="p-12 text-center animate-fade-in-up">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Activity className="w-8 h-8 text-slate-400" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900">No Analytics Data Yet</h2>
+                <p className="text-slate-500 mt-2 max-w-md mx-auto">
+                    Start adding candidates and jobs to see real-time insights into your hiring pipeline.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             <header>
                 <h1 className="text-3xl font-bold text-slate-900">Recruitment Intelligence</h1>
-                <p className="text-slate-500 mt-1">Deep dive into your hiring funnel and AI performance metrics.</p>
+                <p className="text-slate-500 mt-1">Real-time insights based on your {candidates.length} candidates.</p>
             </header>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Stat label="Offer Acceptance" value="82%" subtext="+5% vs industry avg" icon={Award} color="text-emerald-600 bg-emerald-100" />
-                <Stat label="Time to Hire" value="18 Days" subtext="-4 days vs last Q" icon={Clock} color="text-blue-600 bg-blue-100" />
-                <Stat label="Cost per Hire" value="$1,250" subtext="Optimized via AI Screening" icon={DollarSign} color="text-purple-600 bg-purple-100" />
-                <Stat label="Candidate NPS" value="72" subtext="Top 5% category" icon={Activity} color="text-orange-600 bg-orange-100" />
+                <Stat label="Total Candidates" value={metrics.total} subtext="Active Pipeline" icon={Users} color="text-blue-600 bg-blue-100" />
+                <Stat label="Hires Made" value={metrics.hired} subtext="Total Hired" icon={CheckCircle} color="text-emerald-600 bg-emerald-100" />
+                <Stat label="Offer Acceptance" value={`${metrics.acceptanceRate}%`} subtext="Conversion Rate" icon={Award} color="text-purple-600 bg-purple-100" />
+                <Stat label="Avg Match Score" value={metrics.avgScore} subtext="AI Assessment" icon={Activity} color="text-orange-600 bg-orange-100" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -75,14 +140,14 @@ export const Analytics = () => {
                     <h3 className="text-lg font-bold text-slate-900 mb-6">Conversion Pipeline</h3>
                     <div className="h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                             <BarChart
+                            <BarChart
                                 layout="vertical"
                                 data={funnelData}
                                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                             >
                                 <XAxis type="number" hide />
-                                <YAxis dataKey="stage" type="category" width={80} tick={{fontSize: 12}} />
-                                <Tooltip cursor={{fill: 'transparent'}} />
+                                <YAxis dataKey="stage" type="category" width={80} tick={{ fontSize: 12 }} />
+                                <Tooltip cursor={{ fill: 'transparent' }} />
                                 <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={40}>
                                     {funnelData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -93,18 +158,18 @@ export const Analytics = () => {
                     </div>
                 </Card>
 
-                {/* Missing Skills Analysis */}
-                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-slate-900 mb-2">Common Skill Gaps</h3>
-                    <p className="text-sm text-slate-500 mb-6">Most frequent missing skills identified by AI Gatekeeper.</p>
+                {/* Score Distribution */}
+                <Card className="p-6">
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Score Distribution</h3>
+                    <p className="text-sm text-slate-500 mb-6">AI evaluation scores across all candidates.</p>
                     <div className="h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={missingSkillsData}>
+                            <BarChart data={scoreDistData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                <XAxis dataKey="skill" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+                                <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
                                 <Tooltip />
-                                <Bar dataKey="count" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={50} />
+                                <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={50} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -112,31 +177,31 @@ export const Analytics = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                 {/* Sentiment Trend */}
-                 <Card className="col-span-2 p-6">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Lumina Interview Sentiment</h3>
+                {/* Missing Skills */}
+                <Card className="col-span-2 p-6">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6">Common Skill Gaps</h3>
                     <div className="h-72 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={sentimentData}>
-                                <defs>
-                                    <linearGradient id="colorSentiment" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                                <YAxis domain={[0, 10]} axisLine={false} tickLine={false} />
-                                <Tooltip />
-                                <Area type="monotone" dataKey="score" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSentiment)" strokeWidth={3} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {missingSkillsData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={missingSkillsData} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="skill" type="category" width={120} tick={{ fontSize: 12 }} />
+                                    <Tooltip />
+                                    <Bar dataKey="count" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={30} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-slate-400 italic">
+                                No skill gap data available yet.
+                            </div>
+                        )}
                     </div>
-                 </Card>
+                </Card>
 
-                 {/* Sourcing Channel */}
-                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Source Quality</h3>
+                {/* Sourcing Channel */}
+                <Card className="p-6">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6">Candidate Sources</h3>
                     <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -154,11 +219,11 @@ export const Analytics = () => {
                                     ))}
                                 </Pie>
                                 <Tooltip />
-                                <Legend verticalAlign="bottom" height={36}/>
+                                <Legend verticalAlign="bottom" height={36} />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                 </Card>
+                </Card>
             </div>
         </div>
     );
