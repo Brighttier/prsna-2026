@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, getDoc, query, where } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -26,4 +26,4 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 
 // Export db for use in store
-export { db, collection, doc, setDoc, updateDoc, onSnapshot, getDoc, functions, httpsCallable, auth, storage, ref, uploadBytes, getDownloadURL };
+export { db, collection, doc, setDoc, updateDoc, onSnapshot, getDoc, query, where, functions, httpsCallable, auth, storage, ref, uploadBytes, getDownloadURL };

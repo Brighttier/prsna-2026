@@ -9,26 +9,9 @@ import { LogOut } from 'lucide-react';
 import { useEffect } from 'react';
 import { AssessmentModule, AssessmentType, Question, OnboardingTask, OnboardingCategory } from '../types';
 
-// Mock Assessment Data
-const MOCK_ASSESSMENTS: AssessmentModule[] = [
-    { id: '1', name: 'React Core Concepts', type: 'QuestionBank', description: 'Hooks, Lifecycle, and Virtual DOM deep dive.', difficulty: 'Mid', estimatedDuration: 15, tags: ['React', 'Frontend'], itemsCount: 12, sourceMode: 'manual' },
-    { id: '2', name: 'System Design: Scalable Feed', type: 'SystemDesign', description: 'Design a Twitter-like feed architecture.', difficulty: 'Senior', estimatedDuration: 30, tags: ['Architecture', 'Backend'], itemsCount: 1 },
-    { id: '3', name: 'JS Algorithms: Arrays', type: 'CodingChallenge', description: 'Array manipulation and optimization tasks.', difficulty: 'Mid', estimatedDuration: 20, tags: ['Algorithms', 'JS'], itemsCount: 3 },
-    { id: '4', name: 'Cultural Fit: Leadership', type: 'QuestionBank', description: 'Assessing ownership and conflict resolution.', difficulty: 'Senior', estimatedDuration: 10, tags: ['Soft Skills'], itemsCount: 8, sourceMode: 'manual' },
-    { id: '5', name: 'Marketing Strategy Case', type: 'SystemDesign', description: 'Analyze campaign metrics and propose ROI improvements.', difficulty: 'Senior', estimatedDuration: 25, tags: ['Marketing', 'Analytics'], itemsCount: 1 },
-    { id: '6', name: 'Company Values & Policy', type: 'QuestionBank', description: 'Dynamic questions based on the employee handbook.', difficulty: 'Junior', estimatedDuration: 15, tags: ['HR', 'Onboarding'], itemsCount: 1, sourceMode: 'knowledgeBase' },
-];
+// assessments are now real data from store.ts
 
-const MOCK_ONBOARDING_TASKS: OnboardingTask[] = [
-    { id: '1', category: 'Legal & Compliance', task: 'Upload Signed Offer Letter', type: 'upload', completed: false, assignee: 'HR' },
-    { id: '2', category: 'Legal & Compliance', task: 'Upload Signed NDA', type: 'upload', completed: false, assignee: 'HR' },
-    { id: '3', category: 'Legal & Compliance', task: 'Background Check Documentation', type: 'upload', completed: false, assignee: 'HR' },
-    { id: '4', category: 'IT & Equipment', task: 'Provision MacBook Pro', type: 'checkbox', completed: false, assignee: 'IT' },
-    { id: '5', category: 'IT & Equipment', task: 'Create Email Account', type: 'checkbox', completed: false, assignee: 'IT' },
-    { id: '6', category: 'Culture & Orientation', task: 'Send Welcome Swag Kit', type: 'checkbox', completed: false, assignee: 'HR' },
-    { id: '7', category: 'Culture & Orientation', task: 'Schedule Introduction Meeting', type: 'checkbox', completed: false, assignee: 'Manager' },
-    { id: '8', category: 'Culture & Orientation', task: 'Company Culture Presentation', type: 'checkbox', completed: false, assignee: 'HR' },
-];
+// onboarding tasks are now real data from store.ts
 
 const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => void }) => {
     const tabs = [
@@ -70,7 +53,9 @@ export const Settings = () => {
     const [branding, setBranding] = useState(store.getState().branding);
     const [orgId, setOrgId] = useState(store.getState().orgId);
     const [persona, setPersona] = useState(store.getState().settings.persona);
-    const [invitations, setInvitations] = useState<Invitation[]>(store.getState().invitations || []); // Check initial state
+    const [invitations, setInvitations] = useState<Invitation[]>(store.getState().invitations || []);
+    const [members, setMembers] = useState(store.getState().members || []);
+    const [assessments, setAssessments] = useState(store.getState().assessments || []);
 
     useEffect(() => {
         // Initial load
@@ -83,9 +68,9 @@ export const Settings = () => {
             setOrgId(state.orgId);
             setPersona(state.settings.persona);
             setInvitations(state.invitations || []);
-            if (state.onboardingTemplate.length > 0) {
-                setOnboardingTasks(state.onboardingTemplate);
-            }
+            setMembers(state.members || []);
+            setAssessments(state.assessments || []);
+            setOnboardingTasks(state.onboardingTemplate);
         });
     }, []);
 
@@ -173,15 +158,10 @@ export const Settings = () => {
     const [isInviting, setIsInviting] = useState(false);
 
     // --- LIBRARY STATE ---
-    const [assessments, setAssessments] = useState(MOCK_ASSESSMENTS);
     const [showCreateModule, setShowCreateModule] = useState(false);
 
     // --- ONBOARDING STATE ---
-    const [onboardingTasks, setOnboardingTasks] = useState<OnboardingTask[]>(
-        store.getState().onboardingTemplate.length > 0
-            ? store.getState().onboardingTemplate
-            : MOCK_ONBOARDING_TASKS
-    );
+    const [onboardingTasks, setOnboardingTasks] = useState<OnboardingTask[]>(store.getState().onboardingTemplate);
     const [newTaskCategory, setNewTaskCategory] = useState<OnboardingCategory>('Legal & Compliance');
     const [newTaskName, setNewTaskName] = useState('');
     const [newTaskType, setNewTaskType] = useState<'checkbox' | 'upload'>('checkbox');
@@ -324,8 +304,7 @@ export const Settings = () => {
     };
 
     const handlePublishModule = () => {
-        setAssessments(prev => [...prev, {
-            id: Date.now().toString(),
+        const assessment: Partial<AssessmentModule> = {
             name: newModule.name || 'Untitled Module',
             type: newModule.type || 'QuestionBank',
             description: newModule.description || '',
@@ -334,11 +313,22 @@ export const Settings = () => {
             tags: newModule.tags || [],
             sourceMode: newModule.sourceMode,
             itemsCount: newModule.type === 'QuestionBank' ? (newModule.sourceMode === 'knowledgeBase' ? 1 : (newModule.questions?.length || 0)) : 1,
-            knowledgeBase: newModule.knowledgeBase
-        }]);
+            knowledgeBase: newModule.knowledgeBase,
+            questions: newModule.questions
+        };
+        store.publishAssessment(assessment);
         setShowCreateModule(false);
         setModuleStep(1);
-        setNewModule({ name: '', type: 'QuestionBank', difficulty: 'Mid', estimatedDuration: 15, tags: [], questions: [], sourceMode: 'manual', knowledgeBase: { content: '', fileName: '' } });
+        setNewModule({
+            name: '',
+            type: 'QuestionBank',
+            difficulty: 'Mid',
+            estimatedDuration: 15,
+            tags: [],
+            sourceMode: 'manual',
+            questions: [],
+            knowledgeBase: { content: '', fileName: '' }
+        });
     };
 
     const addTag = (e: React.KeyboardEvent) => {
@@ -1168,19 +1158,34 @@ export const Settings = () => {
                             {/* Current User */}
                             <tr className="hover:bg-slate-50">
                                 <td className="px-6 py-4">
-                                    <div className="font-medium text-slate-900">You</div>
+                                    <div className="font-medium text-slate-900">{auth.currentUser?.displayName || 'You'}</div>
                                     <div className="text-xs text-slate-500">{auth.currentUser?.email}</div>
                                 </td>
-                                <td className="px-6 py-4"><span className="px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-bold">Owner</span></td>
+                                <td className="px-6 py-4"><span className="px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-bold">Workspace Owner</span></td>
                                 <td className="px-6 py-4 text-emerald-600 font-medium flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div> Active</td>
                                 <td className="px-6 py-4 text-right"></td>
                             </tr>
 
+                            {/* Registered Members */}
+                            {members.filter(m => m.id !== auth.currentUser?.uid).map((mem) => (
+                                <tr key={mem.id} className="hover:bg-slate-50 border-t border-slate-100">
+                                    <td className="px-6 py-4">
+                                        <div className="font-medium text-slate-900">{mem.name}</div>
+                                        <div className="text-xs text-slate-500">{mem.email}</div>
+                                    </td>
+                                    <td className="px-6 py-4"><span className="px-2 py-1 bg-brand-50 text-brand-600 rounded text-xs font-bold">{mem.role}</span></td>
+                                    <td className="px-6 py-4 text-emerald-600 font-medium">Active</td>
+                                    <td className="px-6 py-4 text-right pr-6">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Registered</span>
+                                    </td>
+                                </tr>
+                            ))}
+
                             {/* Invited Members */}
                             {invitations.map((inv) => (
-                                <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
+                                <tr key={inv.id} className="hover:bg-slate-50 transition-colors border-t border-slate-100">
                                     <td className="px-6 py-4">
-                                        <div className="font-medium text-slate-900">{inv.email.split('@')[0]}</div>
+                                        <div className="font-medium text-slate-400 italic">Invited User</div>
                                         <div className="text-xs text-slate-500">{inv.email}</div>
                                     </td>
                                     <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs font-bold">{inv.role}</span></td>
@@ -1190,10 +1195,10 @@ export const Settings = () => {
                                                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Pending
                                             </span>
                                         ) : (
-                                            <span className="text-slate-500">{inv.status}</span>
+                                            <span className="text-slate-500 capitalize">{inv.status}</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-right">
+                                    <td className="px-6 py-4 text-right pr-6">
                                         <button
                                             onClick={() => store.revokeInvitation(inv.id)}
                                             className="text-slate-400 hover:text-red-500 text-xs font-medium transition-colors"
@@ -1204,10 +1209,10 @@ export const Settings = () => {
                                 </tr>
                             ))}
 
-                            {invitations.length === 0 && (
+                            {invitations.length === 0 && members.length <= 1 && (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-slate-500 italic">
-                                        No team members invited yet.
+                                    <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-xs font-medium uppercase tracking-widest italic">
+                                        No team members found.
                                     </td>
                                 </tr>
                             )}
@@ -1281,8 +1286,9 @@ export const Settings = () => {
                                         {mod.type === 'SystemDesign' && <LayoutTemplate className="w-5 h-5" />}
                                     </div>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500"><Edit2 className="w-4 h-4" /></button>
-                                        <button className="p-1.5 hover:bg-red-50 rounded text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                        <button className="p-1.5 hover:bg-red-50 rounded text-red-500" onClick={(e) => { e.stopPropagation(); store.deleteAssessment(mod.id); }}>
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
 

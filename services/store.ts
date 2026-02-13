@@ -1,6 +1,6 @@
 import { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus } from '../types';
 export type { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus };
-import { db, collection, doc, setDoc, updateDoc, onSnapshot, auth } from './firebase';
+import { db, collection, doc, setDoc, updateDoc, onSnapshot, auth, query, where } from './firebase';
 
 export interface TranscriptEntry {
     speaker: 'Lumina' | 'Candidate';
@@ -13,6 +13,14 @@ export interface VideoHighlight {
     timestamp: number;
     type: 'Flag' | 'Insight' | 'Positive' | 'Negative';
     text: string;
+}
+
+export interface OrgMember {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    joinedAt: string;
 }
 
 export interface InterviewSession {
@@ -135,6 +143,7 @@ interface AppState {
     platformStats: PlatformStats;
     isHydrated: boolean;
     onboardingTemplate: OnboardingTask[];
+    members: OrgMember[];
 }
 
 export interface Invitation {
@@ -148,11 +157,7 @@ export interface Invitation {
 const INITIAL_STATE: AppState = {
     jobs: [],
     candidates: [],
-    assessments: [
-        { id: '1', name: 'React Core Concepts', type: 'QuestionBank', description: 'Hooks, Lifecycle, and Virtual DOM deep dive.', difficulty: 'Mid', estimatedDuration: 15, tags: ['React', 'Frontend'], itemsCount: 12, sourceMode: 'manual' },
-        { id: '2', name: 'System Design: Scalable Feed', type: 'SystemDesign', description: 'Design a Twitter-like feed architecture.', difficulty: 'Senior', estimatedDuration: 30, tags: ['Architecture', 'Backend'], itemsCount: 1 },
-        { id: '3', name: 'JS Algorithms: Arrays', type: 'CodingChallenge', description: 'Array manipulation and optimization tasks.', difficulty: 'Mid', estimatedDuration: 20, tags: ['Algorithms', 'JS'], itemsCount: 3 }
-    ],
+    assessments: [],
     settings: {
         killSwitches: {
             global: false,
@@ -189,7 +194,8 @@ const INITIAL_STATE: AppState = {
         netProfit: 0
     },
     isHydrated: false,
-    onboardingTemplate: []
+    onboardingTemplate: [],
+    members: []
 };
 
 class Store {
@@ -329,6 +335,32 @@ class Store {
             this.notifyListeners();
         });
         this.unsubscribeListeners.push(invitesUnsub);
+
+        // Assessments Listener
+        const assessmentsUnsub = onSnapshot(collection(db, 'organizations', orgId, 'assessments'), (snapshot) => {
+            console.log(`[Store] Assessments snapshot received: ${snapshot.size} docs`);
+            this.state.assessments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentModule));
+            this.notifyListeners();
+        });
+        this.unsubscribeListeners.push(assessmentsUnsub);
+
+        // Members Listener (Users with matching orgId)
+        const membersQuery = query(collection(db, 'users'), where('orgId', '==', orgId));
+        const membersUnsub = onSnapshot(membersQuery, (snapshot) => {
+            console.log(`[Store] Members snapshot received: ${snapshot.size} docs`);
+            this.state.members = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    name: data.name,
+                    email: data.email,
+                    role: data.role,
+                    joinedAt: data.createdAt
+                } as OrgMember;
+            });
+            this.notifyListeners();
+        });
+        this.unsubscribeListeners.push(membersUnsub);
     }
 
     private initPlatformAdminListeners() {
@@ -540,16 +572,20 @@ class Store {
     async promoteToHired(candidateId: string) {
         const candidate = this.state.candidates.find(c => c.id === candidateId);
         if (candidate) {
+            const tasks = this.state.onboardingTemplate.length > 0
+                ? JSON.parse(JSON.stringify(this.state.onboardingTemplate))
+                : [
+                    { id: 't1', category: 'IT & Equipment', task: 'Provision MacBook Pro M2', type: 'checkbox', completed: false, assignee: 'IT' },
+                    { id: 't2', category: 'IT & Equipment', task: 'Create IAM User', type: 'checkbox', completed: false, assignee: 'IT' },
+                    { id: 't3', category: 'Culture & Orientation', task: 'Send Welcome Swag Kit', type: 'checkbox', completed: false, assignee: 'HR' },
+                    { id: 't4', category: 'Legal & Compliance', task: 'Sign Employment Agreement', type: 'upload', completed: false, assignee: 'HR' },
+                ];
+
             const updates: Partial<ExtendedCandidate> = {
                 stage: "Hired" as Candidate['stage'],
                 onboarding: {
                     hrisSyncStatus: 'Not_Synced',
-                    tasks: [
-                        { id: 't1', category: 'IT & Equipment', task: 'Provision MacBook Pro M2', type: 'checkbox', completed: false, assignee: 'IT' },
-                        { id: 't2', category: 'IT & Equipment', task: 'Create IAM User', type: 'checkbox', completed: false, assignee: 'IT' },
-                        { id: 't3', category: 'Culture & Orientation', task: 'Send Welcome Swag Kit', type: 'checkbox', completed: false, assignee: 'HR' },
-                        { id: 't4', category: 'Legal & Compliance', task: 'Sign Employment Agreement', type: 'upload', completed: false, assignee: 'HR' },
-                    ]
+                    tasks: tasks
                 }
             };
             await this.updateCandidate(candidateId, updates);
@@ -594,6 +630,30 @@ class Store {
             console.log(`Invitation ${inviteId} revoked`);
         } catch (e) {
             console.error("Error revoking invitation: ", e);
+        }
+    }
+
+    async publishAssessment(assessment: Partial<AssessmentModule>) {
+        if (!this.orgId) return;
+        try {
+            const id = assessment.id || `asm_${Date.now()}`;
+            await setDoc(doc(db, 'organizations', this.orgId, 'assessments', id), {
+                ...assessment,
+                id: id,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+        } catch (e) {
+            console.error("Error publishing assessment: ", e);
+        }
+    }
+
+    async deleteAssessment(id: string) {
+        if (!this.orgId) return;
+        try {
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(doc(db, 'organizations', this.orgId, 'assessments', id));
+        } catch (e) {
+            console.error("Error deleting assessment: ", e);
         }
     }
 
