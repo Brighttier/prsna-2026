@@ -82,6 +82,10 @@ interface PlatformSettings {
         resume: boolean;
         interview: boolean;
     };
+    persona?: {
+        intensity: number;
+        voice: string;
+    };
 }
 
 export interface BrandingSettings {
@@ -127,6 +131,10 @@ const INITIAL_STATE: AppState = {
             global: false,
             resume: false,
             interview: false
+        },
+        persona: {
+            intensity: 30,
+            voice: 'Kore (Neutral)'
         }
     },
     branding: {
@@ -360,6 +368,20 @@ class Store {
             });
         } catch (e) {
             console.error("Error updating branding: ", e);
+        }
+    }
+
+    async updatePersona(updates: { intensity?: number; voice?: string }) {
+        if (!this.orgId) return;
+        const currentPersona = this.state.settings.persona || { intensity: 30, voice: 'Kore (Neutral)' };
+        const newPersona = { ...currentPersona, ...updates };
+
+        try {
+            await updateDoc(doc(db, 'organizations', this.orgId), {
+                'settings.persona': newPersona
+            });
+        } catch (e) {
+            console.error("Error updating persona: ", e);
         }
     }
 

@@ -65,6 +65,7 @@ export const Settings = () => {
     // --- BRANDING STATE SYNCED WITH STORE ---
     const [branding, setBranding] = useState(store.getState().branding);
     const [orgId, setOrgId] = useState(store.getState().orgId);
+    const [persona, setPersona] = useState(store.getState().settings.persona);
     const [invitations, setInvitations] = useState<Invitation[]>(store.getState().invitations || []); // Check initial state
 
     useEffect(() => {
@@ -75,6 +76,7 @@ export const Settings = () => {
             const state = store.getState();
             setBranding(state.branding);
             setOrgId(state.orgId);
+            setPersona(state.settings.persona);
             setInvitations(state.invitations || []);
         });
     }, []);
@@ -136,7 +138,15 @@ export const Settings = () => {
     };
 
     // --- PERSONA STATE ---
-    const [intensity, setIntensity] = useState(30);
+    const [intensity, setIntensity] = useState(persona?.intensity || 30);
+    const [voice, setVoice] = useState(persona?.voice || 'Kore (Neutral)');
+
+    useEffect(() => {
+        if (persona) {
+            setIntensity(persona.intensity);
+            setVoice(persona.voice);
+        }
+    }, [persona]);
 
     // --- INVITE MODAL STATE ---
     const [showInviteModal, setShowInviteModal] = useState(false);
@@ -197,6 +207,10 @@ export const Settings = () => {
             heroHeadline,
             heroSubhead,
             coverStyle
+        });
+        store.updatePersona({
+            intensity,
+            voice
         });
         setTimeout(() => {
             setLoading(false);
@@ -859,9 +873,13 @@ export const Settings = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Interviewer Voice</label>
                                 <div className="grid grid-cols-2 gap-3">
-                                    {['Kore (Neutral)', 'Fenrir (Deep)', 'Puck (Energetic)', 'Aoede (Soft)'].map((voice) => (
-                                        <div key={voice} className={`p-3 border rounded-lg text-sm cursor-pointer transition-all ${voice.includes('Kore') ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium ring-1 ring-brand-500' : 'border-slate-200 hover:border-slate-300'}`}>
-                                            {voice}
+                                    {['Kore (Neutral)', 'Fenrir (Deep)', 'Puck (Energetic)', 'Aoede (Soft)'].map((v) => (
+                                        <div
+                                            key={v}
+                                            onClick={() => setVoice(v)}
+                                            className={`p-3 border rounded-lg text-sm cursor-pointer transition-all ${voice === v ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium ring-1 ring-brand-500' : 'border-slate-200 hover:border-slate-300'}`}
+                                        >
+                                            {v}
                                         </div>
                                     ))}
                                 </div>
