@@ -97,6 +97,15 @@ interface AppState {
     assessments: AssessmentModule[];
     settings: PlatformSettings;
     branding: BrandingSettings;
+    invitations: Invitation[];
+}
+
+export interface Invitation {
+    id: string;
+    email: string;
+    role: string;
+    status: 'pending' | 'accepted';
+    invitedAt: string;
 }
 
 const INITIAL_STATE: AppState = {
@@ -119,7 +128,8 @@ const INITIAL_STATE: AppState = {
         brandColor: '#16a34a',
         fontStyle: 'sans',
         cornerStyle: 'soft'
-    }
+    },
+    invitations: []
 };
 
 class Store {
@@ -212,6 +222,13 @@ class Store {
             }
         });
         this.unsubscribeListeners.push(settingsUnsub);
+
+        // Invitations Listener
+        const invitesUnsub = onSnapshot(collection(db, 'organizations', orgId, 'invitations'), (snapshot) => {
+            this.state.invitations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invitation));
+            this.notifyListeners();
+        });
+        this.unsubscribeListeners.push(invitesUnsub);
     }
 
     private async seedJobs(orgId: string) {

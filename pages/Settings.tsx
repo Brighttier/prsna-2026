@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
 import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2, List, FileText, CheckCircle, AlertCircle, UploadCloud, BookOpen, Sparkles, BrainCircuit, ClipboardList, FileCheck, Video, Settings as SettingsIcon } from 'lucide-react';
-import { store } from '../services/store';
+import { store, Invitation } from '../services/store';
+import { auth } from '../services/firebase';
 import { useEffect } from 'react';
 import { AssessmentModule, AssessmentType, Question, OnboardingTask, OnboardingCategory } from '../types';
 
@@ -63,10 +64,16 @@ export const Settings = () => {
 
     // --- BRANDING STATE SYNCED WITH STORE ---
     const [branding, setBranding] = useState(store.getState().branding);
+    const [invitations, setInvitations] = useState<Invitation[]>(store.getState().invitations || []); // Check initial state
 
     useEffect(() => {
+        // Initial load
+        setInvitations(store.getState().invitations || []);
+
         return store.subscribe(() => {
-            setBranding(store.getState().branding);
+            const state = store.getState();
+            setBranding(state.branding);
+            setInvitations(state.invitations || []);
         });
     }, []);
 
@@ -888,28 +895,52 @@ export const Settings = () => {
                             <tr>
                                 <th className="px-6 py-3">User</th>
                                 <th className="px-6 py-3">Role</th>
-                                <th className="px-6 py-3">Last Active</th>
+                                <th className="px-6 py-3">Status</th>
                                 <th className="px-6 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {[
-                                { name: 'John Doe', email: 'john@acme.com', role: 'Admin', active: 'Now' },
-                                { name: 'Sarah Smith', email: 'sarah@acme.com', role: 'Recruiter', active: '2h ago' },
-                                { name: 'Mike Ross', email: 'mike@acme.com', role: 'Viewer', active: '1d ago' },
-                            ].map((user, i) => (
-                                <tr key={i} className="hover:bg-slate-50">
+                            {/* Current User */}
+                            <tr className="hover:bg-slate-50">
+                                <td className="px-6 py-4">
+                                    <div className="font-medium text-slate-900">You</div>
+                                    <div className="text-xs text-slate-500">{auth.currentUser?.email}</div>
+                                </td>
+                                <td className="px-6 py-4"><span className="px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-bold">Owner</span></td>
+                                <td className="px-6 py-4 text-emerald-600 font-medium flex items-center gap-1"><div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div> Active</td>
+                                <td className="px-6 py-4 text-right"></td>
+                            </tr>
+
+                            {/* Invited Members */}
+                            {invitations.map((inv) => (
+                                <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4">
-                                        <div className="font-medium text-slate-900">{user.name}</div>
-                                        <div className="text-xs text-slate-500">{user.email}</div>
+                                        <div className="font-medium text-slate-900">{inv.email.split('@')[0]}</div>
+                                        <div className="text-xs text-slate-500">{inv.email}</div>
                                     </td>
-                                    <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs font-bold">{user.role}</span></td>
-                                    <td className="px-6 py-4 text-slate-500">{user.active}</td>
+                                    <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs font-bold">{inv.role}</span></td>
+                                    <td className="px-6 py-4">
+                                        {inv.status === 'pending' ? (
+                                            <span className="flex items-center gap-1.5 text-amber-600 text-xs font-bold bg-amber-50 px-2 py-1 rounded w-fit">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Pending
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-500">{inv.status}</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="text-slate-400 hover:text-red-500">Remove</button>
+                                        <button className="text-slate-400 hover:text-red-500 text-xs font-medium transition-colors">Revoke</button>
                                     </td>
                                 </tr>
                             ))}
+
+                            {invitations.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-8 text-center text-slate-500 italic">
+                                        No team members invited yet.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </Card>
