@@ -84,7 +84,7 @@ interface PlatformSettings {
     };
 }
 
-interface BrandingSettings {
+export interface BrandingSettings {
     companyName: string;
     brandColor: string;
     fontStyle: 'sans' | 'serif' | 'mono';

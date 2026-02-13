@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { BrandingSettings, Job } from '../services/store';
+import { BrandingSettings } from '../services/store';
+import { Job, JobStatus } from '../types';
 import { Briefcase, MapPin, ArrowRight, Globe, Building2 } from 'lucide-react';
 
 export const PublicCareerPage = () => {
@@ -28,7 +29,7 @@ export const PublicCareerPage = () => {
                 // Fetch Jobs
                 const jobsSnap = await getDocs(collection(db, 'organizations', orgId, 'jobs'));
                 const fetchedJobs = jobsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Job));
-                setJobs(fetchedJobs.filter(j => j.status === 'Active')); // Only active jobs
+                setJobs(fetchedJobs.filter(j => j.status === JobStatus.OPEN)); // Only active jobs
             } catch (err) {
                 console.error("Failed to load career page", err);
             } finally {
