@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Job } from '../types';
 import { X, Upload, Video, Mic, Check, AlertCircle, Loader2 } from 'lucide-react';
-import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, doc } from '../services/firebase';
+import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, doc, auth } from '../services/firebase';
+import { signInAnonymously } from 'firebase/auth';
 
 interface JobApplicationModalProps {
     job: Job;
@@ -31,6 +32,11 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+
+    // Authenticate anonymously for uploads
+    useEffect(() => {
+        signInAnonymously(auth).catch(err => console.error("Anon Auth Failed", err));
+    }, []);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
