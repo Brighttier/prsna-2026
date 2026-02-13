@@ -6,6 +6,7 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Code, MessageSquare, ShieldChec
 import { useNavigate, useLocation } from 'react-router-dom';
 import { store, InterviewSession, TranscriptEntry } from '../services/store';
 import { summarizeInterview } from '../services/geminiService';
+import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase';
 
 const Orb = ({ active, speaking }: { active: boolean, speaking: boolean }) => {
    return (
@@ -44,6 +45,11 @@ export const InterviewRoom = () => {
    const scrollRef = useRef<HTMLDivElement>(null);
    const [isAiSpeaking, setIsAiSpeaking] = useState(false);
    const aiSpeakingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+   // Recording State
+   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+   const chunksRef = useRef<Blob[]>([]);
+   const [isRecording, setIsRecording] = useState(false);
 
    const candidateId = location.state?.candidateId;
    const [candidate] = useState(candidateId ? store.getState().candidates.find(c => c.id === candidateId) : null);
@@ -85,12 +91,23 @@ export const InterviewRoom = () => {
    useEffect(() => {
       const startCam = async () => {
          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             if (videoRef.current) {
                videoRef.current.srcObject = stream;
             }
+
+            // Start Recording
+            const recorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = recorder;
+            chunksRef.current = [];
+            recorder.ondataavailable = (e) => {
+               if (e.data.size > 0) chunksRef.current.push(e.data);
+            };
+            recorder.start();
+            setIsRecording(true);
+
          } catch (e) {
-            console.error("Camera failed", e);
+            console.error("Camera/Mic failed", e);
             setCamOn(false);
          }
       };
@@ -126,6 +143,31 @@ export const InterviewRoom = () => {
    const handleEnd = async () => {
       disconnect();
 
+      let videoUrl = '';
+      const sessionId = Math.random().toString(36).substr(2, 9);
+      const orgId = store.getState().orgId;
+
+      // Stop Recording and Upload
+      if (mediaRecorderRef.current && isRecording && candidateId && orgId) {
+         try {
+            const videoBlob = await new Promise<Blob>((resolve) => {
+               if (!mediaRecorderRef.current) return resolve(new Blob([]));
+               mediaRecorderRef.current.onstop = () => {
+                  resolve(new Blob(chunksRef.current, { type: 'video/webm' }));
+               };
+               mediaRecorderRef.current.stop();
+            });
+
+            if (videoBlob.size > 0) {
+               const videoRef = ref(storage, `${orgId}/candidates/${candidateId}/interviews/${sessionId}/recording.webm`);
+               await uploadBytes(videoRef, videoBlob);
+               videoUrl = await getDownloadURL(videoRef);
+            }
+         } catch (e) {
+            console.error("Failed to upload recording", e);
+         }
+      }
+
       if (candidateId && transcript.length > 0) {
          try {
             // Use V2 Backend Function for analysis
@@ -133,7 +175,7 @@ export const InterviewRoom = () => {
             const data = await analyzeInterview(transcript, candidate?.role || 'Engineer');
 
             const session: InterviewSession = {
-               id: Math.random().toString(36).substr(2, 9),
+               id: sessionId,
                date: new Date().toLocaleDateString(),
                type: 'Lumina Live Technical',
                status: 'Completed',
@@ -145,7 +187,8 @@ export const InterviewRoom = () => {
                   text: t.text,
                   timestamp: new Date().toLocaleTimeString()
                })),
-               videoHighlights: data.highlights || []
+               videoHighlights: data.highlights || [],
+               videoUrl: videoUrl // Link video
             };
 
             store.addInterviewSession(candidateId, session);
