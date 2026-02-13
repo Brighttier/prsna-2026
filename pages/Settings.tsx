@@ -237,15 +237,20 @@ export const Settings = () => {
         }, 800);
     };
 
-    const handleSendInvite = (e: React.FormEvent) => {
+    const handleSendInvite = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!inviteEmail) return;
         setIsInviting(true);
-        setTimeout(() => {
-            setIsInviting(false);
-            setShowInviteModal(false);
+        try {
+            await store.inviteTeamMember(inviteEmail, inviteRole);
             setInviteEmail('');
             setInviteRole('Recruiter');
-        }, 1500);
+            setShowInviteModal(false);
+        } catch (error) {
+            console.error("Failed to send invite:", error);
+        } finally {
+            setIsInviting(false);
+        }
     };
 
     // Onboarding Helpers
@@ -1120,7 +1125,12 @@ export const Settings = () => {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="text-slate-400 hover:text-red-500 text-xs font-medium transition-colors">Revoke</button>
+                                        <button
+                                            onClick={() => store.revokeInvitation(inv.id)}
+                                            className="text-slate-400 hover:text-red-500 text-xs font-medium transition-colors"
+                                        >
+                                            Revoke
+                                        </button>
                                     </td>
                                 </tr>
                             ))}

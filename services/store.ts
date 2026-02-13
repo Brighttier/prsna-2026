@@ -521,21 +521,32 @@ class Store {
         }
     }
 
-    async inviteTeamMember(email: string) {
+    async inviteTeamMember(email: string, role: string = 'Recruiter') {
         if (!this.orgId || !email) return;
         try {
-            const inviteId = `inv_${Math.random().toString(36).substr(2, 9)}`;
+            const inviteId = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
             await setDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId), {
                 email,
                 status: 'pending',
                 invitedAt: new Date().toISOString(),
-                role: 'member'
+                role: role
             });
-            console.log(`Invitation created for ${email}`);
+            console.log(`Invitation created for ${email} with role ${role}`);
         } catch (e) {
             console.error("Error inviting team member: ", e);
         }
     }
+    async revokeInvitation(inviteId: string) {
+        if (!this.orgId) return;
+        try {
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId));
+            console.log(`Invitation ${inviteId} revoked`);
+        } catch (e) {
+            console.error("Error revoking invitation: ", e);
+        }
+    }
+
 
     // Check if AI is allowed
     isAiAllowed(feature: 'resume' | 'interview'): boolean {
