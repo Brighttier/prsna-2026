@@ -232,9 +232,9 @@ export const Login = () => {
                                             setError(null);
                                             setSuccessMessage(null);
                                         }}
-                                        className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                                        className="text-sm font-medium text-emerald-600 hover:text-emerald-700 relative z-50"
                                     >
-                                        Forgot password?
+                                        Forgot password? (Reset)
                                     </a>
                                 </div>
                             )}
