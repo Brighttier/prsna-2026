@@ -226,6 +226,7 @@ export const Login = () => {
                                     <button
                                         type="button"
                                         onClick={() => {
+                                            console.log("Forgot Password clicked");
                                             setIsForgotPassword(true);
                                             setError(null);
                                             setSuccessMessage(null);
