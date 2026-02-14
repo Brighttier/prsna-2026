@@ -223,9 +223,10 @@ export const Login = () => {
                                         <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
                                         <span className="text-sm text-slate-600">Remember me</span>
                                     </label>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
+                                    <a
+                                        href="#"
+                                        onClick={(e) => {
+                                            e.preventDefault();
                                             console.log("Forgot Password clicked");
                                             setIsForgotPassword(true);
                                             setError(null);
@@ -234,7 +235,7 @@ export const Login = () => {
                                         className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
                                     >
                                         Forgot password?
-                                    </button>
+                                    </a>
                                 </div>
                             )}
 
