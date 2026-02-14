@@ -227,14 +227,13 @@ export const Login = () => {
                                         href="#"
                                         onClick={(e) => {
                                             e.preventDefault();
-                                            console.log("Forgot Password clicked");
                                             setIsForgotPassword(true);
                                             setError(null);
                                             setSuccessMessage(null);
                                         }}
-                                        className="text-sm font-medium text-emerald-600 hover:text-emerald-700 relative z-50"
+                                        className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
                                     >
-                                        Forgot password? (Reset)
+                                        Forgot password?
                                     </a>
                                 </div>
                             )}
