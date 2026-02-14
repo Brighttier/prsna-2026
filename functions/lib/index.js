@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
+exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
@@ -42,6 +42,7 @@ const genai_1 = require("@google/genai");
 const app_1 = require("firebase-admin/app");
 const firestore_1 = require("firebase-admin/firestore");
 const storage_2 = require("firebase-admin/storage");
+const auth_1 = require("firebase-admin/auth");
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
 const WordExtractor = require('word-extractor');
@@ -530,6 +531,69 @@ exports.generateJobDescription = (0, https_1.onCall)(functionConfig, async (requ
     }
     catch (error) {
         logger.error("Error generating job description", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 7. INVITE TEAM MEMBER (Callable)
+ *
+ * Creates a Firebase Auth user (if needed), sets custom claims, and records the invitation.
+ * The Client is responsible for triggering the "Reset Password" email to notify the user.
+ */
+exports.inviteTeamMember = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { email, role, orgId } = request.data;
+    if (!email || !role || !orgId) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing email, role, or orgId.');
+    }
+    const auth = (0, auth_1.getAuth)();
+    const db = (0, firestore_1.getFirestore)();
+    let uid;
+    let isNewUser = false;
+    try {
+        // 1. Check if user exists
+        try {
+            const userRecord = await auth.getUserByEmail(email);
+            uid = userRecord.uid;
+            logger.info(`User ${email} already exists with UID: ${uid}`);
+        }
+        catch (e) {
+            if (e.code === 'auth/user-not-found') {
+                // 2. Create new user
+                logger.info(`Creating new user for ${email}`);
+                const newUser = await auth.createUser({
+                    email: email,
+                    emailVerified: true // Trusting the admin invite
+                });
+                uid = newUser.uid;
+                isNewUser = true;
+            }
+            else {
+                throw e;
+            }
+        }
+        // 3. Set Custom Claims (Org ID and Role)
+        await auth.setCustomUserClaims(uid, { orgId, role });
+        // 4. Create/Update Invitation Record in Firestore
+        // Use set with merge to avoiding duplicates if re-inviting
+        const inviteId = btoa(email).replace(/=/g, ''); // Simple deterministic ID
+        await db.collection('organizations').doc(orgId).collection('invitations').doc(inviteId).set({
+            email,
+            role,
+            status: isNewUser ? 'pending_signup' : 'active',
+            invitedAt: new Date().toISOString(),
+            uid: uid
+        }, { merge: true });
+        // 5. Add to Users collection for easier querying
+        await db.collection('users').doc(uid).set({
+            email,
+            role,
+            orgId,
+            createdAt: new Date().toISOString()
+        }, { merge: true });
+        return { success: true, isNewUser, uid };
+    }
+    catch (error) {
+        logger.error("Error inviting team member", error);
         throw new https_1.HttpsError('internal', error.message);
     }
 });

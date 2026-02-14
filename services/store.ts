@@ -1,6 +1,7 @@
 import { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus } from '../types';
 export type { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus };
-import { db, collection, doc, setDoc, updateDoc, onSnapshot, auth, query, where } from './firebase';
+import { db, collection, doc, setDoc, updateDoc, onSnapshot, auth, query, where, httpsCallable, functions } from './firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export interface TranscriptEntry {
     speaker: 'Lumina' | 'Candidate';
@@ -608,16 +609,31 @@ class Store {
         if (!email) return;
 
         try {
-            const inviteId = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-            console.log(`[Store] Creating invitation for ${email} in org ${this.orgId}`);
-            await setDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId), {
+            console.log(`[Store] Inviting ${email} to org ${this.orgId} via Cloud Function...`);
+
+            // 1. Call Cloud Function to create User and Set Claims
+            const inviteFn = httpsCallable(functions, 'inviteTeamMember');
+            await inviteFn({
                 email,
-                status: 'pending',
-                invitedAt: new Date().toISOString(),
-                role: role
+                role,
+                orgId: this.orgId
             });
-            console.log(`[Store] Invitation successfully created for ${email}`);
-        } catch (e) {
+
+            console.log(`[Store] User created/updated. Sending internal password reset email...`);
+
+            // 2. Send Firebase Auth Password Reset Email (as the invite)
+            try {
+                // We use the client SDK to send the email using Firebase's internal system
+                await sendPasswordResetEmail(auth, email);
+                console.log(`[Store] Password reset email sent to ${email}`);
+            } catch (emailError: any) {
+                console.error("[Store] Failed to send password reset email:", emailError);
+                // We don't throw here because the user is technically created/invited
+                // The UI will show success but mentioned they might need to reset password
+                throw new Error(`Invitation created but email failed: ${emailError.message}`);
+            }
+
+        } catch (e: any) {
             console.error("[Store] Error inviting team member: ", e);
             throw e;
         }

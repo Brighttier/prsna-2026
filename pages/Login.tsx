@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, Shield, Zap, Users, AlertCircle, Loader2 } from 'lucide-react';
-import { signUp, signIn } from '../services/auth';
+import { signUp, signIn, resetPassword } from '../services/auth';
 
 export const Login = () => {
     const navigate = useNavigate();
@@ -9,6 +9,8 @@ export const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -19,10 +21,19 @@ export const Login = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setSuccessMessage(null);
         setLoading(true);
 
         try {
-            if (isSignUp) {
+            if (isForgotPassword) {
+                const res = await resetPassword(formData.email);
+                if (res.error) {
+                    setError(res.error);
+                } else {
+                    setSuccessMessage("Password reset email sent! Check your inbox.");
+                    setIsForgotPassword(false); // Optionally return to login view
+                }
+            } else if (isSignUp) {
                 const res = await signUp(formData.email, formData.password, formData.name, formData.company);
                 if (res.error) {
                     setError(res.error);
@@ -119,10 +130,10 @@ export const Login = () => {
                         {/* Header */}
                         <div className="mb-8">
                             <h2 className="text-3xl font-bold text-slate-900 mb-2">
-                                {isSignUp ? 'Create Account' : 'Welcome Back'}
+                                {isForgotPassword ? 'Reset Password' : (isSignUp ? 'Create Account' : 'Welcome Back')}
                             </h2>
                             <p className="text-slate-500">
-                                {isSignUp ? 'Start your free trial today' : 'Sign in to continue to your dashboard'}
+                                {isForgotPassword ? 'Enter your email to receive recovery instructions' : (isSignUp ? 'Start your free trial today' : 'Sign in to continue to your dashboard')}
                             </p>
                         </div>
 
@@ -132,10 +143,15 @@ export const Login = () => {
                                 <p>{error}</p>
                             </div>
                         )}
+                        {successMessage && (
+                            <div className="mb-6 p-4 bg-green-50 border border-green-100 rounded-xl flex items-start gap-3 text-green-600 text-sm">
+                                <Sparkles className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                <p>{successMessage}</p>
+                            </div>
+                        )}
 
-                        {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-5">
-                            {isSignUp && (
+                            {isSignUp && !isForgotPassword && (
                                 <>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
@@ -177,35 +193,45 @@ export const Login = () => {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        className="w-full pl-12 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-                                        placeholder="••••••••"
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                    >
-                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                    </button>
+                            {!isForgotPassword && (
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                            className="w-full pl-12 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                            placeholder="••••••••"
+                                            required={!isForgotPassword}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                        >
+                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {!isSignUp && (
+                            {!isSignUp && !isForgotPassword && (
                                 <div className="flex items-center justify-between">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
                                         <span className="text-sm text-slate-600">Remember me</span>
                                     </label>
-                                    <button type="button" className="text-sm font-medium text-emerald-600 hover:text-emerald-700">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsForgotPassword(true);
+                                            setError(null);
+                                            setSuccessMessage(null);
+                                        }}
+                                        className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                                    >
                                         Forgot password?
                                     </button>
                                 </div>
@@ -217,7 +243,7 @@ export const Login = () => {
                                 className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-                                {isSignUp ? 'Create Account' : 'Sign In'}
+                                {isForgotPassword ? 'Send Reset Link' : (isSignUp ? 'Create Account' : 'Sign In')}
                                 {!loading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
                             </button>
                         </form>
@@ -254,17 +280,37 @@ export const Login = () => {
                         {/* Toggle Sign Up/Login */}
                         <div className="mt-6 text-center">
                             <p className="text-slate-600">
-                                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsSignUp(!isSignUp);
-                                        setError(null);
-                                    }}
-                                    className="font-bold text-emerald-600 hover:text-emerald-700"
-                                >
-                                    {isSignUp ? 'Sign In' : 'Sign Up'}
-                                </button>
+                                {isForgotPassword ? (
+                                    <>
+                                        Remember your password?{' '}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsForgotPassword(false);
+                                                setError(null);
+                                                setSuccessMessage(null);
+                                            }}
+                                            className="font-bold text-emerald-600 hover:text-emerald-700"
+                                        >
+                                            Back to Sign In
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsSignUp(!isSignUp);
+                                                setError(null);
+                                                setSuccessMessage(null);
+                                            }}
+                                            className="font-bold text-emerald-600 hover:text-emerald-700"
+                                        >
+                                            {isSignUp ? 'Sign In' : 'Sign Up'}
+                                        </button>
+                                    </>
+                                )}
                             </p>
                         </div>
                     </div>

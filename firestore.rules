@@ -49,6 +49,10 @@ service cloud.firestore {
       match /invitations/{inviteId} {
         allow read, write: if isAuthenticated();
       }
+
+      match /assessments/{assessmentId} {
+        allow read, write: if isAuthenticated();
+      }
     }
     
     // Legacy collections (blocking access or redirecting logic if needed)
