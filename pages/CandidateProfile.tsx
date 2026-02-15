@@ -1339,7 +1339,7 @@ RecruiteAI`;
                             <Card className="p-6">
                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Skills</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {candidate.skills.map(s => <span key={s} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium border border-slate-200">{s}</span>)}
+                                    {candidate.skills?.map(s => <span key={s} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium border border-slate-200">{s}</span>) || <span className="text-xs text-slate-400 italic">No skills listed</span>}
                                 </div>
                             </Card>
 
@@ -1375,13 +1375,17 @@ RecruiteAI`;
                                 <p className="text-slate-600 leading-relaxed">{candidate.summary}</p>
                             </Card>
                             <div className="space-y-4">
-                                {candidate.experience.map(exp => (
+                                {candidate.experience?.map(exp => (
                                     <Card key={exp.id} className="p-6">
                                         <h4 className="font-bold text-slate-900 text-lg">{exp.role}</h4>
                                         <div className="text-sm text-slate-500 font-medium mb-3">{exp.company} • {exp.duration}</div>
                                         <p className="text-slate-600 text-sm leading-relaxed">{exp.description}</p>
                                     </Card>
-                                ))}
+                                )) || (
+                                        <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400">
+                                            No experience details provided.
+                                        </div>
+                                    )}
                             </div>
                         </div>
                     </div>
@@ -1400,7 +1404,7 @@ RecruiteAI`;
                                         </div>
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-900 mb-2">Generating Intelligence Report...</h3>
-                                    <p className="text-slate-500"> analyzing {candidate.experience.length} experience items against the Job Description.</p>
+                                    <p className="text-slate-500"> analyzing {(candidate.experience || []).length} experience items against the Job Description.</p>
                                 </div>
                             ) : (
                                 <div className="text-center py-24 bg-white rounded-2xl border border-dashed border-slate-300">
@@ -1574,7 +1578,7 @@ RecruiteAI`;
                                         <Code className="w-5 h-5 text-blue-500" /> Skills Proficiency Matrix
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-12">
-                                        {candidate.skills.slice(0, 6).map((skill, i) => {
+                                        {(candidate.skills || []).slice(0, 6).map((skill, i) => {
                                             // Mock proficiency generation based on index
                                             const proficiency = Math.max(60, 95 - (i * 5));
                                             const experienceYears = Math.max(1, 5 - Math.floor(i / 2));
@@ -1593,6 +1597,11 @@ RecruiteAI`;
                                                 </div>
                                             );
                                         })}
+                                        {(candidate.skills || []).length === 0 && (
+                                            <div className="col-span-full text-center py-6 text-slate-400 italic">
+                                                No specific skills identified for matrix.
+                                            </div>
+                                        )}
                                     </div>
                                 </Card>
                             </>

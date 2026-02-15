@@ -54,13 +54,16 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string, 
  Task:
       Analyze the candidate's career trajectory and skill density relative to the job description.
       Provide a strict JSON output with the following structure:
- {
-   "score": number(0 - 100),
-     "verdict": "Proceed" | "Reject" | "Review",
-       "reasoning": "A concise summary of why this score was given.",
-         "missingSkills": ["skill1", "skill2"],
-         "matchReason": "A one sentence summary of the match."
- }
+      {
+        "score": number(0 - 100),
+        "verdict": "Proceed" | "Reject" | "Review",
+        "reasoning": "A concise summary of why this score was given.",
+        "missingSkills": ["skill1", "skill2"],
+        "matchReason": "A one sentence summary of the match.",
+        "skills": ["skillA", "skillB"],
+        "experience": [{"company": "...", "role": "...", "duration": "...", "description": "..."}],
+        "education": [{"school": "...", "degree": "...", "year": "..."}]
+      }
       
       Do not include markdown formatting(like \`\`\`json). Just the raw JSON string.
     `;
@@ -231,6 +234,10 @@ export const onNewResumeUpload = onObjectFinalized({
             score: result.score,
             matchReason: result.reasoning,
             aiVerdict: result.verdict,
+            skills: result.skills || [],
+            experience: result.experience || [],
+            education: result.education || [],
+            summary: result.reasoning, // Use reasoning as initial summary
             analysis: {
                 matchScore: result.score,
                 verdict: result.verdict,
@@ -308,7 +315,10 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
       "strengths": string[], 
       "weaknesses": string[], 
       "summary": string, 
-      "matchReason": string 
+      "matchReason": string,
+      "skills": string[],
+      "experience": any[],
+      "education": any[]
     }
     `;
 

@@ -27,9 +27,12 @@ export const generateCandidateReport = async (candidate: ExtendedCandidate, job:
         const analysis = result.data;
 
         return {
-            aiVerdict: analysis.technicalScore > 80 ? 'Proceed' : (analysis.technicalScore > 60 ? 'Review' : 'Reject'),
+            aiVerdict: (analysis as any).technicalScore > 80 ? 'Proceed' : ((analysis as any).technicalScore > 60 ? 'Review' : 'Reject'),
             matchReason: analysis.matchReason,
             summary: analysis.summary,
+            skills: (analysis as any).skills,
+            experience: (analysis as any).experience,
+            education: (analysis as any).education,
             analysis: {
                 strengths: analysis.strengths || [],
                 weaknesses: analysis.weaknesses || [],
