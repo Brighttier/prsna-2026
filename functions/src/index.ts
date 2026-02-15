@@ -550,7 +550,13 @@ export const generateJobDescription = onCall(functionConfig as any, async (reque
             contents: prompt
         });
 
-        return { description: response.text || "Failed to generate description." };
+        const description = (response.text || "Failed to generate description.")
+            .replace(/^```markdown\s*/, '')
+            .replace(/^```\s*/, '')
+            .replace(/```$/, '')
+            .trim();
+
+        return { description };
     } catch (error: any) {
         logger.error("Error generating job description", error);
         throw new HttpsError('internal', error.message);

@@ -527,7 +527,12 @@ exports.generateJobDescription = (0, https_1.onCall)(functionConfig, async (requ
             model: 'gemini-2.0-flash',
             contents: prompt
         });
-        return { description: response.text || "Failed to generate description." };
+        const description = (response.text || "Failed to generate description.")
+            .replace(/^```markdown\s*/, '')
+            .replace(/^```\s*/, '')
+            .replace(/```$/, '')
+            .trim();
+        return { description };
     }
     catch (error) {
         logger.error("Error generating job description", error);
