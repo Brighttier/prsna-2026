@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle, FileText, Code as CodeIcon, Sparkles, Calendar as CalendarIcon, DollarSign, RefreshCw } from 'lucide-react';
+import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle, FileText, Code as CodeIcon, Sparkles, Calendar as CalendarIcon, DollarSign, RefreshCw, Trash2, Archive } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Job, JobStatus } from '../types';
 import { store } from '../services/store';
@@ -31,6 +31,8 @@ export const Jobs = () => {
    });
    const [technicalType, setTechnicalType] = useState<'coding' | 'scenario'>('coding');
    const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+   const [editingJobId, setEditingJobId] = useState<string | null>(null);
+   const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
 
    // Sync with store
    const [jobs, setJobs] = useState(store.getState().jobs);
@@ -43,16 +45,30 @@ export const Jobs = () => {
       });
    }, []);
 
+   const handleEdit = (job: Job) => {
+      setNewJob({
+         title: job.title,
+         dept: job.department,
+         loc: job.location,
+         screening: job.workflow?.screening || '',
+         technical: job.workflow?.technical || '',
+         description: job.description || '',
+         closeDate: '',
+         currency: job.currency || 'USD',
+         salaryMin: job.salaryMin?.toString() || '',
+         salaryMax: job.salaryMax?.toString() || ''
+      });
+      setEditingJobId(job.id);
+      setShowJobCreator(true);
+      setCreatorStep(1);
+   };
+
    const handlePublish = () => {
-      const job: Job = {
-         id: Math.random().toString(36).substr(2, 9),
+      const jobData = {
          title: newJob.title,
          department: newJob.dept,
          location: newJob.loc,
-         type: 'Full-time', // Simplified
-         status: JobStatus.OPEN,
-         applicants: 0,
-         postedDate: 'Just now',
+         type: 'Full-time',
          salaryMin: parseInt(newJob.salaryMin) || 0,
          salaryMax: parseInt(newJob.salaryMax) || 0,
          currency: newJob.currency,
@@ -62,7 +78,21 @@ export const Jobs = () => {
             technical: newJob.technical
          }
       };
-      store.addJob(job);
+
+      if (editingJobId) {
+         store.updateJob(editingJobId, jobData);
+         setEditingJobId(null);
+      } else {
+         const job: Job = {
+            id: Math.random().toString(36).substr(2, 9),
+            ...jobData,
+            status: JobStatus.OPEN,
+            applicants: 0,
+            postedDate: 'Just now',
+         } as Job;
+         store.addJob(job);
+      }
+
       setShowJobCreator(false);
       setCreatorStep(1);
       setNewJob({
@@ -85,6 +115,19 @@ export const Jobs = () => {
          case JobStatus.DRAFT: return 'bg-amber-100 text-amber-700 border-amber-200';
          default: return 'bg-slate-100 text-slate-600 border-slate-200';
       }
+   };
+
+   const handleDelete = (id: string) => {
+      if (window.confirm('Are you sure you want to delete this job posting?')) {
+         store.deleteJob(id);
+         setActiveActionMenu(null);
+      }
+   };
+
+   const handleStatusToggle = (job: Job) => {
+      const nextStatus = job.status === JobStatus.OPEN ? JobStatus.CLOSED : JobStatus.OPEN;
+      store.updateJob(job.id, { status: nextStatus });
+      setActiveActionMenu(null);
    };
 
    const [generationError, setGenerationError] = useState<string | null>(null);
@@ -116,7 +159,15 @@ export const Jobs = () => {
                <p className="text-slate-500 mt-1">Manage your open positions and track hiring progress.</p>
             </div>
             <button
-               onClick={() => setShowJobCreator(true)}
+               onClick={() => {
+                  setEditingJobId(null);
+                  setNewJob({
+                     title: '', dept: '', loc: '', screening: '', technical: '',
+                     description: '', closeDate: '', currency: 'USD', salaryMin: '', salaryMax: ''
+                  });
+                  setShowJobCreator(true);
+                  setCreatorStep(1);
+               }}
                className="flex items-center justify-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 transition-colors shadow-sm shadow-brand-500/20"
             >
                <Plus className="w-5 h-5" />
@@ -195,13 +246,49 @@ export const Jobs = () => {
                            <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Applicants</div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                           <button className="hidden md:block px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-white hover:text-brand-600 hover:shadow-sm border border-transparent hover:border-slate-200 rounded-lg transition-all">
+                        <div className="flex items-center gap-2 relative">
+                           <button
+                              onClick={() => handleEdit(job)}
+                              className="hidden md:block px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-white hover:text-brand-600 hover:shadow-sm border border-transparent hover:border-slate-200 rounded-lg transition-all"
+                           >
                               Edit
                            </button>
-                           <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                           <button
+                              onClick={() => setActiveActionMenu(activeActionMenu === job.id ? null : job.id)}
+                              className={`p-2 rounded-lg transition-colors ${activeActionMenu === job.id ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'}`}
+                           >
                               <MoreHorizontal className="w-5 h-5" />
                            </button>
+
+                           {/* Action Menu Dropdown */}
+                           {activeActionMenu === job.id && (
+                              <>
+                                 <div className="fixed inset-0 z-10" onClick={() => setActiveActionMenu(null)} />
+                                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-20 animate-scale-in origin-top-right">
+                                    <button
+                                       onClick={() => { handleEdit(job); setActiveActionMenu(null); }}
+                                       className="w-full px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 md:hidden"
+                                    >
+                                       Edit Role
+                                    </button>
+                                    <button
+                                       onClick={() => handleStatusToggle(job)}
+                                       className="w-full px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                                    >
+                                       <Archive className="w-4 h-4 text-slate-400" />
+                                       {job.status === JobStatus.OPEN ? 'Close Posting' : 'Reopen Posting'}
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1.5" />
+                                    <button
+                                       onClick={() => handleDelete(job.id)}
+                                       className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    >
+                                       <Trash2 className="w-4 h-4" />
+                                       Delete Posting
+                                    </button>
+                                 </div>
+                              </>
+                           )}
                         </div>
                      </div>
 
@@ -251,11 +338,11 @@ export const Jobs = () => {
                   <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                      <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">
-                           <Plus className="w-6 h-6" />
+                           {editingJobId ? <FileText className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
                         </div>
                         <div>
-                           <h2 className="text-xl font-bold text-slate-900">Create New Job</h2>
-                           <p className="text-sm text-slate-500">Define role details and interview workflow.</p>
+                           <h2 className="text-xl font-bold text-slate-900">{editingJobId ? 'Edit Job Role' : 'Create New Job'}</h2>
+                           <p className="text-sm text-slate-500">{editingJobId ? 'Update position details and requirements.' : 'Define role details and interview workflow.'}</p>
                         </div>
                      </div>
                      <button onClick={() => setShowJobCreator(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>

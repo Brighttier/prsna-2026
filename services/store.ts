@@ -457,6 +457,16 @@ class Store {
         }
     }
 
+    async deleteJob(id: string) {
+        if (!this.orgId) return;
+        try {
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(doc(db, 'organizations', this.orgId, 'jobs', id));
+        } catch (e) {
+            console.error("Error deleting job: ", e);
+        }
+    }
+
     async addCandidate(candidate: ExtendedCandidate) {
         if (!this.orgId) return;
         try {
