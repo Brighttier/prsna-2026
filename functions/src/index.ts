@@ -100,7 +100,7 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string) 
  * 1. AI-POWERED RESUME SCREENING (Manual Trigger)
  */
 export const screenResume = onCall(functionConfig as any, async (request) => {
-    const { resumeText, jobDescription, autoReportThreshold } = request.data;
+    const { resumeText, jobDescription } = request.data;
 
     if (!resumeText || !jobDescription) {
         throw new HttpsError('invalid-argument', 'The function must be called with "resumeText" and "jobDescription".');
