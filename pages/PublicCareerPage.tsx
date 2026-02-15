@@ -152,6 +152,11 @@ export const PublicCareerPage = () => {
                                 <h3 className="font-bold text-lg text-slate-900 group-hover:text-brand-600 transition-colors" style={{ color: 'inherit' }}>
                                     {job.title}
                                 </h3>
+                                {job.description && (
+                                    <p className="text-sm text-slate-500 line-clamp-2 mt-1 mb-2 max-w-2xl">
+                                        {job.description.replace(/[#*`]/g, '').slice(0, 160)}...
+                                    </p>
+                                )}
                                 <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
                                     <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5" /> {job.department}</span>
                                     <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {job.location}</span>

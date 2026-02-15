@@ -221,7 +221,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Department</p>
                                         <p className="text-sm font-bold text-slate-900">{job.department}</p>
                                     </div>
-                                    {job.salaryMin && job.salaryMax && (
+                                    {job.salaryMin !== undefined && job.salaryMax !== undefined && (job.salaryMin > 0 || job.salaryMax > 0) && (
                                         <div className="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100">
                                             <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-0.5">Salary Range</p>
                                             <p className="text-sm font-bold text-emerald-700">{job.currency} {job.salaryMin.toLocaleString()} - {job.salaryMax.toLocaleString()}</p>

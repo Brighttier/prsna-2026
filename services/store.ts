@@ -109,7 +109,6 @@ export interface BrandingSettings {
     cornerStyle: 'sharp' | 'soft' | 'round';
     domain?: string;
     heroHeadline?: string;
-    heroHeadline?: string;
     heroSubhead?: string;
     coverStyle?: 'gradient' | 'minimal';
 }
