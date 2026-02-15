@@ -305,6 +305,7 @@ export const Settings = () => {
 
     const handlePublishModule = () => {
         const assessment: Partial<AssessmentModule> = {
+            id: newModule.id,
             name: newModule.name || 'Untitled Module',
             type: newModule.type || 'QuestionBank',
             description: newModule.description || '',
@@ -314,7 +315,9 @@ export const Settings = () => {
             sourceMode: newModule.sourceMode,
             itemsCount: newModule.type === 'QuestionBank' ? (newModule.sourceMode === 'knowledgeBase' ? 1 : (newModule.questions?.length || 0)) : 1,
             knowledgeBase: newModule.knowledgeBase,
-            questions: newModule.questions
+            questions: newModule.questions,
+            codingConfig: newModule.codingConfig,
+            caseStudyConfig: newModule.caseStudyConfig
         };
         store.publishAssessment(assessment);
         setShowCreateModule(false);
@@ -327,8 +330,24 @@ export const Settings = () => {
             tags: [],
             sourceMode: 'manual',
             questions: [],
-            knowledgeBase: { content: '', fileName: '' }
+            knowledgeBase: { content: '', fileName: '' },
+            codingConfig: {
+                language: 'javascript',
+                problemStatement: '',
+                starterCode: '',
+                testCases: []
+            },
+            caseStudyConfig: {
+                scenario: '',
+                keyDiscussionPoints: []
+            }
         });
+    };
+
+    const handleEditModule = (mod: AssessmentModule) => {
+        setNewModule(mod);
+        setModuleStep(1);
+        setShowCreateModule(true);
     };
 
     const addTag = (e: React.KeyboardEvent) => {
@@ -1266,7 +1285,30 @@ export const Settings = () => {
                             <p className="text-slate-500 text-sm mt-1">Create and manage reusable question banks and coding challenges.</p>
                         </div>
                         <button
-                            onClick={() => setShowCreateModule(true)}
+                            onClick={() => {
+                                setNewModule({
+                                    name: '',
+                                    type: 'QuestionBank',
+                                    difficulty: 'Mid',
+                                    estimatedDuration: 15,
+                                    tags: [],
+                                    sourceMode: 'manual',
+                                    questions: [],
+                                    knowledgeBase: { content: '', fileName: '' },
+                                    codingConfig: {
+                                        language: 'javascript',
+                                        problemStatement: '',
+                                        starterCode: '',
+                                        testCases: []
+                                    },
+                                    caseStudyConfig: {
+                                        scenario: '',
+                                        keyDiscussionPoints: []
+                                    }
+                                });
+                                setModuleStep(1);
+                                setShowCreateModule(true);
+                            }}
                             className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800"
                         >
                             <Plus className="w-4 h-4" /> Create Module
@@ -1286,6 +1328,9 @@ export const Settings = () => {
                                         {mod.type === 'SystemDesign' && <LayoutTemplate className="w-5 h-5" />}
                                     </div>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500" onClick={(e) => { e.stopPropagation(); handleEditModule(mod); }}>
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
                                         <button className="p-1.5 hover:bg-red-50 rounded text-red-500" onClick={(e) => { e.stopPropagation(); store.deleteAssessment(mod.id); }}>
                                             <Trash2 className="w-4 h-4" />
                                         </button>
@@ -1331,7 +1376,7 @@ export const Settings = () => {
                                     <Plus className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-slate-900">Create Assessment Module</h2>
+                                    <h2 className="text-xl font-bold text-slate-900">{newModule.id ? 'Edit' : 'Create'} Assessment Module</h2>
                                     <p className="text-sm text-slate-500">Define knowledge banks and technical challenges.</p>
                                 </div>
                             </div>

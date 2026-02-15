@@ -34,10 +34,12 @@ export const Jobs = () => {
 
    // Sync with store
    const [jobs, setJobs] = useState(store.getState().jobs);
+   const [assessments, setAssessments] = useState(store.getState().assessments);
 
    useEffect(() => {
       return store.subscribe(() => {
          setJobs(store.getState().jobs);
+         setAssessments(store.getState().assessments);
       });
    }, []);
 
@@ -414,8 +416,9 @@ export const Jobs = () => {
                                        onChange={e => setNewJob({ ...newJob, screening: e.target.value })}
                                     >
                                        <option value="">Select from Library...</option>
-                                       <option value="4">Cultural Fit: Leadership (10 mins)</option>
-                                       <option value="1">React Core Concepts (15 mins)</option>
+                                       {assessments.filter(a => a.type === 'QuestionBank').map(a => (
+                                          <option key={a.id} value={a.id}>{a.name} ({a.estimatedDuration} mins)</option>
+                                       ))}
                                     </select>
                                     <p className="text-xs text-slate-500 mt-2">The AI Gatekeeper will use these questions during the CV screen.</p>
                                  </div>
@@ -455,18 +458,9 @@ export const Jobs = () => {
                                        onChange={e => setNewJob({ ...newJob, technical: e.target.value })}
                                     >
                                        <option value="">Select from Library...</option>
-                                       {technicalType === 'coding' ? (
-                                          <>
-                                             <option value="3">JS Algorithms: Arrays (Mid)</option>
-                                             <option value="7">Python Data Structures (Senior)</option>
-                                          </>
-                                       ) : (
-                                          <>
-                                             <option value="2">System Design: Scalable Feed (Discussion)</option>
-                                             <option value="5">Marketing Strategy Case (Q&A)</option>
-                                             <option value="6">Customer Support Escalation (Roleplay)</option>
-                                          </>
-                                       )}
+                                       {assessments.filter(a => (technicalType === 'coding' ? a.type === 'CodingChallenge' : a.type === 'SystemDesign')).map(a => (
+                                          <option key={a.id} value={a.id}>{a.name} ({a.difficulty})</option>
+                                       ))}
                                     </select>
                                     <p className="text-xs text-slate-500 mt-2">
                                        {technicalType === 'coding'
