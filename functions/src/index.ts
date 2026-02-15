@@ -284,7 +284,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
     try {
         const db = getFirestore();
         const segments = (candidate.resumeUrl || "").split('?')[0].split('/');
-        const orgId = segments.find((s, i) => segments[i - 1] === 'organizations') || ""; // Or pass it in
+        // Ensure path parsing logic is clean
 
         let resumeText = candidate.resumeText;
 
