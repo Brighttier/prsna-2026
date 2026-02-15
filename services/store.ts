@@ -77,6 +77,7 @@ export interface ExtendedCandidate extends Candidate {
     skills?: string[];
     experience?: Experience[];
     education?: Education[];
+    resumeText?: string;
     analysis?: {
         strengths?: string[];
         weaknesses?: string[];

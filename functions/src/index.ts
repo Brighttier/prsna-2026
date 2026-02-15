@@ -155,7 +155,7 @@ export const onNewResumeUpload = onObjectFinalized({
     const isDoc = contentType?.includes('application/msword') || filePath.toLowerCase().endsWith('.doc');
 
     // 1. Validation: Must be a resume in the candidate path and a supported format
-    if (!filePath.match(/organizations\/.*\/candidates\/.*\/resume_.*/) || (!isPdf && !isDocx && !isDoc)) {
+    if (!filePath.match(/.*\/candidates\/.*\/resume_.*/) || (!isPdf && !isDocx && !isDoc)) {
         return; // Ignore
     }
 
@@ -297,6 +297,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
     CANDIDATE: ${candidate.name}
     ROLE: ${candidate.role}
     SUMMARY: ${candidate.summary}
+    RAW RESUME TEXT (Use this as primary source if available): ${candidate.resumeText || "No raw text available"}
     SKILLS: ${candidate.skills?.join(', ')}
     EXPERIENCE: ${JSON.stringify(candidate.experience || [])}
 
