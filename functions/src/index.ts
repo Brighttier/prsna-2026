@@ -283,7 +283,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
 
     try {
         const db = getFirestore();
-        const segments = (candidate.resumeUrl || "").split('?')[0].split('/');
+        // Ensure path parsing logic is clean
         // Ensure path parsing logic is clean
 
         let resumeText = candidate.resumeText;

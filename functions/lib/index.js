@@ -284,7 +284,7 @@ exports.generateCandidateReport = (0, https_1.onCall)(functionConfig, async (req
     try {
         const db = (0, firestore_1.getFirestore)();
         const segments = (candidate.resumeUrl || "").split('?')[0].split('/');
-        const orgId = segments.find((s, i) => segments[i - 1] === 'organizations') || ""; // Or pass it in
+        // Ensure path parsing logic is clean
         let resumeText = candidate.resumeText;
         // 1. If resumeText is missing, try to fetch the latest from DB
         if (!resumeText && candidate.jobId) {
