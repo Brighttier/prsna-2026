@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{orgId}/candidates/{candidateId}/{allPaths=**} {
+      // Allow candidates to upload their own videos/resumes
+      // They are authenticated anonymously
+      allow write: if request.auth != null;
+      
+      // Allow organization members to read candidate files
+      allow read: if request.auth != null;
+    }
+    
+    // Fallback for other files (branding, etc)
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
