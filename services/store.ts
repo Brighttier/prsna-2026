@@ -293,13 +293,22 @@ class Store {
                         }
                     } else {
                         console.warn(`[Store] No user profile found in Firestore for ${user.uid} yet.`);
+                        // For new users who just signed up, the doc might be created by the client-side code in auth.ts
+                        // but there's a tiny window where it doesn't exist.
+                        // However, if it's an invited user, it MUST exist.
+                        // To prevent being stuck in a loading state, we mark as hydrated but log the warning.
+                        this.state.isHydrated = true;
+                        this.notifyListeners();
                     }
                 }, (error) => {
                     console.error("[Store] Error listening to user profile:", error);
+                    this.state.isHydrated = true;
+                    this.notifyListeners();
                 });
                 this.unsubscribeListeners.push(userUnsub);
             } else {
                 this.orgId = null;
+                this.state.orgId = undefined;
                 console.log("[Store] User signed out. Resetting state.");
                 this.state = JSON.parse(JSON.stringify(INITIAL_STATE));
                 this.notifyListeners();

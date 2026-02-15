@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { Analytics } from './pages/Analytics';
@@ -25,18 +25,25 @@ import { Loader2 } from 'lucide-react';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [currentUser, setCurrentUser] = React.useState<any>(null);
 
   React.useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged((user) => {
       setCurrentUser(user);
-      if (!user) setIsLoaded(true);
+      if (!user) {
+        setIsLoaded(true);
+        // If we are on a protected page and user logs out, go to login
+        const isProtected = !['/login', '/', '/onboarding'].includes(location.pathname) && !location.pathname.startsWith('/career/');
+        if (isProtected) {
+          navigate('/login');
+        }
+      }
     });
 
     const unsubStore = store.subscribe(() => {
       const state = store.getState();
-      // If we have a user, wait until orgId AND hydration is complete
       if (auth.currentUser) {
         if (state.orgId && state.isHydrated) setIsLoaded(true);
       } else {
@@ -48,7 +55,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       unsubAuth();
       unsubStore();
     };
-  }, []);
+  }, [location.pathname]); // Listen to path changes for auth redirect
 
   const isFullScreen = location.pathname.includes('/interview') ||
     location.pathname.includes('/offer') ||
@@ -59,14 +66,22 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 
   if (!isLoaded && !isFullScreen) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
-        <Loader2 className="w-12 h-12 text-brand-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium animate-pulse">Syncing with workspace...</p>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="w-16 h-16 relative mb-6">
+          <div className="absolute inset-0 border-4 border-slate-100 rounded-2xl"></div>
+          <Loader2 className="w-16 h-16 text-brand-600 animate-spin relative z-10" strokeWidth={2.5} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-1">Building your workspace</h2>
+        <p className="text-slate-500 font-medium animate-pulse">Syncing with secure node...</p>
       </div>
     );
   }
 
   if (isFullScreen) return <>{children}</>;
+
+  if (!currentUser && !isFullScreen) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#f3f4f6]">
