@@ -41,6 +41,7 @@ const getGenAIClient = () => {
 // --- HELPER: Analyze Resume Logic (Shared) ---
 async function analyzeResumeContent(resumeText: string, jobDescription: string) {
     const genAI = getGenAIClient();
+    logger.info(`Analyzing resume with text length: ${resumeText?.length || 0}`);
 
     const prompt = `
       You are an expert technical recruiter and AI analyst. 
@@ -126,8 +127,7 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
  */
 export const onNewResumeUpload = onObjectFinalized({
     memory: "1GiB",
-    timeoutSeconds: 300,
-    bucket: "persona-recruit-new.firebasestorage.app"
+    timeoutSeconds: 300
 }, async (event) => {
     const filePath = event.data.name; // organization/orgId/candidates/candidateId/resume_name
     const contentType = event.data.contentType;
@@ -285,7 +285,14 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
             try {
                 const url = new URL(candidate.resumeUrl);
                 const path = decodeURIComponent(url.pathname.split('/o/')[1]);
-                orgId = path.split('/')[0];
+                const segments = path.split('/');
+                logger.info(`Storage Path Segments: ${segments.join(' | ')}`);
+
+                if (segments[0] === 'organizations') {
+                    orgId = segments[1];
+                } else {
+                    orgId = segments[0];
+                }
                 logger.info(`Extracted orgId from URL: ${orgId}`);
             } catch (e) {
                 logger.error("Failed to extract orgId from resumeUrl", e);
@@ -314,13 +321,17 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
         if (!resumeText && candidate.resumeUrl) {
             try {
                 logger.info(`Attempting Storage Recovery from: ${candidate.resumeUrl}`);
-                const bucket = getStorage().bucket();
                 const urlObj = new URL(candidate.resumeUrl);
+
+                // Extract bucket name (Handles: firebasestorage.googleapis.com/v0/b/BUCKET_NAME/o/...)
+                const bucketName = urlObj.pathname.split('/b/')[1]?.split('/o/')[0];
+                const bucket = bucketName ? getStorage().bucket(bucketName) : getStorage().bucket();
+
                 const pathWithMedia = urlObj.pathname.split('/o/')[1];
 
                 if (pathWithMedia) {
                     const storagePath = decodeURIComponent(pathWithMedia).split('?')[0];
-                    logger.info(`Downloading from Storage Path: ${storagePath}`);
+                    logger.info(`Bucket: ${bucket.name}, Path: ${storagePath}`);
 
                     const [fileBuffer] = await bucket.file(storagePath).download();
                     const contentType = storagePath.toLowerCase();
@@ -350,8 +361,24 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
             }
         }
 
-        if (!resumeText) {
-            logger.warn("CRITICAL: No resume text recovered for analysis.");
+        if (!resumeText || resumeText.length < 50) {
+            logger.warn("CRITICAL: No resume text recovered or text too short.");
+            // We can't really analyze, but lets provide a graceful failure message 
+            // instead of letting the AI hallucinate.
+            return {
+                score: 0,
+                verdict: 'Review',
+                matchReason: 'Resume data could not be extracted for analysis. Please check the file format.',
+                summary: 'Analysis incomplete due to missing resume data.',
+                intelligence: {
+                    technicalScore: 0,
+                    culturalScore: 0,
+                    communicationScore: 0,
+                    strengths: ["Unknown (Resume missing)"],
+                    weaknesses: ["Parsing Failed"],
+                    missingSkills: []
+                }
+            };
         }
 
         const jobDescription = job.description || job.title;
