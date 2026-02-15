@@ -68,9 +68,11 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
             };
 
             recorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+                const mimeType = recorder.mimeType || 'video/webm';
+                const blob = new Blob(chunksRef.current, { type: mimeType });
                 setVideoBlob(blob);
-                setVideoPreview(URL.createObjectURL(blob));
+                const url = URL.createObjectURL(blob);
+                setVideoPreview(url);
                 stopStream();
             };
 
@@ -99,8 +101,11 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
     // Cleanup on unmount
     useEffect(() => {
-        return () => stopStream();
-    }, []);
+        return () => {
+            stopStream();
+            if (videoPreview) URL.revokeObjectURL(videoPreview);
+        };
+    }, [videoPreview]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -134,9 +139,11 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
             // Upload Video
             if (videoBlob) {
-                const videoRef = ref(storage, `${orgId}/candidates/${candidateId}/intro_video.webm`);
-                await uploadBytes(videoRef, videoBlob);
-                videoUrl = await getDownloadURL(videoRef);
+                const mimeType = videoBlob.type;
+                const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                const videoStorageRef = ref(storage, `${orgId}/candidates/${candidateId}/intro_video.${extension}`);
+                await uploadBytes(videoStorageRef, videoBlob);
+                videoUrl = await getDownloadURL(videoStorageRef);
             }
 
             // Create Candidate Doc
@@ -314,7 +321,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
                                 <div className="bg-slate-900 rounded-xl overflow-hidden aspect-video relative group">
                                     {videoPreview ? (
-                                        <video src={videoPreview} controls className="w-full h-full object-cover" />
+                                        <video src={videoPreview} controls playsInline className="w-full h-full object-cover" />
                                     ) : (
                                         <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
                                     )}
