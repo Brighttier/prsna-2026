@@ -282,12 +282,55 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
     logger.info(`Generating report for candidate ${candidate.id}`);
 
     try {
+        const db = getFirestore();
+        const segments = (candidate.resumeUrl || "").split('?')[0].split('/');
+        const orgId = segments.find((s, i) => segments[i - 1] === 'organizations') || ""; // Or pass it in
+
+        let resumeText = candidate.resumeText;
+
+        // 1. If resumeText is missing, try to fetch the latest from DB
+        if (!resumeText && candidate.jobId) {
+            const candidateSnap = await db.collection('organizations').doc(request.data.orgId || "").collection('candidates').doc(candidate.id).get();
+            resumeText = candidateSnap.data()?.resumeText;
+        }
+
+        // 2. If still missing, try to parse the file from Storage
+        if (!resumeText && candidate.resumeUrl) {
+            try {
+                logger.info("Resume text missing. Attempting to parse from Storage...");
+                const bucket = getStorage().bucket();
+                // Extract path from URL (rough)
+                const pathMatch = candidate.resumeUrl.match(/o\/(.*)\?alt/);
+                if (pathMatch) {
+                    const storagePath = decodeURIComponent(pathMatch[1]);
+                    const [fileBuffer] = await bucket.file(storagePath).download();
+                    const contentType = storagePath.toLowerCase();
+                    if (contentType.endsWith('.pdf')) {
+                        const data = await pdf(fileBuffer);
+                        resumeText = data.text;
+                    } else if (contentType.endsWith('.docx')) {
+                        const result = await mammoth.extractRawText({ buffer: fileBuffer });
+                        resumeText = result.value;
+                    }
+
+                    if (resumeText) {
+                        // Cache it for next time
+                        await db.collection('organizations').doc(request.data.orgId || "").collection('candidates').doc(candidate.id).update({
+                            resumeText: resumeText
+                        });
+                    }
+                }
+            } catch (storageError) {
+                logger.error("Failed to recover resume text from storage", storageError);
+            }
+        }
+
         const genAI = getGenAIClient();
 
         // Construct a rich prompt based on available data
         const prompt = `
     You are an expert HR AI Assistant. Your task is to evaluate a candidate's resume against a specific Job Description.
-    You must be objective, fair, and consistent.
+    You must be objective, fair, and consistent. Use the RAW RESUME TEXT as your primary source of truth.
 
     JOB TITLE: ${job.title}
     DEPARTMENT: ${job.department}
@@ -296,17 +339,14 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
 
     CANDIDATE: ${candidate.name}
     ROLE: ${candidate.role}
-    SUMMARY: ${candidate.summary}
-    RAW RESUME TEXT (Use this as primary source if available): ${candidate.resumeText || "No raw text available"}
-    SKILLS: ${candidate.skills?.join(', ')}
-    EXPERIENCE: ${JSON.stringify(candidate.experience || [])}
+    RAW RESUME TEXT: 
+    ${resumeText || "NOT PROVIDED - Evaluate based on available summary only."}
 
     SCORING RUBRIC (0-100):
-    - 90-100: Exceptional match. Exceeds requirements. "Hire immediately" signal.
-    - 80-89:  Strong match. Meets all core requirements. "Move to interview" signal.
-    - 70-79:  Good match. Meets most requirements but has minor gaps. "Screen needed".
-    - 60-69:  Weak match. Missing key skills or experience. "Review with caution".
-    - < 60:   No match. "Reject".
+    - 90-100: Exceptional match. Exceeds requirements.
+    - 80-89:  Strong match. Meets all core requirements.
+    - 70-79:  Good match. Meets most requirements but has gaps.
+    - < 70:   Weak or no match.
 
     OUTPUT SCHEMA (JSON ONLY):
     {
@@ -318,6 +358,9 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
       "summary": string, 
       "matchReason": string,
       "skills": string[],
+      "skillsMatrix": [
+        { "skill": "Core Skill", "proficiency": number(0-100), "years": number }
+      ],
       "experience": any[],
       "education": any[]
     }

@@ -84,6 +84,7 @@ export interface ExtendedCandidate extends Candidate {
         technicalScore?: number;
         culturalScore?: number;
         communicationScore?: number;
+        skillsMatrix?: { skill: string; proficiency: number; years: number }[];
         // Merged fields
         matchScore?: number;
         verdict?: string;

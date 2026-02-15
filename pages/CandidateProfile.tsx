@@ -1590,26 +1590,42 @@ RecruiteAI`;
                                         <Code className="w-5 h-5 text-blue-500" /> Skills Proficiency Matrix
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-12">
-                                        {(candidate.skills || []).slice(0, 6).map((skill, i) => {
-                                            // Mock proficiency generation based on index
-                                            const proficiency = Math.max(60, 95 - (i * 5));
-                                            const experienceYears = Math.max(1, 5 - Math.floor(i / 2));
-                                            return (
-                                                <div key={skill}>
+                                        {candidate.analysis?.skillsMatrix && candidate.analysis.skillsMatrix.length > 0 ? (
+                                            candidate.analysis.skillsMatrix.map((item) => (
+                                                <div key={item.skill}>
                                                     <div className="flex justify-between items-end mb-2">
-                                                        <span className="font-bold text-slate-800">{skill}</span>
-                                                        <span className="text-xs text-slate-500">{experienceYears}+ years</span>
+                                                        <span className="font-bold text-slate-800">{item.skill}</span>
+                                                        <span className="text-xs text-slate-500">{item.years}+ years</span>
                                                     </div>
                                                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                                                         <div
-                                                            className={`h-full rounded-full ${proficiency > 85 ? 'bg-brand-500' : proficiency > 70 ? 'bg-blue-500' : 'bg-slate-400'}`}
-                                                            style={{ width: `${proficiency}%` }}
+                                                            className={`h-full rounded-full ${item.proficiency > 85 ? 'bg-brand-500' : item.proficiency > 70 ? 'bg-blue-500' : 'bg-slate-400'}`}
+                                                            style={{ width: `${item.proficiency || 0}%` }}
                                                         ></div>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                        {(candidate.skills || []).length === 0 && (
+                                            ))
+                                        ) : (
+                                            (candidate.skills || []).slice(0, 6).map((skill, i) => {
+                                                const proficiency = Math.max(60, 95 - (i * 5));
+                                                const experienceYears = Math.max(1, 5 - Math.floor(i / 2));
+                                                return (
+                                                    <div key={skill}>
+                                                        <div className="flex justify-between items-end mb-2">
+                                                            <span className="font-bold text-slate-800">{skill}</span>
+                                                            <span className="text-xs text-slate-500">{experienceYears}+ years</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full ${proficiency > 85 ? 'bg-brand-500' : proficiency > 70 ? 'bg-blue-500' : 'bg-slate-400'}`}
+                                                                style={{ width: `${proficiency}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                        {(!candidate.analysis?.skillsMatrix || candidate.analysis.skillsMatrix.length === 0) && (candidate.skills || []).length === 0 && (
                                             <div className="col-span-full text-center py-6 text-slate-400 italic">
                                                 No specific skills identified for matrix.
                                             </div>
