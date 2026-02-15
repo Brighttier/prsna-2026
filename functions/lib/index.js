@@ -221,15 +221,25 @@ exports.onNewResumeUpload = (0, storage_1.onObjectFinalized)({
         // The candidate doc has 'jobId'.
         const candidateSnap = await candidateRef.get();
         const candidateData = candidateSnap.data();
-        if (!candidateData || !candidateData.jobId) {
-            logger.warn("Candidate data missing or no jobId found.");
+        if (!candidateData) {
+            logger.warn("Candidate data missing.");
             return;
         }
-        const jobRef = db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId);
-        const jobSnap = await jobRef.get();
-        const jobData = jobSnap.data();
+        let jobData = null;
+        if (candidateData.jobId) {
+            const jobRef = db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId);
+            const jobSnap = await jobRef.get();
+            jobData = jobSnap.data();
+        }
+        // Fallback: If no jobId or job not found, try matching by role title
+        if (!jobData && candidateData.role) {
+            const jobsSnap = await db.collection('organizations').doc(orgId).collection('jobs').where('title', '==', candidateData.role).limit(1).get();
+            if (!jobsSnap.empty) {
+                jobData = jobsSnap.docs[0].data();
+            }
+        }
         if (!jobData || (!jobData.description && !jobData.title)) {
-            logger.warn("Job data missing.");
+            logger.warn("Job data missing and could not determine job from role title.");
             return;
         }
         const jobDescription = jobData.description || jobData.title; // Fallback

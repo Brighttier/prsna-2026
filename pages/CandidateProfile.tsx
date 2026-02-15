@@ -1462,7 +1462,7 @@ RecruiteAI`;
                                             </div>
 
                                             <p className="text-slate-600 font-medium leading-relaxed mb-6">
-                                                {candidate.matchReason} The candidate shows exceptional alignment with the technical requirements and exhibits strong leadership signals suitable for a Senior role.
+                                                {candidate.matchReason}
                                             </p>
                                         </div>
 
