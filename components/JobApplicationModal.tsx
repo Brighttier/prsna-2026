@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Job } from '../types';
 import { X, Upload, Video, Mic, Check, AlertCircle, Loader2 } from 'lucide-react';
-import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, doc, auth } from '../services/firebase';
+import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, updateDoc, doc, auth } from '../services/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { query, where, getDocs } from 'firebase/firestore';
 
@@ -151,26 +151,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 return;
             }
 
-            let resumeUrl = '';
-            let videoUrl = '';
-
-            // Upload Resume
-            if (resumeFile) {
-                const resumeRef = ref(storage, `${orgId}/candidates/${candidateId}/resume_${resumeFile.name}`);
-                await uploadBytes(resumeRef, resumeFile);
-                resumeUrl = await getDownloadURL(resumeRef);
-            }
-
-            // Upload Video
-            if (videoBlob) {
-                const mimeType = videoBlob.type;
-                const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-                const videoStorageRef = ref(storage, `${orgId}/candidates/${candidateId}/intro_video.${extension}`);
-                await uploadBytes(videoStorageRef, videoBlob);
-                videoUrl = await getDownloadURL(videoStorageRef);
-            }
-
-            // Create Candidate Doc
+            // 1. Create Candidate Doc first (to avoid race condition in Cloud Function)
             await setDoc(candidateRef, {
                 id: candidateId,
                 name: `${firstName} ${lastName}`,
@@ -179,14 +160,37 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 stage: 'New',
                 appliedAt: new Date().toISOString(),
                 jobId: job.id,
-                resumeUrl,
-                videoUrl,
                 availability,
                 source,
                 status: 'New',
                 metrics: {
                     introVideoDuration: 10 - timeLeft
                 }
+            });
+
+            let resumeUrl = '';
+            let videoUrl = '';
+
+            // 2. Upload Resume
+            if (resumeFile) {
+                const resumeRef = ref(storage, `${orgId}/candidates/${candidateId}/resume_${resumeFile.name}`);
+                await uploadBytes(resumeRef, resumeFile);
+                resumeUrl = await getDownloadURL(resumeRef);
+            }
+
+            // 3. Upload Video
+            if (videoBlob) {
+                const mimeType = videoBlob.type;
+                const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                const videoStorageRef = ref(storage, `${orgId}/candidates/${candidateId}/intro_video.${extension}`);
+                await uploadBytes(videoStorageRef, videoBlob);
+                videoUrl = await getDownloadURL(videoStorageRef);
+            }
+
+            // 4. Update Candidate Doc with URLs
+            await updateDoc(candidateRef, {
+                resumeUrl,
+                videoUrl
             });
 
             setStep(3); // Success

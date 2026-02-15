@@ -84,6 +84,7 @@ export interface Candidate {
   name: string;
   email: string;
   role: string;
+  jobId?: string;
   stage: 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Hired' | 'Rejected'; // Added Hired
   score: number;
   match?: number;

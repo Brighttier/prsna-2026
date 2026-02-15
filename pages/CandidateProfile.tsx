@@ -1175,8 +1175,10 @@ RecruiteAI`;
     const handleGenerateReport = async () => {
         setIsGeneratingReport(true);
         try {
-            // Find the job - in a real app this would come from the relation
-            const job = store.getState().jobs[0];
+            // Find the correct job for this candidate
+            const jobs = store.getState().jobs;
+            const job = jobs.find(j => j.id === candidate.jobId) || jobs[0]; // Fallback to jobs[0] for legacy support
+
             if (candidate && job) {
                 const updates = await generateCandidateReport(candidate, job);
                 if (id) {
