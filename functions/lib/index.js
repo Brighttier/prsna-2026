@@ -283,23 +283,36 @@ exports.generateCandidateReport = (0, https_1.onCall)(functionConfig, async (req
     logger.info(`Generating report for candidate ${candidate.id}`);
     try {
         const db = (0, firestore_1.getFirestore)();
-        // Ensure path parsing logic is clean
-        // Ensure path parsing logic is clean
+        let orgId = request.data.orgId;
+        // Fallback: extract orgId from resumeUrl if missing
+        if (!orgId && candidate.resumeUrl) {
+            const urlParts = decodeURIComponent(candidate.resumeUrl).split('/');
+            const orgIndex = urlParts.indexOf('organizations');
+            if (orgIndex !== -1 && urlParts[orgIndex + 1]) {
+                orgId = urlParts[orgIndex + 1];
+            }
+        }
         let resumeText = candidate.resumeText;
         // 1. If resumeText is missing, try to fetch the latest from DB
-        if (!resumeText && candidate.jobId) {
-            const candidateSnap = await db.collection('organizations').doc(request.data.orgId || "").collection('candidates').doc(candidate.id).get();
-            resumeText = candidateSnap.data()?.resumeText;
+        if (!resumeText && candidate.jobId && orgId) {
+            try {
+                const candidateSnap = await db.collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).get();
+                resumeText = candidateSnap.data()?.resumeText;
+            }
+            catch (snapError) {
+                logger.warn(`Failed to fetch candidate snapshot: ${snapError}`);
+            }
         }
         // 2. If still missing, try to parse the file from Storage
         if (!resumeText && candidate.resumeUrl) {
             try {
                 logger.info("Resume text missing. Attempting to parse from Storage...");
                 const bucket = (0, storage_2.getStorage)().bucket();
-                // Extract path from URL (rough)
-                const pathMatch = candidate.resumeUrl.match(/o\/(.*)\?alt/);
-                if (pathMatch) {
-                    const storagePath = decodeURIComponent(pathMatch[1]);
+                // Extract path from URL (reliable)
+                const urlObj = new URL(candidate.resumeUrl);
+                const pathWithMedia = urlObj.pathname.split('/o/')[1];
+                if (pathWithMedia) {
+                    const storagePath = decodeURIComponent(pathWithMedia).split('?')[0];
                     const [fileBuffer] = await bucket.file(storagePath).download();
                     const contentType = storagePath.toLowerCase();
                     if (contentType.endsWith('.pdf')) {
@@ -310,9 +323,9 @@ exports.generateCandidateReport = (0, https_1.onCall)(functionConfig, async (req
                         const result = await mammoth.extractRawText({ buffer: fileBuffer });
                         resumeText = result.value;
                     }
-                    if (resumeText) {
+                    if (resumeText && orgId) {
                         // Cache it for next time
-                        await db.collection('organizations').doc(request.data.orgId || "").collection('candidates').doc(candidate.id).update({
+                        await db.collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).update({
                             resumeText: resumeText
                         });
                     }

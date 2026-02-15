@@ -1177,7 +1177,9 @@ RecruiteAI`;
         try {
             // Find the correct job for this candidate
             const jobs = store.getState().jobs;
-            const job = jobs.find(j => j.id === candidate.jobId) || jobs[0]; // Fallback to jobs[0] for legacy support
+            const job = jobs.find(j => j.id === candidate.jobId) ||
+                jobs.find(j => j.title === candidate.role) ||
+                jobs[0];
 
             if (candidate && job) {
                 const updates = await generateCandidateReport(candidate, job, orgId);
@@ -1476,7 +1478,7 @@ RecruiteAI`;
                                     </Card>
 
                                     <Card className="lg:col-span-2 p-6 flex flex-col md:flex-row items-center gap-8">
-                                        <div className="h-64 w-full md:w-1/2 flex-shrink-0">
+                                        <div className="h-64 w-full md:w-1/2 flex-shrink-0" style={{ minWidth: 200, minHeight: 200 }}>
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
                                                     { subject: 'Technical', A: candidate.analysis.technicalScore || 0, fullMark: 100 },
