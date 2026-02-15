@@ -7,6 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { store, InterviewSession, TranscriptEntry } from '../services/store';
 import { summarizeInterview } from '../services/geminiService';
 import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase';
+import Editor from '@monaco-editor/react';
 
 const Orb = ({ active, speaking }: { active: boolean, speaking: boolean }) => {
    return (
@@ -70,7 +71,27 @@ export const InterviewRoom = () => {
       }
    }, [candidate]);
 
-   const { isConnected, error, connect, disconnect, sendVideoFrame } = useGeminiLive({
+   const [editorValue, setEditorValue] = useState(`// 1. Problem: Reverse a Binary Tree
+// 2. Explain your Time & Space complexity
+
+function invertTree(root) {
+  if (!root) {
+    return null;
+  }
+  
+  const temp = root.left;
+  root.left = root.right;
+  root.right = temp;
+  
+  invertTree(root.left);
+  invertTree(root.right);
+  
+  return root;
+}
+
+console.log("Tree Inverted");`);
+
+   const { isConnected, error, connect, disconnect, sendVideoFrame, sendContent } = useGeminiLive({
       systemInstruction: systemInstruction || "You are a helpful assistant.",
       onTranscript: (text, isUser) => {
          setTranscript(prev => {
@@ -88,6 +109,16 @@ export const InterviewRoom = () => {
          }
       }
    });
+
+   // Text Sync Effect: Send code state to Gemini every 3 seconds
+   useEffect(() => {
+      if (isConnected && codeMode && sendContent) {
+         const interval = setInterval(() => {
+            sendContent(editorValue);
+         }, 3000);
+         return () => clearInterval(interval);
+      }
+   }, [isConnected, codeMode, editorValue, sendContent]);
 
    useEffect(() => {
       const startCam = async () => {
@@ -322,28 +353,21 @@ export const InterviewRoom = () => {
 
                <div className="flex-1 overflow-hidden relative">
                   {codeMode ? (
-                     <div className="h-full bg-[#1e293b] p-4 overflow-auto font-mono text-sm text-slate-300">
-                        <textarea
-                           className="w-full h-full bg-transparent outline-none resize-none leading-relaxed"
-                           defaultValue={`// 1. Problem: Reverse a Binary Tree
-// 2. Explain your Time & Space complexity
-
-function invertTree(root) {
-  if (!root) {
-    return null;
-  }
-  
-  const temp = root.left;
-  root.left = root.right;
-  root.right = temp;
-  
-  invertTree(root.left);
-  invertTree(root.right);
-  
-  return root;
-}
-
-console.log("Tree Inverted");`}
+                     <div className="h-full bg-[#1e293b] overflow-hidden">
+                        <Editor
+                           height="100%"
+                           defaultLanguage="javascript"
+                           theme="vs-dark"
+                           value={editorValue}
+                           onChange={(value) => setEditorValue(value || '')}
+                           options={{
+                              minimap: { enabled: false },
+                              fontSize: 14,
+                              lineNumbers: 'on',
+                              scrollBeyondLastLine: false,
+                              automaticLayout: true,
+                              padding: { top: 20 }
+                           }}
                         />
                      </div>
                   ) : (

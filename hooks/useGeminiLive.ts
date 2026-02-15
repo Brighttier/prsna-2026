@@ -248,6 +248,14 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
     error,
     connect,
     disconnect,
-    sendVideoFrame
+    sendVideoFrame,
+    sendContent: useCallback(async (text: string) => {
+      if (!isConnected || !sessionPromiseRef.current) return;
+      sessionPromiseRef.current.then(session => {
+        session.sendRealtimeInput({
+          parts: [{ text: `[SYSTEM: CODE_EDITOR_STATE] Current code in editor:\n\n${text}` }]
+        });
+      });
+    }, [isConnected])
   };
 };
