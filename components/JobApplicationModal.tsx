@@ -3,7 +3,9 @@ import { Job } from '../types';
 import { X, Upload, Video, Mic, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, updateDoc, doc, auth } from '../services/firebase';
 import { signInAnonymously } from 'firebase/auth';
-import { query, where, getDocs } from 'firebase/firestore';
+import { query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { uploadBytesResumable } from 'firebase/storage';
+import { screenResume } from '../services/ai';
 
 interface JobApplicationModalProps {
     job: Job;
@@ -32,6 +34,12 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
     const chunksRef = useRef<Blob[]>([]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [parsingProgress, setParsingProgress] = useState(0);
+    const [isParsing, setIsParsing] = useState(false);
+    const [parseFailed, setParseFailed] = useState(false);
+    const [manualResumeText, setManualResumeText] = useState('');
+    const [showManualPaste, setShowManualPaste] = useState(false);
     const [error, setError] = useState('');
 
     // Authenticate anonymously for uploads
@@ -174,11 +182,53 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
             // 2. Upload Resume
             if (resumeFile) {
                 const resumeRef = ref(storage, `${orgId}/candidates/${candidateId}/resume_${resumeFile.name}`);
-                await uploadBytes(resumeRef, resumeFile);
+                const uploadTask = uploadBytesResumable(resumeRef, resumeFile);
+
+                await new Promise((resolve, reject) => {
+                    uploadTask.on('state_changed',
+                        (snapshot) => {
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            setUploadProgress(progress);
+                        },
+                        (error) => reject(error),
+                        () => resolve(true)
+                    );
+                });
                 resumeUrl = await getDownloadURL(resumeRef);
             }
 
-            // 3. Upload Video
+            // 3. Parsing Phase (Wait for system to parse and extract text)
+            setIsParsing(true);
+            setParsingProgress(10);
+
+            // Pulse the progress bar
+            const progressInterval = setInterval(() => {
+                setParsingProgress(prev => prev < 90 ? prev + Math.random() * 15 : prev);
+            }, 800);
+
+            try {
+                // Poll for resumeText via onSnapshot or just use the screenResume helper directly
+                // Calling screenResume is better because it forces/waits for analysis
+                const jobDescription = job.description || job.title;
+                const result = await screenResume(resumeUrl || '', jobDescription);
+
+                clearInterval(progressInterval);
+                setParsingProgress(100);
+
+                if (!result || !result.score) {
+                    throw new Error("Parsing returned no data");
+                }
+            } catch (pError) {
+                console.warn("AI Parsing failed during upload check:", pError);
+                clearInterval(progressInterval);
+                setIsParsing(false);
+                setParseFailed(true);
+                setShowManualPaste(true);
+                setIsSubmitting(false); // Stop here and wait for manual paste
+                return;
+            }
+
+            // 4. Upload Video
             if (videoBlob) {
                 const mimeType = videoBlob.type;
                 const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
@@ -187,7 +237,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 videoUrl = await getDownloadURL(videoStorageRef);
             }
 
-            // 4. Update Candidate Doc with URLs
+            // 5. Update Candidate Doc with URLs
             await updateDoc(candidateRef, {
                 resumeUrl,
                 videoUrl
@@ -238,6 +288,40 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                         <X className="w-5 h-5" />
                     </button>
                 </div>
+
+                {isSubmitting && !showManualPaste && (
+                    <div className="absolute inset-0 z-[60] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                        <div className="w-20 h-20 mb-6 relative">
+                            <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+                            <div
+                                className="absolute inset-0 border-4 border-brand-500 rounded-full border-t-transparent animate-spin"
+                                style={{ borderColor: `${brandingColor} transparent transparent transparent` }}
+                            ></div>
+                        </div>
+
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">
+                            {isParsing ? 'Extracted Data Analysis...' : 'Uploading Assets...'}
+                        </h3>
+                        <p className="text-slate-500 mb-8 max-w-xs">
+                            {isParsing
+                                ? 'Our AI is reading your resume to build your candidate profile.'
+                                : 'Securely uploading your resume and video pitch to our servers.'}
+                        </p>
+
+                        <div className="w-full max-w-sm bg-slate-100 h-2 rounded-full overflow-hidden mb-4">
+                            <div
+                                className="h-full transition-all duration-300 ease-out rounded-full"
+                                style={{
+                                    width: `${isParsing ? parsingProgress : uploadProgress}%`,
+                                    backgroundColor: brandingColor
+                                }}
+                            />
+                        </div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            {isParsing ? `${Math.round(parsingProgress)}% Parsed` : `${Math.round(uploadProgress)}% Uploaded`}
+                        </p>
+                    </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto">
                     {step === 0 ? (
@@ -427,6 +511,52 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                                     </select>
                                 </div>
                             </div>
+
+                            {showManualPaste && (
+                                <div className="p-6 bg-amber-50 rounded-xl border border-amber-200 animate-fade-in-up">
+                                    <div className="flex items-center gap-3 text-amber-800 mb-4 transition-all">
+                                        <AlertCircle className="w-6 h-6 shrink-0" />
+                                        <div>
+                                            <p className="font-bold">Resume Parsing Incomplete</p>
+                                            <p className="text-sm opacity-90">We couldn't extract enough text from your file. Please paste your resume content below to ensure a fair evaluation.</p>
+                                        </div>
+                                    </div>
+                                    <textarea
+                                        required
+                                        value={manualResumeText}
+                                        onChange={e => setManualResumeText(e.target.value)}
+                                        className="w-full h-48 p-4 bg-white border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-300 outline-none text-sm font-mono"
+                                        placeholder="Paste your resume / experience text here..."
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            setIsSubmitting(true);
+                                            setShowManualPaste(false);
+                                            // Handle manual submission path
+                                            try {
+                                                const q = query(collection(db, 'organizations', orgId, 'candidates'), where('email', '==', email));
+                                                const snapshot = await getDocs(q);
+                                                const candidateDoc = snapshot.docs.find(d => d.data().jobId === job.id);
+                                                if (candidateDoc) {
+                                                    await updateDoc(candidateDoc.ref, {
+                                                        resumeText: manualResumeText,
+                                                        manualInput: true
+                                                    });
+                                                    setStep(3);
+                                                }
+                                            } catch (err: any) {
+                                                setError("Manual update failed: " + err.message);
+                                            } finally {
+                                                setIsSubmitting(false);
+                                            }
+                                        }}
+                                        className="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-amber-600/20"
+                                    >
+                                        Verify & Complete Application
+                                    </button>
+                                </div>
+                            )}
 
                             {error && (
                                 <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm flex items-center gap-2">
