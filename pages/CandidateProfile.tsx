@@ -1431,7 +1431,17 @@ RecruiteAI`;
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                     <Card className="lg:col-span-1 p-0 border-2 border-emerald-500 shadow-xl shadow-emerald-100 relative overflow-hidden flex flex-col">
                                         <div className="p-8 flex-1">
-                                            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">AI Verdict</h3>
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">AI Verdict</h3>
+                                                <button
+                                                    onClick={handleGenerateReport}
+                                                    disabled={isGeneratingReport}
+                                                    className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all"
+                                                    title="Regenerate Intelligence Report"
+                                                >
+                                                    <RefreshCw className={`w-4 h-4 ${isGeneratingReport ? 'animate-spin' : ''}`} />
+                                                </button>
+                                            </div>
 
                                             <div className="flex items-baseline gap-3 mb-6">
                                                 <span className="text-7xl font-black text-slate-900 tracking-tight">{candidate.score}</span>
