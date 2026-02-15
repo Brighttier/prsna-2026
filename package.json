@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync-deploy": "git add . && git commit -m \"sync: automatic update and deploy\" && git push && firebase deploy"
   },
   "dependencies": {
     "@google/genai": "^1.40.0",
