@@ -36,7 +36,12 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
     // Authenticate anonymously for uploads
     useEffect(() => {
-        signInAnonymously(auth).catch(err => console.error("Anon Auth Failed", err));
+        // Only attempt if not already signed in (prevents error if already signed in)
+        if (!auth.currentUser) {
+            signInAnonymously(auth).catch(err => {
+                console.warn("[Auth] Anonymous sign-in failed. Please ensure 'Anonymous' provider is enabled in Firebase Console.", err);
+            });
+        }
     }, []);
 
     useEffect(() => {
@@ -53,13 +58,28 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
     const startRecording = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: "user"
+                },
+                audio: true
+            });
             streamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                videoRef.current.play().catch(e => console.error("Video play failed", e));
             }
 
-            const recorder = new MediaRecorder(stream);
+            // Determine best mime type
+            const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=h264')
+                ? 'video/mp4;codecs=h264'
+                : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                    ? 'video/webm;codecs=vp9'
+                    : 'video/webm';
+
+            const recorder = new MediaRecorder(stream, { mimeType });
             mediaRecorderRef.current = recorder;
             chunksRef.current = [];
 
@@ -68,8 +88,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
             };
 
             recorder.onstop = () => {
-                const mimeType = recorder.mimeType || 'video/webm';
-                const blob = new Blob(chunksRef.current, { type: mimeType });
+                const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
                 setVideoBlob(blob);
                 const url = URL.createObjectURL(blob);
                 setVideoPreview(url);
@@ -94,8 +113,13 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
     const stopStream = () => {
         if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current.getTracks().forEach(track => {
+                track.stop();
+            });
             streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
         }
     };
 
@@ -105,7 +129,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
             stopStream();
             if (videoPreview) URL.revokeObjectURL(videoPreview);
         };
-    }, [videoPreview]);
+    }, []); // Only on unmount now, we handle retake separately
 
     const handleSubmit = async (e: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -321,9 +345,9 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
                                 <div className="bg-slate-900 rounded-xl overflow-hidden aspect-video relative group">
                                     {videoPreview ? (
-                                        <video src={videoPreview} controls playsInline className="w-full h-full object-cover" />
+                                        <video key="preview-video" src={videoPreview} controls playsInline className="w-full h-full object-cover" />
                                     ) : (
-                                        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                                        <video key="recording-video" ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
                                     )}
 
                                     {!isRecording && !videoPreview && (
@@ -356,7 +380,11 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                                     {videoPreview && (
                                         <button
                                             type="button"
-                                            onClick={() => { setVideoBlob(null); setVideoPreview(null); }}
+                                            onClick={() => {
+                                                if (videoPreview) URL.revokeObjectURL(videoPreview);
+                                                setVideoBlob(null);
+                                                setVideoPreview(null);
+                                            }}
                                             className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white px-3 py-1.5 rounded-lg text-xs font-medium backdrop-blur transition-colors"
                                         >
                                             Retake
