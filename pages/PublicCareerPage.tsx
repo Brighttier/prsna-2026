@@ -186,6 +186,7 @@ export const PublicCareerPage = () => {
             {/* Application Modal */}
             {selectedJob && orgId && (
                 <JobApplicationModal
+                    key={selectedJob.id}
                     job={selectedJob}
                     orgId={orgId}
                     onClose={() => setSelectedJob(null)}

@@ -196,7 +196,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-900">{step === 0 ? 'Job Description' : `Apply for ${job.title}`}</h2>
+                        <h2 className="text-xl font-bold text-slate-900">{step === 0 ? 'Role Overview & Details' : `Apply for ${job.title}`}</h2>
                         <p className="text-sm text-slate-500">{job.title} • {job.location} • {job.type}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
