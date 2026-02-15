@@ -66,7 +66,7 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string, 
     `;
 
     const response = await genAI.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
             responseMimeType: 'application/json',
@@ -99,7 +99,7 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string, 
 
         try {
             const reportResponse = await genAI.models.generateContent({
-                model: 'gemini-2.0-flash-exp',
+                model: 'gemini-1.5-flash',
                 contents: reportPrompt,
                 config: { responseMimeType: 'application/json' }
             });
@@ -313,7 +313,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
     `;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-1.5-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -368,7 +368,7 @@ export const generateInterviewQuestions = onCall(functionConfig as any, async (r
         `;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-1.5-flash',
             contents: prompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -416,7 +416,7 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
         `;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-1.5-flash',
             contents: prompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -456,7 +456,7 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
         `;
 
         const qResponse = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-1.5-flash',
             contents: questionsPrompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -546,7 +546,7 @@ export const generateJobDescription = onCall(functionConfig as any, async (reque
         `;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: 'gemini-1.5-flash',
             contents: prompt
         });
 

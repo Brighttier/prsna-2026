@@ -455,7 +455,10 @@ export const PlatformAdmin = () => {
                      <tbody className="divide-y divide-slate-100">
                         {paginatedTenants.map((tenant) => (
                            <tr key={tenant.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-6 py-4 font-bold text-slate-900">{tenant.name}</td>
+                              <td className="px-6 py-4">
+                                 <div className="font-bold text-slate-900">{tenant.name}</div>
+                                 <div className="text-xs text-slate-400 font-mono">{tenant.id}</div>
+                              </td>
                               <td className="px-6 py-4">
                                  <span className={`px-2 py-1 rounded text-xs font-bold border ${tenant.plan === 'Enterprise' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                                     tenant.plan === 'Pro' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'
@@ -543,7 +546,9 @@ export const PlatformAdmin = () => {
                      <div className="flex items-center justify-between">
                         <div>
                            <h2 className="text-2xl font-bold text-slate-900">{selectedTenant.name}</h2>
-                           <p className="text-sm text-slate-500 mt-1">Tenant Management</p>
+                           <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
+                              Tenant Management <span className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">{selectedTenant.id}</span>
+                           </p>
                         </div>
                         <button
                            onClick={() => setShowTenantModal(false)}

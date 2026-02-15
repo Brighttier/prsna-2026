@@ -84,17 +84,21 @@ export const Jobs = () => {
       }
    };
 
+   const [generationError, setGenerationError] = useState<string | null>(null);
+
    const handleGenerateDescription = async () => {
       if (!newJob.title) return;
       setIsGeneratingDesc(true);
+      setGenerationError(null);
       try {
          const description = await generateJobDescription(newJob.title, newJob.dept, newJob.loc);
          setNewJob(prev => ({
             ...prev,
             description
          }));
-      } catch (error) {
+      } catch (error: any) {
          console.error("Failed to generate description:", error);
+         setGenerationError("Failed to generate. Please check API limits or try again.");
       } finally {
          setIsGeneratingDesc(false);
       }
@@ -374,6 +378,9 @@ export const Jobs = () => {
                                        {isGeneratingDesc ? 'Generating...' : 'Auto-Generate with AI'}
                                     </button>
                                  </div>
+                                 {generationError && (
+                                    <p className="text-xs text-red-500 mb-2">{generationError}</p>
+                                 )}
                                  <textarea
                                     className="w-full h-48 p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none leading-relaxed text-sm"
                                     placeholder="Enter responsibilities, requirements, and benefits..."

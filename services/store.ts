@@ -205,6 +205,7 @@ class Store {
     private seeded: boolean = false;
     private orgId: string | null = null;
     private unsubscribeListeners: (() => void)[] = [];
+    private platformAdminListening: boolean = false;
 
     constructor() {
         this.state = JSON.parse(JSON.stringify(INITIAL_STATE));
@@ -239,6 +240,7 @@ class Store {
             // Clear existing listeners
             this.unsubscribeListeners.forEach(unsub => unsub());
             this.unsubscribeListeners = [];
+            this.platformAdminListening = false;
 
             if (user) {
                 console.log(`[Store] Auth User detected: ${user.uid}`);
@@ -365,16 +367,22 @@ class Store {
     }
 
     private initPlatformAdminListeners() {
+        if (this.platformAdminListening) {
+            console.log("[Store] Platform Admin Listeners already active. Skipping.");
+            return;
+        }
+        this.platformAdminListening = true;
+
         console.log("[Store] Initializing Platform Admin Listeners...");
         const tenantsUnsub = onSnapshot(collection(db, 'organizations'), (snapshot) => {
             this.state.tenants = snapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
                     id: doc.id,
-                    name: data.name || data.settings?.branding?.companyName || 'Unknown',
-                    plan: data.plan || 'Enterprise',
-                    usersCount: data.usersCount || 5, // Mocking if not present
-                    apiUsage: data.apiUsage || 'Medium',
+                    name: data.name || data.settings?.branding?.companyName || 'Unnamed Organization',
+                    plan: data.plan || 'Free',
+                    usersCount: data.usersCount || 0,
+                    apiUsage: data.apiUsage || 'Low',
                     status: data.status || 'Active',
                     spend: data.spend || 0,
                     createdAt: data.createdAt || new Date().toISOString()
