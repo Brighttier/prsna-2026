@@ -180,8 +180,16 @@ exports.onNewResumeUpload = (0, storage_1.onObjectFinalized)({
     }
     const fileBucket = event.data.bucket;
     const segments = filePath.split('/');
-    const orgId = segments[1];
-    const candidateId = segments[3];
+    let orgId = '';
+    let candidateId = '';
+    if (segments[0] === 'organizations') {
+        orgId = segments[1];
+        candidateId = segments[3];
+    }
+    else {
+        orgId = segments[0];
+        candidateId = segments[2];
+    }
     logger.info(`Processing new resume for Candidate: ${candidateId} in Org: ${orgId}`);
     try {
         // 2. Download File to Memory
@@ -294,35 +302,45 @@ exports.generateCandidateReport = (0, https_1.onCall)(functionConfig, async (req
     try {
         const db = (0, firestore_1.getFirestore)();
         let orgId = request.data.orgId;
-        // Fallback: extract orgId from resumeUrl if missing
+        logger.info(`Report Request for Candidate: ${candidate.id}, Org: ${orgId}`);
+        // Extract orgId from resumeUrl if missing (Handles: .../o/ORG_ID/candidates/...)
         if (!orgId && candidate.resumeUrl) {
-            const urlParts = decodeURIComponent(candidate.resumeUrl).split('/');
-            const orgIndex = urlParts.indexOf('organizations');
-            if (orgIndex !== -1 && urlParts[orgIndex + 1]) {
-                orgId = urlParts[orgIndex + 1];
+            try {
+                const url = new URL(candidate.resumeUrl);
+                const path = decodeURIComponent(url.pathname.split('/o/')[1]);
+                orgId = path.split('/')[0];
+                logger.info(`Extracted orgId from URL: ${orgId}`);
+            }
+            catch (e) {
+                logger.error("Failed to extract orgId from resumeUrl", e);
             }
         }
         let resumeText = candidate.resumeText;
         // 1. If resumeText is missing, try to fetch the latest from DB
-        if (!resumeText && candidate.jobId && orgId) {
+        if (!resumeText && orgId) {
             try {
                 const candidateSnap = await db.collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).get();
-                resumeText = candidateSnap.data()?.resumeText;
+                const freshData = candidateSnap.data();
+                resumeText = freshData?.resumeText;
+                // If still missing, check if we have the URL in the fresh data
+                if (!resumeText && freshData?.resumeUrl) {
+                    candidate.resumeUrl = freshData.resumeUrl;
+                }
             }
             catch (snapError) {
-                logger.warn(`Failed to fetch candidate snapshot: ${snapError}`);
+                logger.warn(`Failed to fetch fresh candidate data: ${snapError}`);
             }
         }
         // 2. If still missing, try to parse the file from Storage
         if (!resumeText && candidate.resumeUrl) {
             try {
-                logger.info("Resume text missing. Attempting to parse from Storage...");
+                logger.info(`Attempting Storage Recovery from: ${candidate.resumeUrl}`);
                 const bucket = (0, storage_2.getStorage)().bucket();
-                // Extract path from URL (reliable)
                 const urlObj = new URL(candidate.resumeUrl);
                 const pathWithMedia = urlObj.pathname.split('/o/')[1];
                 if (pathWithMedia) {
                     const storagePath = decodeURIComponent(pathWithMedia).split('?')[0];
+                    logger.info(`Downloading from Storage Path: ${storagePath}`);
                     const [fileBuffer] = await bucket.file(storagePath).download();
                     const contentType = storagePath.toLowerCase();
                     if (contentType.endsWith('.pdf')) {
@@ -333,17 +351,26 @@ exports.generateCandidateReport = (0, https_1.onCall)(functionConfig, async (req
                         const result = await mammoth.extractRawText({ buffer: fileBuffer });
                         resumeText = result.value;
                     }
+                    else if (contentType.endsWith('.doc')) {
+                        const extractor = new WordExtractor();
+                        const extracted = await extractor.extract(fileBuffer);
+                        resumeText = extracted.getBody();
+                    }
                     if (resumeText && orgId) {
-                        // Cache it for next time
+                        logger.info(`Success! Parsed ${resumeText.length} chars. Caching to DB...`);
                         await db.collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).update({
-                            resumeText: resumeText
+                            resumeText: resumeText,
+                            parsedAt: new Date().toISOString()
                         });
                     }
                 }
             }
             catch (storageError) {
-                logger.error("Failed to recover resume text from storage", storageError);
+                logger.error("Storage Recovery Failed", storageError);
             }
+        }
+        if (!resumeText) {
+            logger.warn("CRITICAL: No resume text recovered for analysis.");
         }
         const genAI = getGenAIClient();
         // Construct a rich prompt based on available data

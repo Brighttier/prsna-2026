@@ -8,13 +8,22 @@ import { httpsCallable, functions } from './firebase';
  */
 
 interface AnalysisResult {
-    strengths: string[];
-    weaknesses: string[];
-    technicalScore: number;
-    culturalScore: number;
-    communicationScore: number;
+    score: number;
+    verdict: 'Proceed' | 'Review' | 'Reject';
     matchReason?: string;
     summary?: string;
+    skills?: string[];
+    skillsMatrix?: any[];
+    experience?: any[];
+    education?: any[];
+    intelligence?: {
+        strengths: string[];
+        weaknesses: string[];
+        technicalScore: number;
+        culturalScore: number;
+        communicationScore: number;
+        missingSkills?: string[];
+    };
 }
 
 export const generateCandidateReport = async (candidate: ExtendedCandidate, job: Job, orgId?: string): Promise<Partial<ExtendedCandidate>> => {
@@ -27,21 +36,22 @@ export const generateCandidateReport = async (candidate: ExtendedCandidate, job:
         const analysis = result.data;
 
         return {
-            score: (analysis as any).technicalScore || 0,
-            aiVerdict: (analysis as any).technicalScore > 80 ? 'Proceed' : ((analysis as any).technicalScore > 60 ? 'Review' : 'Reject'),
+            score: analysis.score || 0,
+            aiVerdict: analysis.verdict || 'Review',
             matchReason: analysis.matchReason,
             summary: analysis.summary,
             skills: analysis.skills || [],
-            experience: (analysis as any).experience || [],
-            education: (analysis as any).education || [],
+            experience: analysis.experience || [],
+            education: analysis.education || [],
             analysis: {
-                strengths: analysis.strengths || [],
-                weaknesses: analysis.weaknesses || [],
-                technicalScore: (analysis as any).technicalScore || 0,
-                culturalScore: (analysis as any).culturalScore || 0,
-                communicationScore: (analysis as any).communicationScore || 0,
-                skillsMatrix: (analysis as any).skillsMatrix || [],
-                matchScore: (analysis as any).technicalScore || 0
+                strengths: analysis.intelligence?.strengths || [],
+                weaknesses: analysis.intelligence?.weaknesses || [],
+                technicalScore: analysis.intelligence?.technicalScore || analysis.score || 0,
+                culturalScore: analysis.intelligence?.culturalScore || 0,
+                communicationScore: analysis.intelligence?.communicationScore || 0,
+                skillsMatrix: analysis.skillsMatrix || [],
+                matchScore: analysis.score || 0,
+                missingSkills: analysis.intelligence?.missingSkills || []
             }
         };
 

@@ -39,33 +39,49 @@ const getGenAIClient = () => {
 };
 
 // --- HELPER: Analyze Resume Logic (Shared) ---
-async function analyzeResumeContent(resumeText: string, jobDescription: string, autoReportThreshold: number = 80) {
+async function analyzeResumeContent(resumeText: string, jobDescription: string) {
     const genAI = getGenAIClient();
 
     const prompt = `
-      You are an expert technical recruiter known as "The Gatekeeper".
+      You are an expert technical recruiter and AI analyst. 
+      Your task is to parse a candidate's resume and evaluate it against a Job Description.
       
-      Job Description:
+      JOB DESCRIPTION:
       ${jobDescription}
-
-      Candidate Resume Content:
+      
+      CANDIDATE RESUME CONTENT:
       ${resumeText}
 
- Task:
-      Analyze the candidate's career trajectory and skill density relative to the job description.
-      Provide a strict JSON output with the following structure:
+      INSTRUCTIONS:
+      1. Parse the resume for Skills, Experience, and Education.
+      2. Evaluate Match: Calculate scores (0-100) for Technical, Cultural, and Communication alignment.
+      3. Identify Strengths and Weaknesses.
+      4. Generate a Skills Matrix with proficiency (%) and years of experience.
+      5. Provide a clear verdict (Proceed, Review, or Reject).
+
+      OUTPUT SCHEMA (JSON ONLY):
       {
-        "score": number(0 - 100),
-        "verdict": "Proceed" | "Reject" | "Review",
-        "reasoning": "A concise summary of why this score was given.",
-        "missingSkills": ["skill1", "skill2"],
+        "score": number(0-100), 
+        "verdict": "Proceed" | "Review" | "Reject",
         "matchReason": "A one sentence summary of the match.",
-        "skills": ["skillA", "skillB"],
+        "summary": "A high-level professional summary of the candidate.",
+        "skills": ["skill1", "skill2"],
+        "skillsMatrix": [
+          { "skill": "Core Skill", "proficiency": number(0-100), "years": number }
+        ],
         "experience": [{"company": "...", "role": "...", "duration": "...", "description": "..."}],
-        "education": [{"school": "...", "degree": "...", "year": "..."}]
+        "education": [{"school": "...", "degree": "...", "year": "..."}],
+        "intelligence": {
+          "technicalScore": number,
+          "culturalScore": number,
+          "communicationScore": number,
+          "strengths": string[],
+          "weaknesses": string[],
+          "missingSkills": string[]
+        }
       }
       
-      Do not include markdown formatting(like \`\`\`json). Just the raw JSON string.
+      Do not include markdown formatting. Return raw JSON.
     `;
 
     const response = await genAI.models.generateContent({
@@ -77,42 +93,7 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string, 
     });
 
     const text = response.text || "{}";
-    const result = JSON.parse(text);
-
-    // --- AUTO-REPORT GENERATION LOGIC ---
-    if (autoReportThreshold && typeof result.score === 'number' && result.score >= autoReportThreshold) {
-        logger.info(`Score ${result.score} >= ${autoReportThreshold}. Generating Deep Report.`);
-        const reportPrompt = `
-                You are an expert HR AI Assistant. Generate a detailed analysis report based on the resume and job description.
-                
-                JOB DESCRIPTION: ${jobDescription}
-                RESUME CONTENT: ${resumeText}
-
-                OUTPUT SCHEMA (JSON ONLY):
-                {
-                  "technicalScore": number, 
-                  "culturalScore": number, 
-                  "communicationScore": number, 
-                  "strengths": string[], 
-                  "weaknesses": string[], 
-                  "summary": string, 
-                  "matchReason": string 
-                }
-             `;
-
-        try {
-            const reportResponse = await genAI.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: reportPrompt,
-                config: { responseMimeType: 'application/json' }
-            });
-            result.report = JSON.parse(reportResponse.text || "{}");
-        } catch (e) {
-            logger.error("Error generating auto-report", e);
-        }
-    }
-
-    return result;
+    return JSON.parse(text);
 }
 
 /**
@@ -128,7 +109,7 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
     logger.info("Screening resume (Manual Trigger)", { resumeLength: resumeText.length });
 
     try {
-        return await analyzeResumeContent(resumeText, jobDescription, autoReportThreshold);
+        return await analyzeResumeContent(resumeText, jobDescription);
     } catch (error: any) {
         logger.error("Error screening resume", error);
         throw new HttpsError('internal', error.message || 'Failed to screen resume');
@@ -246,36 +227,29 @@ export const onNewResumeUpload = onObjectFinalized({
 
         // 6. Auto-Score (Run AI)
         logger.info("Auto-scoring resume...");
-        const result = await analyzeResumeContent(resumeText, jobDescription, 80);
+        const result = await analyzeResumeContent(resumeText, jobDescription);
 
         // 7. Save Results
         const updateData: any = {
-            score: result.score,
-            matchReason: result.reasoning,
-            aiVerdict: result.verdict,
+            score: result.score || 0,
+            matchReason: result.matchReason || result.summary,
+            aiVerdict: result.verdict || 'Review',
             skills: result.skills || [],
+            summary: result.summary,
             experience: result.experience || [],
             education: result.education || [],
-            summary: result.reasoning, // Use reasoning as initial summary
             analysis: {
-                matchScore: result.score,
-                verdict: result.verdict,
-                metrics: {},
-                missingSkills: result.missingSkills || []
+                matchScore: result.score || 0,
+                verdict: result.verdict || 'Review',
+                technicalScore: result.intelligence?.technicalScore || result.score || 0,
+                culturalScore: result.intelligence?.culturalScore || 0,
+                communicationScore: result.intelligence?.communicationScore || 0,
+                strengths: result.intelligence?.strengths || [],
+                weaknesses: result.intelligence?.weaknesses || [],
+                missingSkills: result.intelligence?.missingSkills || [],
+                skillsMatrix: result.skillsMatrix || []
             }
         };
-
-        if (result.report) {
-            updateData.analysis = {
-                ...updateData.analysis,
-                technicalScore: result.report.technicalScore,
-                culturalScore: result.report.culturalScore,
-                communicationScore: result.report.communicationScore,
-                strengths: result.report.strengths,
-                weaknesses: result.report.weaknesses,
-                summary: result.report.summary
-            };
-        }
 
         await candidateRef.update(updateData);
         logger.info("Auto-scoring complete!", { score: result.score });
@@ -380,57 +354,8 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
             logger.warn("CRITICAL: No resume text recovered for analysis.");
         }
 
-        const genAI = getGenAIClient();
-
-        // Construct a rich prompt based on available data
-        const prompt = `
-    You are an expert HR AI Assistant. Your task is to evaluate a candidate's resume against a specific Job Description.
-    You must be objective, fair, and consistent. Use the RAW RESUME TEXT as your primary source of truth.
-
-    JOB TITLE: ${job.title}
-    DEPARTMENT: ${job.department}
-    JOB DESCRIPTION: 
-    ${job.description || "Refer to Title"}
-
-    CANDIDATE: ${candidate.name}
-    ROLE: ${candidate.role}
-    RAW RESUME TEXT: 
-    ${resumeText || "NOT PROVIDED - Evaluate based on available summary only."}
-
-    SCORING RUBRIC (0-100):
-    - 90-100: Exceptional match. Exceeds requirements.
-    - 80-89:  Strong match. Meets all core requirements.
-    - 70-79:  Good match. Meets most requirements but has gaps.
-    - < 70:   Weak or no match.
-
-    OUTPUT SCHEMA (JSON ONLY):
-    {
-      "technicalScore": number, 
-      "culturalScore": number, 
-      "communicationScore": number, 
-      "strengths": string[], 
-      "weaknesses": string[], 
-      "summary": string, 
-      "matchReason": string,
-      "skills": string[],
-      "skillsMatrix": [
-        { "skill": "Core Skill", "proficiency": number(0-100), "years": number }
-      ],
-      "experience": any[],
-      "education": any[]
-    }
-    `;
-
-        const response = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-            }
-        });
-
-        const text = response.text || "{}";
-        return JSON.parse(text);
+        const jobDescription = job.description || job.title;
+        return await analyzeResumeContent(resumeText, jobDescription);
 
     } catch (error: any) {
         logger.error("Error generating report", error);
