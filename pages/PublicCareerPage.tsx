@@ -30,7 +30,8 @@ export const PublicCareerPage = () => {
                 // Fetch Jobs
                 const jobsSnap = await getDocs(collection(db, 'organizations', orgId, 'jobs'));
                 const fetchedJobs = jobsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Job));
-                setJobs(fetchedJobs.filter(j => j.status === JobStatus.OPEN)); // Only active jobs
+                // Show jobs that are explicitly Open, or have no status (legacy)
+                setJobs(fetchedJobs.filter(j => !j.status || j.status === JobStatus.OPEN));
             } catch (err) {
                 console.error("Failed to load career page", err);
             } finally {
