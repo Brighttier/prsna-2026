@@ -23,10 +23,12 @@ export const Sidebar = () => {
   const location = useLocation();
   const p = location.pathname;
   const [branding, setBranding] = React.useState(store.getState().branding);
+  const [userProfile, setUserProfile] = React.useState(store.getState().userProfile);
 
   React.useEffect(() => {
     return store.subscribe(() => {
       setBranding(store.getState().branding);
+      setUserProfile(store.getState().userProfile);
     });
   }, []);
 
@@ -71,10 +73,12 @@ export const Sidebar = () => {
       <div className="p-4 border-t border-slate-100 flex items-center justify-between group">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold border border-emerald-200">
-            {auth.currentUser?.displayName?.charAt(0) || 'U'}
+            {userProfile?.name?.charAt(0) || userProfile?.email?.charAt(0) || auth.currentUser?.displayName?.charAt(0) || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">{auth.currentUser?.displayName || 'User'}</p>
+            <p className="text-sm font-medium text-slate-900 truncate">
+              {userProfile?.name || userProfile?.email?.split('@')[0] || auth.currentUser?.displayName || 'User'}
+            </p>
             <p className="text-xs text-slate-500 truncate">{branding?.companyName || 'Free Plan'}</p>
           </div>
         </div>

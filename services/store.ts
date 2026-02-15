@@ -24,6 +24,14 @@ export interface OrgMember {
     joinedAt: string;
 }
 
+export interface UserProfile {
+    uid: string;
+    email: string;
+    name?: string;
+    role: string;
+    orgId: string;
+}
+
 export interface InterviewSession {
     id: string;
     date: string;
@@ -144,6 +152,7 @@ interface AppState {
     isHydrated: boolean;
     onboardingTemplate: OnboardingTask[];
     members: OrgMember[];
+    userProfile: UserProfile | null;
 }
 
 export interface Invitation {
@@ -195,7 +204,8 @@ const INITIAL_STATE: AppState = {
     },
     isHydrated: false,
     onboardingTemplate: [],
-    members: []
+    members: [],
+    userProfile: null
 };
 
 class Store {
@@ -260,8 +270,26 @@ class Store {
                                 this.initPlatformAdminListeners();
                             }
 
+                            this.state.userProfile = {
+                                uid: user.uid,
+                                email: userData.email,
+                                name: userData.name,
+                                role: userData.role,
+                                orgId: newOrgId
+                            };
+
                             this.notifyListeners(); // Validate link update
                             this.initOrgListeners(this.orgId!);
+                        } else {
+                            // Even if orgId hasn't changed, profile details (like name) might have
+                            this.state.userProfile = {
+                                uid: user.uid,
+                                email: userData.email,
+                                name: userData.name,
+                                role: userData.role,
+                                orgId: newOrgId
+                            };
+                            this.notifyListeners();
                         }
                     } else {
                         console.warn(`[Store] No user profile found in Firestore for ${user.uid} yet.`);
