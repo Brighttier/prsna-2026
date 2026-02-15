@@ -94,7 +94,7 @@ async function analyzeResumeContent(resumeText, jobDescription, autoReportThresh
       Do not include markdown formatting(like \`\`\`json). Just the raw JSON string.
     `;
     const response = await genAI.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         contents: prompt,
         config: {
             responseMimeType: 'application/json',
@@ -124,7 +124,7 @@ async function analyzeResumeContent(resumeText, jobDescription, autoReportThresh
              `;
         try {
             const reportResponse = await genAI.models.generateContent({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.0-flash',
                 contents: reportPrompt,
                 config: { responseMimeType: 'application/json' }
             });
@@ -311,7 +311,7 @@ exports.generateCandidateReport = (0, https_1.onCall)(functionConfig, async (req
     }
     `;
         const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -361,7 +361,7 @@ exports.generateInterviewQuestions = (0, https_1.onCall)(functionConfig, async (
         }
         `;
         const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -405,7 +405,7 @@ exports.analyzeInterview = (0, https_1.onCall)(functionConfig, async (request) =
         }
         `;
         const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -440,7 +440,7 @@ exports.startInterviewSession = (0, https_1.onCall)(functionConfig, async (reque
         Return ONLY the questions as a JSON array of strings.
         `;
         const qResponse = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: questionsPrompt,
             config: { responseMimeType: 'application/json' }
         });
@@ -524,7 +524,7 @@ exports.generateJobDescription = (0, https_1.onCall)(functionConfig, async (requ
         Return ONLY the job description text. No preamble or JSON wrapping.
         `;
         const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt
         });
         return { description: response.text || "Failed to generate description." };
