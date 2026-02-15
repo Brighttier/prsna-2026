@@ -283,7 +283,7 @@ exports.generateCandidateReport = (0, https_1.onCall)(functionConfig, async (req
     logger.info(`Generating report for candidate ${candidate.id}`);
     try {
         const db = (0, firestore_1.getFirestore)();
-        const segments = (candidate.resumeUrl || "").split('?')[0].split('/');
+        // Ensure path parsing logic is clean
         // Ensure path parsing logic is clean
         let resumeText = candidate.resumeText;
         // 1. If resumeText is missing, try to fetch the latest from DB

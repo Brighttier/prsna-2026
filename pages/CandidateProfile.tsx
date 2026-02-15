@@ -1180,7 +1180,7 @@ RecruiteAI`;
             const job = jobs.find(j => j.id === candidate.jobId) || jobs[0]; // Fallback to jobs[0] for legacy support
 
             if (candidate && job) {
-                const updates = await generateCandidateReport(candidate, job);
+                const updates = await generateCandidateReport(candidate, job, orgId);
                 if (id) {
                     store.updateCandidate(id, updates);
                 }

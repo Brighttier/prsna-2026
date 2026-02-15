@@ -17,13 +17,13 @@ interface AnalysisResult {
     summary?: string;
 }
 
-export const generateCandidateReport = async (candidate: ExtendedCandidate, job: Job): Promise<Partial<ExtendedCandidate>> => {
+export const generateCandidateReport = async (candidate: ExtendedCandidate, job: Job, orgId?: string): Promise<Partial<ExtendedCandidate>> => {
     console.log(`[AI SERVICE] Triggering Cloud Function for: ${candidate.id}`);
 
     try {
         const generateReportFn = httpsCallable<any, AnalysisResult>(functions, 'generateCandidateReport');
         // Call the V2 Cloud Function
-        const result = await generateReportFn({ candidate, job });
+        const result = await generateReportFn({ candidate, job, orgId });
         const analysis = result.data;
 
         return {
