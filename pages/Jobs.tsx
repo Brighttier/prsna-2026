@@ -56,6 +56,7 @@ export const Jobs = () => {
          salaryMin: parseInt(newJob.salaryMin) || 0,
          salaryMax: parseInt(newJob.salaryMax) || 0,
          currency: newJob.currency,
+         description: newJob.description,
          workflow: {
             screening: newJob.screening,
             technical: newJob.technical

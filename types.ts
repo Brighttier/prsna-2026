@@ -17,6 +17,7 @@ export interface Job {
   salaryMin?: number;
   salaryMax?: number;
   currency?: string;
+  description?: string;
   // New: Workflow Configuration
   workflow?: {
     screening?: string; // ID of the screening questionnaire
