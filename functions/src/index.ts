@@ -577,23 +577,52 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
  * Moves the "Prompt Engineering" to the backend for security and updates.
  */
 export const startInterviewSession = onCall(functionConfig as any, async (request) => {
-    const { candidate, job } = request.data;
+    const { candidate, job, orgId } = request.data;
 
     if (!candidate || !job) {
         throw new HttpsError('invalid-argument', 'Missing "candidate" or "job".');
     }
 
     try {
+        const db = getFirestore();
         const genAI = getGenAIClient();
 
-        // 1. Generate Questions dynamically
+        let knowledgeBaseContent = "";
+        let manualQuestions: any[] = [];
+
+        // 1. Fetch Assessment Context if available
+        if (orgId && (job.screening || job.technical)) {
+            const assessmentIds = [job.screening, job.technical].filter(Boolean);
+            for (const id of assessmentIds) {
+                const assessSnap = await db.collection('organizations').doc(orgId).collection('assessments').doc(id).get();
+                if (assessSnap.exists) {
+                    const data = assessSnap.data();
+                    if (data?.sourceMode === 'knowledgeBase' && data?.knowledgeBase?.content) {
+                        knowledgeBaseContent += `\n--- SOURCE: ${data.name} ---\n${data.knowledgeBase.content}\n`;
+                    }
+                    if (data?.questions && data.questions.length > 0) {
+                        manualQuestions = [...manualQuestions, ...data.questions];
+                    }
+                }
+            }
+        }
+
+        // 2. Generate Questions dynamically with Context
         const questionsPrompt = `
         JOB: ${job.title}
+        DESCRIPTION: ${job.description}
         CANDIDATE: ${candidate.name} (${candidate.role})
-        SUMMARY: ${candidate.summary}
+        CANDIDATE SUMMARY: ${candidate.summary}
 
-        Generate 3 distinct, high-signal interview questions. 
-        Focus on: 1. Technical Depth 2. Problem Solving 3. Communication.
+        ${knowledgeBaseContent ? `KNOWLEDGE BASE CONTEXT:\n${knowledgeBaseContent}\n` : ''}
+        ${manualQuestions.length > 0 ? `PRE-DEFINED QUESTIONS:\n${manualQuestions.map(q => `- ${q.text} (Eval: ${q.criteria || q.aiEvaluationCriteria})`).join('\n')}\n` : ''}
+
+        INSTRUCTIONS:
+        Generate exactly 4 distinct, high-signal interview questions for this session.
+        1. If manual questions are provided, use or adapt them.
+        2. If knowledge base content is provided, generate questions specifically testing understanding of that material.
+        3. If no specific context is present, focus on general Technical Depth, Problem Solving, and Communication.
+        
         Return ONLY the questions as a JSON array of strings.
         `;
 
@@ -611,7 +640,7 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
             questions = ["Describe your background.", "What is your greatest technical challenge?", "Why this role?"];
         }
 
-        // 2. Construct the System Instruction (Persona)
+        // 3. Construct the System Instruction (Persona)
         const { persona } = request.data;
         const intensity = persona?.intensity || 30;
         const introduction = persona?.introduction || `Welcome ${candidate.name} and asking them to introduce themselves.`;

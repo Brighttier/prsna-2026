@@ -141,7 +141,7 @@ export interface LiveConnectionState {
 
 // --- Assessment Library Types ---
 
-export type AssessmentType = 'QuestionBank' | 'CodingChallenge' | 'SystemDesign';
+export type AssessmentType = 'QuestionBank'; // Simplified: Only Questions/KB analysis
 
 export interface Question {
   id: string;

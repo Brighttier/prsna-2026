@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { store, InterviewSession, TranscriptEntry } from '../services/store';
 import { summarizeInterview } from '../services/geminiService';
 import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase';
-import Editor from '@monaco-editor/react';
+// Removed Monaco editor for simplification
 
 const Orb = ({ active, speaking }: { active: boolean, speaking: boolean }) => {
    return (
@@ -42,7 +42,7 @@ export const InterviewRoom = () => {
    const [micOn, setMicOn] = useState(true);
    const [camOn, setCamOn] = useState(true);
    const [transcript, setTranscript] = useState<{ user: boolean, text: string }[]>([]);
-   const [codeMode, setCodeMode] = useState(false);
+   // Removed codeMode for simplification
    const scrollRef = useRef<HTMLDivElement>(null);
    const [isAiSpeaking, setIsAiSpeaking] = useState(false);
    const aiSpeakingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,35 +61,26 @@ export const InterviewRoom = () => {
    useEffect(() => {
       if (candidate) {
          import('../services/ai').then(({ startInterviewSession }) => {
-            const persona = store.getState().settings.persona;
-            // Mock job for now, or fetch if available
-            const mockJob = { title: candidate.role, department: 'Engineering', company: 'RenovateMySite' };
-            startInterviewSession(candidate, mockJob as any, persona).then(data => {
+            const state = store.getState();
+            const persona = state.settings.persona;
+            const realJob = state.jobs.find(j => j.id === candidate.jobId);
+            const orgId = state.orgId;
+
+            // Use real job if available, otherwise fallback to mock
+            const jobDetails = realJob || {
+               title: candidate.role,
+               department: 'Engineering',
+               company: state.settings.branding.companyName || 'Prsna'
+            };
+
+            startInterviewSession(candidate, jobDetails as any, persona, orgId).then(data => {
                setSystemInstruction(data.systemInstruction);
             }).catch(err => console.error("Failed to init Lumina session:", err));
          });
       }
    }, [candidate]);
 
-   const [editorValue, setEditorValue] = useState(`// 1. Problem: Reverse a Binary Tree
-// 2. Explain your Time & Space complexity
-
-function invertTree(root) {
-  if (!root) {
-    return null;
-  }
-  
-  const temp = root.left;
-  root.left = root.right;
-  root.right = temp;
-  
-  invertTree(root.left);
-  invertTree(root.right);
-  
-  return root;
-}
-
-console.log("Tree Inverted");`);
+   // Removed editorValue for simplification
 
    const { isConnected, error, connect, disconnect, sendVideoFrame, sendContent } = useGeminiLive({
       systemInstruction: systemInstruction || "You are a helpful assistant.",
@@ -110,15 +101,7 @@ console.log("Tree Inverted");`);
       }
    });
 
-   // Text Sync Effect: Send code state to Gemini every 3 seconds
-   useEffect(() => {
-      if (isConnected && codeMode && sendContent) {
-         const interval = setInterval(() => {
-            sendContent(editorValue);
-         }, 3000);
-         return () => clearInterval(interval);
-      }
-   }, [isConnected, codeMode, editorValue, sendContent]);
+   // Removed code state sync
 
    useEffect(() => {
       const startCam = async () => {
@@ -209,7 +192,7 @@ console.log("Tree Inverted");`);
             const session: InterviewSession = {
                id: sessionId,
                date: new Date().toLocaleDateString(),
-               type: 'Lumina Live Technical',
+               type: 'Lumina Live Interview', // Renamed from Technical
                status: 'Completed',
                score: data.score || 0,
                sentiment: data.sentiment || 'Neutral',
@@ -268,7 +251,7 @@ console.log("Tree Inverted");`);
          </header>
 
          <div className="flex-1 flex overflow-hidden">
-            <div className={`flex-1 p-6 md:p-8 flex flex-col items-center justify-center relative transition-all duration-300 ${codeMode ? 'w-1/2' : 'w-full'} bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]`}>
+            <div className="flex-1 p-6 md:p-8 flex flex-col items-center justify-center relative bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]">
                <div className="w-full max-w-5xl flex flex-col md:flex-row gap-6 items-center justify-center h-full">
                   <div className="flex-1 flex flex-col items-center justify-center min-h-[300px]">
                      <div className="relative mb-8">
@@ -322,14 +305,6 @@ console.log("Tree Inverted");`);
                         >
                            {camOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
                         </button>
-                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                        <button
-                           onClick={() => setCodeMode(!codeMode)}
-                           className={`p-2.5 rounded-full transition-colors ${codeMode ? 'bg-brand-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                           title="Toggle Code Editor"
-                        >
-                           <Code className="w-4 h-4" />
-                        </button>
                      </div>
                   </div>
                </div>
@@ -342,74 +317,53 @@ console.log("Tree Inverted");`);
                )}
             </div>
 
-            <div className={`transition-all duration-300 bg-white border-l border-slate-200 flex flex-col shadow-xl z-10 ${codeMode ? 'w-full md:w-[600px]' : 'w-full md:w-[400px]'}`}>
+            <div className="w-full md:w-[400px] transition-all duration-300 bg-white border-l border-slate-200 flex flex-col shadow-xl z-10">
                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                   <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                     {codeMode ? <Code className="w-5 h-5 text-brand-600" /> : <MessageSquare className="w-5 h-5 text-brand-600" />}
-                     {codeMode ? 'Technical Sandbox' : 'Live Transcript'}
+                     <MessageSquare className="w-5 h-5 text-brand-600" />
+                     Live Transcript
                   </h3>
-                  {codeMode && <span className="text-xs text-slate-500 font-mono bg-slate-200 px-2 py-1 rounded">JavaScript</span>}
                </div>
 
                <div className="flex-1 overflow-hidden relative">
-                  {codeMode ? (
-                     <div className="h-full bg-[#1e293b] overflow-hidden">
-                        <Editor
-                           height="100%"
-                           defaultLanguage="javascript"
-                           theme="vs-dark"
-                           value={editorValue}
-                           onChange={(value) => setEditorValue(value || '')}
-                           options={{
-                              minimap: { enabled: false },
-                              fontSize: 14,
-                              lineNumbers: 'on',
-                              scrollBeyondLastLine: false,
-                              automaticLayout: true,
-                              padding: { top: 20 }
-                           }}
-                        />
-                     </div>
-                  ) : (
-                     <div className="h-full overflow-y-auto p-4 space-y-6 bg-white" ref={scrollRef}>
-                        {transcript.length === 0 && (
-                           <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center p-8 opacity-60">
-                              <MessageSquare className="w-12 h-12 mb-3 text-slate-300" />
-                              <p>Conversation history will appear here.</p>
+                  <div className="h-full overflow-y-auto p-4 space-y-6 bg-white" ref={scrollRef}>
+                     {transcript.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center p-8 opacity-60">
+                           <MessageSquare className="w-12 h-12 mb-3 text-slate-300" />
+                           <p>Conversation history will appear here.</p>
+                        </div>
+                     )}
+                     {transcript.map((t, i) => (
+                        <div key={i} className={`flex gap-3 ${t.user ? 'flex-row-reverse' : 'flex-row'}`}>
+                           <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${t.user ? 'bg-slate-200' : 'bg-brand-100'}`}>
+                              {t.user ? <User className="w-4 h-4 text-slate-600" /> : <Cpu className="w-4 h-4 text-brand-600" />}
                            </div>
-                        )}
-                        {transcript.map((t, i) => (
-                           <div key={i} className={`flex gap-3 ${t.user ? 'flex-row-reverse' : 'flex-row'}`}>
-                              <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${t.user ? 'bg-slate-200' : 'bg-brand-100'}`}>
-                                 {t.user ? <User className="w-4 h-4 text-slate-600" /> : <Cpu className="w-4 h-4 text-brand-600" />}
+                           <div className={`flex flex-col ${t.user ? 'items-end' : 'items-start'} max-w-[80%]`}>
+                              <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${t.user
+                                 ? 'bg-slate-100 text-slate-800 rounded-tr-none'
+                                 : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
+                                 }`}>
+                                 {t.text}
                               </div>
-                              <div className={`flex flex-col ${t.user ? 'items-end' : 'items-start'} max-w-[80%]`}>
-                                 <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${t.user
-                                    ? 'bg-slate-100 text-slate-800 rounded-tr-none'
-                                    : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
-                                    }`}>
-                                    {t.text}
-                                 </div>
-                                 <span className="text-[10px] text-slate-400 mt-1.5 px-1">
-                                    {t.user ? 'You' : 'Lumina AI'}
-                                 </span>
-                              </div>
+                              <span className="text-[10px] text-slate-400 mt-1.5 px-1">
+                                 {t.user ? 'You' : 'Lumina AI'}
+                              </span>
                            </div>
-                        ))}
-                        {isAiSpeaking && (
-                           <div className="flex gap-3">
-                              <div className="w-8 h-8 rounded-full bg-brand-100 flex-shrink-0 flex items-center justify-center">
-                                 <Cpu className="w-4 h-4 text-brand-600" />
-                              </div>
-                              <div className="flex items-center gap-1 h-8 px-2">
-                                 <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce"></div>
-                                 <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce delay-75"></div>
-                                 <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce delay-150"></div>
-                              </div>
+                        </div>
+                     ))}
+                     {isAiSpeaking && (
+                        <div className="flex gap-3">
+                           <div className="w-8 h-8 rounded-full bg-brand-100 flex-shrink-0 flex items-center justify-center">
+                              <Cpu className="w-4 h-4 text-brand-600" />
                            </div>
-                        )}
-                     </div>
-                  )}
+                           <div className="flex items-center gap-1 h-8 px-2">
+                              <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce"></div>
+                              <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce delay-75"></div>
+                              <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce delay-150"></div>
+                           </div>
+                        </div>
+                     )}
+                  </div>
                </div>
             </div>
          </div>

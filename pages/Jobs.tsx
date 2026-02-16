@@ -29,7 +29,7 @@ export const Jobs = () => {
       salaryMin: '',
       salaryMax: ''
    });
-   const [technicalType, setTechnicalType] = useState<'coding' | 'scenario'>('coding');
+   // Removed technicalType as we only have QuestionBank now
    const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
    const [editingJobId, setEditingJobId] = useState<string | null>(null);
    const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
@@ -521,24 +521,8 @@ export const Jobs = () => {
                                     <span className="font-bold text-slate-700">Stage 2: Technical & Skills Assessment</span>
                                  </div>
                                  <div className="p-6 bg-white">
-                                    {/* Toggle Technical Type */}
-                                    <div className="flex gap-4 mb-5">
-                                       <button
-                                          onClick={() => setTechnicalType('coding')}
-                                          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${technicalType === 'coding' ? 'bg-purple-50 border-purple-200 text-purple-700 ring-1 ring-purple-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                                       >
-                                          <CodeIcon className="w-4 h-4" /> Coding Challenge
-                                       </button>
-                                       <button
-                                          onClick={() => setTechnicalType('scenario')}
-                                          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${technicalType === 'scenario' ? 'bg-purple-50 border-purple-200 text-purple-700 ring-1 ring-purple-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                                       >
-                                          <FileText className="w-4 h-4" /> Scenario / Case Study
-                                       </button>
-                                    </div>
-
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                                       {technicalType === 'coding' ? 'Select Coding Problem' : 'Select Case Study Module'}
+                                       Attach Technical Assessment Module
                                     </label>
                                     <select
                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
@@ -546,14 +530,12 @@ export const Jobs = () => {
                                        onChange={e => setNewJob({ ...newJob, technical: e.target.value })}
                                     >
                                        <option value="">Select from Library...</option>
-                                       {assessments.filter(a => (technicalType === 'coding' ? a.type === 'CodingChallenge' : a.type === 'SystemDesign')).map(a => (
+                                       {assessments.filter(a => a.type === 'QuestionBank').map(a => (
                                           <option key={a.id} value={a.id}>{a.name} ({a.difficulty})</option>
                                        ))}
                                     </select>
                                     <p className="text-xs text-slate-500 mt-2">
-                                       {technicalType === 'coding'
-                                          ? "Lumina will open the Monaco Code Editor and evaluate syntax, logic, and optimization."
-                                          : "Lumina will conduct a verbal deep-dive or whiteboard session based on this specific scenario."}
+                                       Lumina will conduct a skills assessment based on the questions or knowledge base linked to this module.
                                     </p>
                                  </div>
                               </div>
@@ -587,11 +569,7 @@ export const Jobs = () => {
                                  </div>
                                  <div className="flex justify-between text-sm">
                                     <span className="text-slate-500">Technical:</span>
-                                    <span className="font-medium">{newJob.technical ? 'Linked Module' : 'None'}</span>
-                                 </div>
-                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Assessment Type:</span>
-                                    <span className="font-medium capitalize">{technicalType}</span>
+                                    <span className="font-medium">{newJob.technical ? 'Linked Assessment' : 'None'}</span>
                                  </div>
                               </div>
                            </div>

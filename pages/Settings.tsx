@@ -330,17 +330,7 @@ export const Settings = () => {
             tags: [],
             sourceMode: 'manual',
             questions: [],
-            knowledgeBase: { content: '', fileName: '' },
-            codingConfig: {
-                language: 'javascript',
-                problemStatement: '',
-                starterCode: '',
-                testCases: []
-            },
-            caseStudyConfig: {
-                scenario: '',
-                keyDiscussionPoints: []
-            }
+            knowledgeBase: { content: '', fileName: '' }
         });
     };
 
@@ -1282,7 +1272,7 @@ export const Settings = () => {
                     <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200">
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">Assessment Library</h2>
-                            <p className="text-slate-500 text-sm mt-1">Create and manage reusable question banks and coding challenges.</p>
+                            <p className="text-slate-500 text-sm mt-1">Create question banks manually or generate them from your knowledge base.</p>
                         </div>
                         <button
                             onClick={() => {
@@ -1294,17 +1284,7 @@ export const Settings = () => {
                                     tags: [],
                                     sourceMode: 'manual',
                                     questions: [],
-                                    knowledgeBase: { content: '', fileName: '' },
-                                    codingConfig: {
-                                        language: 'javascript',
-                                        problemStatement: '',
-                                        starterCode: '',
-                                        testCases: []
-                                    },
-                                    caseStudyConfig: {
-                                        scenario: '',
-                                        keyDiscussionPoints: []
-                                    }
+                                    knowledgeBase: { content: '', fileName: '' }
                                 });
                                 setModuleStep(1);
                                 setShowCreateModule(true);
@@ -1319,13 +1299,8 @@ export const Settings = () => {
                         {assessments.map((mod) => (
                             <Card key={mod.id} className="p-6 hover:border-brand-300 transition-colors group cursor-pointer relative">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mod.type === 'QuestionBank' ? (mod.sourceMode === 'knowledgeBase' ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600') :
-                                        mod.type === 'CodingChallenge' ? 'bg-purple-100 text-purple-600' :
-                                            'bg-orange-100 text-orange-600'
-                                        }`}>
-                                        {mod.type === 'QuestionBank' && (mod.sourceMode === 'knowledgeBase' ? <BrainCircuit className="w-5 h-5" /> : <FileQuestion className="w-5 h-5" />)}
-                                        {mod.type === 'CodingChallenge' && <Terminal className="w-5 h-5" />}
-                                        {mod.type === 'SystemDesign' && <LayoutTemplate className="w-5 h-5" />}
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mod.sourceMode === 'knowledgeBase' ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600'}`}>
+                                        {mod.sourceMode === 'knowledgeBase' ? <BrainCircuit className="w-5 h-5" /> : <FileQuestion className="w-5 h-5" />}
                                     </div>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500" onClick={(e) => { e.stopPropagation(); handleEditModule(mod); }}>
@@ -1402,16 +1377,10 @@ export const Settings = () => {
 
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">Type</label>
-                                            <select
-                                                value={newModule.type}
-                                                onChange={(e) => setNewModule({ ...newModule, type: e.target.value as AssessmentType })}
-                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                                            >
-                                                <option value="QuestionBank">Question Bank</option>
-                                                <option value="CodingChallenge">Coding Challenge</option>
-                                                <option value="SystemDesign">System Design</option>
-                                            </select>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Assessment Type</label>
+                                            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 text-sm font-medium flex items-center gap-2">
+                                                <FileQuestion className="w-4 h-4" /> Comprehensive Interview Module
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-2">Difficulty</label>
@@ -1468,15 +1437,15 @@ export const Settings = () => {
                                                 <div className="bg-slate-100 p-1 rounded-lg inline-flex">
                                                     <button
                                                         onClick={() => setNewModule({ ...newModule, sourceMode: 'manual' })}
-                                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${newModule.sourceMode === 'manual' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                                                        className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${newModule.sourceMode === 'manual' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
                                                     >
-                                                        Manual Entry
+                                                        Manual Questions
                                                     </button>
                                                     <button
                                                         onClick={() => setNewModule({ ...newModule, sourceMode: 'knowledgeBase' })}
-                                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${newModule.sourceMode === 'knowledgeBase' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                                                        className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${newModule.sourceMode === 'knowledgeBase' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                                                     >
-                                                        <BrainCircuit className="w-4 h-4" /> AI Generator
+                                                        <BrainCircuit className="w-4 h-4" /> Knowledge Base Analysis
                                                     </button>
                                                 </div>
                                             </div>
@@ -1556,186 +1525,140 @@ export const Settings = () => {
                                             )}
                                         </div>
                                     )}
-
-                                    {newModule.type === 'CodingChallenge' && (
-                                        <div className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-2">Language</label>
-                                                    <select
-                                                        value={newModule.codingConfig?.language}
-                                                        onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, language: e.target.value as any } })}
-                                                        className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                                                    >
-                                                        <option value="javascript">JavaScript</option>
-                                                        <option value="python">Python</option>
-                                                        <option value="go">Go</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Problem Statement</label>
-                                                <textarea
-                                                    value={newModule.codingConfig?.problemStatement}
-                                                    onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, problemStatement: e.target.value } })}
-                                                    className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-32"
-                                                    placeholder="Describe the coding task..."
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Starter Code</label>
-                                                <textarea
-                                                    value={newModule.codingConfig?.starterCode}
-                                                    onChange={(e) => setNewModule({ ...newModule, codingConfig: { ...newModule.codingConfig!, starterCode: e.target.value } })}
-                                                    className="w-full p-4 bg-slate-900 text-green-400 font-mono text-sm rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-48"
-                                                    placeholder="// Start typing code here..."
-                                                />
-                                            </div>
+                                </div>
                                         </div>
                                     )}
-
-                                    {newModule.type === 'SystemDesign' && (
-                                        <div className="space-y-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Scenario</label>
-                                                <textarea
-                                                    value={newModule.caseStudyConfig?.scenario}
-                                                    onChange={(e) => setNewModule({ ...newModule, caseStudyConfig: { ...newModule.caseStudyConfig!, scenario: e.target.value } })}
-                                                    className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none h-40"
-                                                    placeholder="Describe the system to be designed (e.g. Design a URL shortener)..."
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                    </div>
                             )}
 
-                            {/* Step 3: Review */}
-                            {moduleStep === 3 && (
-                                <div className="max-w-2xl mx-auto text-center animate-fade-in">
-                                    <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <CheckCircle className="w-10 h-10" />
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
-                                    <p className="text-slate-500 mb-8">Review the details below before adding to the library.</p>
+                    {/* Step 3: Review */}
+                    {moduleStep === 3 && (
+                        <div className="max-w-2xl mx-auto text-center animate-fade-in">
+                            <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <CheckCircle className="w-10 h-10" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
+                            <p className="text-slate-500 mb-8">Review the details below before adding to the library.</p>
 
-                                    <div className="bg-slate-50 rounded-xl p-6 text-left border border-slate-200 space-y-4">
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Name</span>
-                                            <span className="font-bold text-slate-900">{newModule.name}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Type</span>
-                                            <span className="font-bold text-slate-900">{newModule.type}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Duration</span>
-                                            <span className="font-bold text-slate-900">{newModule.estimatedDuration} mins</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500">Items</span>
-                                            <span className="font-bold text-slate-900">
-                                                {newModule.type === 'QuestionBank'
-                                                    ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic (AI)' : `${newModule.questions?.length} Fixed`)
-                                                    : '1 Scenario'}
-                                            </span>
-                                        </div>
-                                    </div>
+                            <div className="bg-slate-50 rounded-xl p-6 text-left border border-slate-200 space-y-4">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Name</span>
+                                    <span className="font-bold text-slate-900">{newModule.name}</span>
                                 </div>
-                            )}
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Type</span>
+                                    <span className="font-bold text-slate-900">{newModule.type}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Duration</span>
+                                    <span className="font-bold text-slate-900">{newModule.estimatedDuration} mins</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Items</span>
+                                    <span className="font-bold text-slate-900">
+                                        {newModule.type === 'QuestionBank'
+                                            ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic (AI)' : `${newModule.questions?.length} Fixed`)
+                                            : '1 Scenario'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
+                    )}
+                </div>
 
                         {/* Footer */}
-                        <div className="px-8 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
-                            <button
-                                onClick={() => moduleStep > 1 ? setModuleStep(moduleStep - 1) : setShowCreateModule(false)}
-                                className="px-6 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-                            >
-                                {moduleStep > 1 ? 'Back' : 'Cancel'}
-                            </button>
-                            <button
-                                onClick={() => moduleStep < 3 ? setModuleStep(moduleStep + 1) : handlePublishModule()}
-                                className="px-8 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
-                            >
-                                {moduleStep === 3 ? 'Publish Module' : 'Continue'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* --- INVITE MODAL --- */}
-            {showInviteModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
-                            <button
-                                onClick={() => setShowInviteModal(false)}
-                                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSendInvite} className="p-6 space-y-5">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                                    <input
-                                        type="email"
-                                        required
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                        placeholder="colleague@acme.com"
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Role & Permissions</label>
-                                <div className="relative">
-                                    <select
-                                        value={inviteRole}
-                                        onChange={(e) => setInviteRole(e.target.value)}
-                                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none cursor-pointer"
-                                    >
-                                        <option value="Admin">Admin (Full Access)</option>
-                                        <option value="Recruiter">Recruiter (Manage Jobs & Candidates)</option>
-                                        <option value="Viewer">Viewer (Read Only)</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-                                </div>
-                                <p className="text-xs text-slate-500 mt-2">
-                                    {inviteRole === 'Admin' && "Can manage billing, team members, and all settings."}
-                                    {inviteRole === 'Recruiter' && "Can create jobs, invite candidates, and conduct interviews."}
-                                    {inviteRole === 'Viewer' && "Can view job listings and candidate profiles but cannot edit."}
-                                </p>
-                            </div>
-
-                            <div className="pt-2 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowInviteModal(false)}
-                                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isInviting || !inviteEmail}
-                                    className="flex-1 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {isInviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                                    {isInviting ? 'Sending...' : 'Send Invite'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <div className="px-8 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
+                <button
+                    onClick={() => moduleStep > 1 ? setModuleStep(moduleStep - 1) : setShowCreateModule(false)}
+                    className="px-6 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                    {moduleStep > 1 ? 'Back' : 'Cancel'}
+                </button>
+                <button
+                    onClick={() => moduleStep < 3 ? setModuleStep(moduleStep + 1) : handlePublishModule()}
+                    className="px-8 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                >
+                    {moduleStep === 3 ? 'Publish Module' : 'Continue'}
+                </button>
+            </div>
         </div>
+                </div >
+            )}
+
+{/* --- INVITE MODAL --- */ }
+{
+    showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
+                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
+                    <button
+                        onClick={() => setShowInviteModal(false)}
+                        className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSendInvite} className="p-6 space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            <input
+                                type="email"
+                                required
+                                value={inviteEmail}
+                                onChange={(e) => setInviteEmail(e.target.value)}
+                                placeholder="colleague@acme.com"
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Role & Permissions</label>
+                        <div className="relative">
+                            <select
+                                value={inviteRole}
+                                onChange={(e) => setInviteRole(e.target.value)}
+                                className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none cursor-pointer"
+                            >
+                                <option value="Admin">Admin (Full Access)</option>
+                                <option value="Recruiter">Recruiter (Manage Jobs & Candidates)</option>
+                                <option value="Viewer">Viewer (Read Only)</option>
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                            {inviteRole === 'Admin' && "Can manage billing, team members, and all settings."}
+                            {inviteRole === 'Recruiter' && "Can create jobs, invite candidates, and conduct interviews."}
+                            {inviteRole === 'Viewer' && "Can view job listings and candidate profiles but cannot edit."}
+                        </p>
+                    </div>
+
+                    <div className="pt-2 flex gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setShowInviteModal(false)}
+                            className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isInviting || !inviteEmail}
+                            className="flex-1 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isInviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                            {isInviting ? 'Sending...' : 'Send Invite'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
+        </div >
     );
 };

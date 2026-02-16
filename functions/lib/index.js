@@ -214,20 +214,13 @@ exports.onNewResumeUpload = (0, storage_1.onObjectFinalized)({
     let orgId = '';
     let candidateId = '';
     // Robust ID Extraction: Look for 'candidates' segment
+    // Path examples: 
+    // 1. organizations/ORG_ID/candidates/CAND_ID/resume_...
+    // 2. ORG_ID/candidates/CAND_ID/resume_...
     const candIndex = segments.findIndex(s => s.toLowerCase() === 'candidates');
-    if (candIndex > 0) {
+    if (candIndex >= 1) {
         candidateId = segments[candIndex + 1];
-        // Org ID is usually the segment right before 'candidates' unless it's 'organizations/orgId/candidates'
-        if (segments[candIndex - 1].toLowerCase() === 'organizations' || segments[candIndex - 1].toLowerCase() === 'organization') {
-            orgId = segments[candIndex - 1]; // This is actually wrong, if "organizations" is at index-2, then index-1 is orgId
-        }
-        // Corrected logic:
-        if (candIndex >= 2 && (segments[candIndex - 2].toLowerCase() === 'organizations' || segments[candIndex - 2].toLowerCase() === 'organization')) {
-            orgId = segments[candIndex - 1];
-        }
-        else {
-            orgId = segments[candIndex - 1];
-        }
+        orgId = segments[candIndex - 1]; // Works for both formats
     }
     if (!orgId || !candidateId) {
         logger.error(`Failed to extract IDs from path: ${filePath}`, { segments });
@@ -235,54 +228,49 @@ exports.onNewResumeUpload = (0, storage_1.onObjectFinalized)({
     }
     logger.info(`Processing Resume: Org=${orgId}, Candidate=${candidateId}`);
     try {
-        // 2. Download File to Memory
+        const db = (0, firestore_1.getFirestore)();
+        // 2. Fetch Org Settings for Auto-Reporting
+        const orgSnap = await db.collection('organizations').doc(orgId).get();
+        const settings = orgSnap.data()?.settings?.persona || { autoReportThreshold: 80, autoReportEnabled: true };
+        // 3. Download File to Memory
         const bucket = (0, storage_2.getStorage)().bucket(fileBucket);
         const [fileBuffer] = await bucket.file(filePath).download();
         logger.info(`Downloaded ${fileBuffer.length} bytes`);
-        // 3. Extract Text based on format
+        // 4. Extract Text
         let resumeText = '';
         if (isPdf) {
-            logger.info("Parsing PDF...");
+            logger.info("Parsing PDF");
             const data = await pdf(fileBuffer);
             resumeText = data.text || '';
         }
         else if (isDocx) {
-            logger.info("Parsing DOCX...");
+            logger.info("Parsing DOCX");
             const result = await mammoth.extractRawText({ buffer: fileBuffer });
             resumeText = result.value || '';
         }
         else if (isDoc) {
-            logger.info("Parsing DOC...");
+            logger.info("Parsing DOC");
             const extractor = new WordExtractor();
             const doc = await extractor.extract(fileBuffer);
             resumeText = doc.getBody() || '';
         }
         resumeText = resumeText.trim();
         if (!resumeText || resumeText.length < 50) {
-            logger.warn(`Parsing produced insufficient text: ${resumeText.length} chars.`);
-            // Update candidate so UI knows we tried but failed to read the file
-            const db = (0, firestore_1.getFirestore)();
+            logger.warn(`Insufficient text: ${resumeText.length} chars.`);
             await db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId).update({
-                resumeText: 'FAILED_TO_PARSE: Unreadable or image-only file.',
-                score: 0,
-                matchReason: 'The uploaded file could not be read. Please upload a searchable PDF or Word document.'
+                resumeText: 'FAILED_TO_PARSE: Unreadable file.',
+                parsedAt: new Date().toISOString()
             });
             return;
         }
-        // 4. Update Candidate with Text
-        const db = (0, firestore_1.getFirestore)();
         const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
-        await candidateRef.update({
-            resumeText: resumeText,
-            parsedAt: new Date().toISOString()
-        });
-        // 5. Fetch Job Description for Analysis
         const candidateSnap = await candidateRef.get();
         const candidateData = candidateSnap.data();
         if (!candidateData) {
-            logger.warn("Candidate doc deleted during processing.");
+            logger.warn("Candidate doc missing.");
             return;
         }
+        // 5. Fetch Job Description
         let jobData = null;
         if (candidateData.jobId) {
             const jobSnap = await db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId).get();
@@ -290,32 +278,48 @@ exports.onNewResumeUpload = (0, storage_1.onObjectFinalized)({
         }
         if (!jobData && candidateData.role) {
             const jobsSnap = await db.collection('organizations').doc(orgId).collection('jobs').where('title', '==', candidateData.role).limit(1).get();
-            if (!jobsSnap.empty) {
+            if (!jobsSnap.empty)
                 jobData = jobsSnap.docs[0].data();
-            }
         }
         if (!jobData) {
-            logger.warn("No matching job found for analysis.");
+            logger.warn("No matching job found.");
+            // We still update the profile with parsed content but no score
+            const result = await analyzeResumeContent(resumeText, "General Role");
+            await candidateRef.update({
+                resumeText,
+                name: candidateData.name && !candidateData.name.includes('...') ? candidateData.name : (result.name || candidateData.name),
+                email: candidateData.email || result.email || '',
+                experience: (result.experience || []).map((exp, i) => ({ id: `exp_${i}`, ...exp })),
+                education: (result.education || []).map((edu, i) => ({ id: `edu_${i}`, ...edu })),
+                skills: result.skills || [],
+                parsedAt: new Date().toISOString()
+            });
             return;
         }
-        const jobDescription = jobData.description || jobData.title;
         // 6. AI Analysis
         logger.info(`Analyzing with Gemini... (Text: ${resumeText.length} chars)`);
-        const result = await analyzeResumeContent(resumeText, jobDescription);
-        // 7. Map & Save
+        const result = await analyzeResumeContent(resumeText, jobData.description || jobData.title);
         const finalScore = result.score || result.intelligence?.technicalScore || 0;
+        // Threshold Logic
+        const meetsThreshold = settings.autoReportEnabled && finalScore >= (settings.autoReportThreshold || 80);
+        // 7. Dynamic Map & Save
         const updateData = {
-            // Update core fields if they weren't fully provided (e.g. manual upload)
+            resumeText,
             name: candidateData.name && !candidateData.name.includes('...') ? candidateData.name : (result.name || candidateData.name),
             email: candidateData.email || result.email || '',
             score: finalScore,
-            matchReason: result.matchReason || result.summary,
-            aiVerdict: result.verdict || 'Review',
             skills: result.skills || [],
-            summary: result.summary,
             experience: (result.experience || []).map((exp, i) => ({ id: `exp_${i}`, ...exp })),
             education: (result.education || []).map((edu, i) => ({ id: `edu_${i}`, ...edu })),
-            analysis: {
+            parsedAt: new Date().toISOString()
+        };
+        // Only save "Report" fields if threshold met
+        if (meetsThreshold) {
+            logger.info(`Auto-generating report for score: ${finalScore}`);
+            updateData.matchReason = result.matchReason || result.summary;
+            updateData.aiVerdict = result.verdict || 'Review';
+            updateData.summary = result.summary;
+            updateData.analysis = {
                 matchScore: finalScore,
                 verdict: result.verdict || 'Review',
                 technicalScore: result.intelligence?.technicalScore || finalScore,
@@ -325,10 +329,16 @@ exports.onNewResumeUpload = (0, storage_1.onObjectFinalized)({
                 weaknesses: result.intelligence?.weaknesses || [],
                 missingSkills: result.intelligence?.missingSkills || [],
                 skillsMatrix: result.skillsMatrix || []
-            }
-        };
+            };
+        }
+        else {
+            logger.info(`Score ${finalScore} below threshold. Report withheld.`);
+            // Clear old report if any, or just don't set
+            updateData.summary = "Resume parsed. Full AI report available on request.";
+            updateData.matchReason = "Match score generated. High-depth analysis withheld due to organization settings.";
+        }
         await candidateRef.update(updateData);
-        logger.info(`Auto-scoring and Profile Update complete for ${candidateId}!`);
+        logger.info(`Sync complete for ${candidateId}. Auto-Report: ${meetsThreshold}`);
     }
     catch (error) {
         logger.error("Global processing error in onNewResumeUpload", error);
