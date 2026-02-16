@@ -315,9 +315,7 @@ export const Settings = () => {
             sourceMode: newModule.sourceMode,
             itemsCount: newModule.type === 'QuestionBank' ? (newModule.sourceMode === 'knowledgeBase' ? 1 : (newModule.questions?.length || 0)) : 1,
             knowledgeBase: newModule.knowledgeBase,
-            questions: newModule.questions,
-            codingConfig: newModule.codingConfig,
-            caseStudyConfig: newModule.caseStudyConfig
+            questions: newModule.questions
         };
         store.publishAssessment(assessment);
         setShowCreateModule(false);
@@ -1494,8 +1492,54 @@ export const Settings = () => {
                                             ) : (
                                                 <div className="space-y-6">
                                                     <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
-                                                        <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2"><BookOpen className="w-5 h-5" /> Knowledge Base Source</h4>
-                                                        <p className="text-sm text-indigo-700 mb-4">Paste text content (e.g. documentation, handbook) and Lumina will dynamically generate relevant questions during the interview.</p>
+                                                        <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                                                            <BookOpen className="w-5 h-5" /> Knowledge Base Source
+                                                        </h4>
+                                                        <p className="text-sm text-indigo-700 mb-4">Upload or paste text content (e.g. documentation, handbook) and Lumina will dynamically generate relevant questions during the interview.</p>
+
+                                                        <div className="flex items-center gap-3 mb-4">
+                                                            <input
+                                                                type="file"
+                                                                id="kb-file-upload"
+                                                                className="hidden"
+                                                                accept=".txt,.md,.json,.pdf"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        const reader = new FileReader();
+                                                                        reader.onload = (event) => {
+                                                                            const content = event.target?.result as string;
+                                                                            setNewModule(prev => ({
+                                                                                ...prev,
+                                                                                knowledgeBase: {
+                                                                                    content,
+                                                                                    fileName: file.name
+                                                                                }
+                                                                            }));
+                                                                        };
+                                                                        reader.readAsText(file);
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button
+                                                                onClick={() => document.getElementById('kb-file-upload')?.click()}
+                                                                className="px-4 py-2 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-50 flex items-center gap-2"
+                                                            >
+                                                                <Upload className="w-4 h-4" /> {newModule.knowledgeBase?.fileName || 'Upload Document'}
+                                                            </button>
+                                                            {newModule.knowledgeBase?.fileName && (
+                                                                <button
+                                                                    onClick={() => setNewModule(prev => ({
+                                                                        ...prev,
+                                                                        knowledgeBase: { content: '', fileName: '' }
+                                                                    }))}
+                                                                    className="text-red-500 hover:text-red-600 p-1"
+                                                                >
+                                                                    <X className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                            <span className="text-xs text-indigo-400">Supports .txt, .md, .json</span>
+                                                        </div>
                                                         <textarea
                                                             value={newModule.knowledgeBase?.content}
                                                             onChange={(e) => setNewModule({ ...newModule, knowledgeBase: { ...newModule.knowledgeBase, content: e.target.value } })}
