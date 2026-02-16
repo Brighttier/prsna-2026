@@ -1526,139 +1526,136 @@ export const Settings = () => {
                                         </div>
                                     )}
                                 </div>
-                                        </div>
-                                    )}
-                    </div>
                             )}
 
-                    {/* Step 3: Review */}
-                    {moduleStep === 3 && (
-                        <div className="max-w-2xl mx-auto text-center animate-fade-in">
-                            <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <CheckCircle className="w-10 h-10" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
-                            <p className="text-slate-500 mb-8">Review the details below before adding to the library.</p>
+                            {/* Step 3: Review */}
+                            {moduleStep === 3 && (
+                                <div className="max-w-2xl mx-auto text-center animate-fade-in">
+                                    <div className="w-20 h-20 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <CheckCircle className="w-10 h-10" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
+                                    <p className="text-slate-500 mb-8">Review the details below before adding to the library.</p>
 
-                            <div className="bg-slate-50 rounded-xl p-6 text-left border border-slate-200 space-y-4">
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Name</span>
-                                    <span className="font-bold text-slate-900">{newModule.name}</span>
+                                    <div className="bg-slate-50 rounded-xl p-6 text-left border border-slate-200 space-y-4">
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Name</span>
+                                            <span className="font-bold text-slate-900">{newModule.name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Type</span>
+                                            <span className="font-bold text-slate-900">{newModule.type}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Duration</span>
+                                            <span className="font-bold text-slate-900">{newModule.estimatedDuration} mins</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Items</span>
+                                            <span className="font-bold text-slate-900">
+                                                {newModule.type === 'QuestionBank'
+                                                    ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic (AI)' : `${newModule.questions?.length} Fixed`)
+                                                    : '1 Scenario'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Type</span>
-                                    <span className="font-bold text-slate-900">{newModule.type}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Duration</span>
-                                    <span className="font-bold text-slate-900">{newModule.estimatedDuration} mins</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Items</span>
-                                    <span className="font-bold text-slate-900">
-                                        {newModule.type === 'QuestionBank'
-                                            ? (newModule.sourceMode === 'knowledgeBase' ? 'Dynamic (AI)' : `${newModule.questions?.length} Fixed`)
-                                            : '1 Scenario'}
-                                    </span>
-                                </div>
-                            </div>
+                            )}
                         </div>
-                    )}
-                </div>
 
                         {/* Footer */}
-            <div className="px-8 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
-                <button
-                    onClick={() => moduleStep > 1 ? setModuleStep(moduleStep - 1) : setShowCreateModule(false)}
-                    className="px-6 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-                >
-                    {moduleStep > 1 ? 'Back' : 'Cancel'}
-                </button>
-                <button
-                    onClick={() => moduleStep < 3 ? setModuleStep(moduleStep + 1) : handlePublishModule()}
-                    className="px-8 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
-                >
-                    {moduleStep === 3 ? 'Publish Module' : 'Continue'}
-                </button>
-            </div>
-        </div>
+                        <div className="px-8 py-5 border-t border-slate-100 bg-white flex justify-between items-center">
+                            <button
+                                onClick={() => moduleStep > 1 ? setModuleStep(moduleStep - 1) : setShowCreateModule(false)}
+                                className="px-6 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                            >
+                                {moduleStep > 1 ? 'Back' : 'Cancel'}
+                            </button>
+                            <button
+                                onClick={() => moduleStep < 3 ? setModuleStep(moduleStep + 1) : handlePublishModule()}
+                                className="px-8 py-2.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                            >
+                                {moduleStep === 3 ? 'Publish Module' : 'Continue'}
+                            </button>
+                        </div>
+                    </div>
                 </div >
             )}
 
-{/* --- INVITE MODAL --- */ }
-{
-    showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
-                    <button
-                        onClick={() => setShowInviteModal(false)}
-                        className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
+            {/* --- INVITE MODAL --- */}
+            {
+                showInviteModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
+                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
+                                <button
+                                    onClick={() => setShowInviteModal(false)}
+                                    className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
 
-                <form onSubmit={handleSendInvite} className="p-6 space-y-5">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                            <input
-                                type="email"
-                                required
-                                value={inviteEmail}
-                                onChange={(e) => setInviteEmail(e.target.value)}
-                                placeholder="colleague@acme.com"
-                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
-                            />
+                            <form onSubmit={handleSendInvite} className="p-6 space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                        <input
+                                            type="email"
+                                            required
+                                            value={inviteEmail}
+                                            onChange={(e) => setInviteEmail(e.target.value)}
+                                            placeholder="colleague@acme.com"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Role & Permissions</label>
+                                    <div className="relative">
+                                        <select
+                                            value={inviteRole}
+                                            onChange={(e) => setInviteRole(e.target.value)}
+                                            className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none cursor-pointer"
+                                        >
+                                            <option value="Admin">Admin (Full Access)</option>
+                                            <option value="Recruiter">Recruiter (Manage Jobs & Candidates)</option>
+                                            <option value="Viewer">Viewer (Read Only)</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        {inviteRole === 'Admin' && "Can manage billing, team members, and all settings."}
+                                        {inviteRole === 'Recruiter' && "Can create jobs, invite candidates, and conduct interviews."}
+                                        {inviteRole === 'Viewer' && "Can view job listings and candidate profiles but cannot edit."}
+                                    </p>
+                                </div>
+
+                                <div className="pt-2 flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowInviteModal(false)}
+                                        className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isInviting || !inviteEmail}
+                                        className="flex-1 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    >
+                                        {isInviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                                        {isInviting ? 'Sending...' : 'Send Invite'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Role & Permissions</label>
-                        <div className="relative">
-                            <select
-                                value={inviteRole}
-                                onChange={(e) => setInviteRole(e.target.value)}
-                                className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none cursor-pointer"
-                            >
-                                <option value="Admin">Admin (Full Access)</option>
-                                <option value="Recruiter">Recruiter (Manage Jobs & Candidates)</option>
-                                <option value="Viewer">Viewer (Read Only)</option>
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                            {inviteRole === 'Admin' && "Can manage billing, team members, and all settings."}
-                            {inviteRole === 'Recruiter' && "Can create jobs, invite candidates, and conduct interviews."}
-                            {inviteRole === 'Viewer' && "Can view job listings and candidate profiles but cannot edit."}
-                        </p>
-                    </div>
-
-                    <div className="pt-2 flex gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setShowInviteModal(false)}
-                            className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isInviting || !inviteEmail}
-                            className="flex-1 px-4 py-2.5 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {isInviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                            {isInviting ? 'Sending...' : 'Send Invite'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    )
-}
+                )
+            }
         </div >
     );
 };
