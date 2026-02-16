@@ -45,20 +45,20 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string) 
 
     const prompt = `
       You are an expert technical recruiter and AI analyst. 
-      Your task is to parse a candidate's resume and evaluate it against a Job Description.
-      
+      Analyze the provided resume against the job description.
+
       JOB DESCRIPTION:
       ${jobDescription}
-      
+
       CANDIDATE RESUME CONTENT:
       ${resumeText}
 
       INSTRUCTIONS:
-      1. Parse the resume for Skills, Experience, and Education.
+      1. Extract candidate details (name, email, skills, experience, education).
       2. Evaluate Match: Calculate scores (0-100) for Technical, Cultural, and Communication alignment.
-      3. Identify Strengths and Weaknesses.
-      4. Generate a Skills Matrix with proficiency (%) and years of experience.
-      5. Provide a clear verdict (Proceed, Review, or Reject).
+      3. Overall Score: Provide a single "score" (0-100) representing the overall match.
+      4. Verdict: One of "Proceed", "Review", or "Reject".
+      5. Reasoning: A concise match reason and professional summary.
 
       OUTPUT SCHEMA (JSON ONLY):
       {
@@ -81,30 +81,78 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string) 
           "missingSkills": string[]
         }
       }
-      
-      Do not include markdown formatting. Return raw JSON.
+
+      Return ONLY the JSON. No markdown backticks.
     `;
 
-    const response = await genAI.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-        }
-    });
+    try {
+        const response = await genAI.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: prompt,
+            config: { responseMimeType: 'application/json' }
+        });
 
-    const text = response.text || "{}";
-    return JSON.parse(text);
+        const text = response.text || (response as any).candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const result = JSON.parse(text);
+
+        // Ensure overall score is present
+        if (result && !result.score && result.intelligence?.technicalScore) {
+            result.score = result.intelligence.technicalScore;
+        }
+
+        return result;
+    } catch (error: any) {
+        logger.error("Gemini analysis error", error);
+        throw error;
+    }
 }
 
 /**
- * 1. AI-POWERED RESUME SCREENING (Manual Trigger)
+ * 1. MANUAL RESUME SCREENING (IMMEDIATE)
+ * 
+ * Used for the "Resume Screener" dashboard and "Verification" after candidate upload.
+ * Can handle raw text OR a Storage URL.
  */
 export const screenResume = onCall(functionConfig as any, async (request) => {
-    const { resumeText, jobDescription } = request.data;
+    let { resumeText, jobDescription } = request.data;
 
     if (!resumeText || !jobDescription) {
         throw new HttpsError('invalid-argument', 'The function must be called with "resumeText" and "jobDescription".');
+    }
+
+    // Support for URL instead of raw text (Handles immediate verification after upload)
+    if (resumeText.startsWith('http') || resumeText.startsWith('gs://')) {
+        logger.info(`Screening from URL: ${resumeText}`);
+        try {
+            const urlObj = new URL(resumeText);
+            const bucketName = urlObj.pathname.split('/b/')[1]?.split('/o/')[0];
+            const bucket = bucketName ? getStorage().bucket(bucketName) : getStorage().bucket();
+            const pathWithMedia = urlObj.pathname.split('/o/')[1];
+
+            if (pathWithMedia) {
+                const storagePath = decodeURIComponent(pathWithMedia).split('?')[0];
+                const [fileBuffer] = await bucket.file(storagePath).download();
+
+                if (storagePath.toLowerCase().endsWith('.pdf')) {
+                    const data = await pdf(fileBuffer);
+                    resumeText = data.text;
+                } else if (storagePath.toLowerCase().endsWith('.docx')) {
+                    const res = await mammoth.extractRawText({ buffer: fileBuffer });
+                    resumeText = res.value;
+                } else if (storagePath.toLowerCase().endsWith('.doc')) {
+                    const ext = new WordExtractor();
+                    const d = await ext.extract(fileBuffer);
+                    resumeText = d.getBody();
+                }
+            }
+        } catch (e) {
+            logger.error("Failed to recover text from URL during screening", e);
+            throw new HttpsError('internal', 'Could not extract text from the provided resume file.');
+        }
+    }
+
+    if (!resumeText || resumeText.length < 50) {
+        throw new HttpsError('invalid-argument', 'Resume text is too short or could not be extracted.');
     }
 
     logger.info("Screening resume (Manual Trigger)", { resumeLength: resumeText.length });
@@ -141,49 +189,73 @@ export const onNewResumeUpload = onObjectFinalized({
     }
 
     const fileBucket = event.data.bucket;
-    const segments = filePath.split('/');
+    const segments = filePath.split('/').filter(s => s.length > 0);
     let orgId = '';
     let candidateId = '';
 
-    if (segments[0] === 'organizations') {
-        orgId = segments[1];
-        candidateId = segments[3];
-    } else {
-        orgId = segments[0];
-        candidateId = segments[2];
+    // Robust ID Extraction: Look for 'candidates' segment
+    const candIndex = segments.findIndex(s => s.toLowerCase() === 'candidates');
+    if (candIndex > 0) {
+        candidateId = segments[candIndex + 1];
+        // Org ID is usually the segment right before 'candidates' unless it's 'organizations/orgId/candidates'
+        if (segments[candIndex - 1].toLowerCase() === 'organizations' || segments[candIndex - 1].toLowerCase() === 'organization') {
+            orgId = segments[candIndex - 1]; // This is actually wrong, if "organizations" is at index-2, then index-1 is orgId
+        }
+
+        // Corrected logic:
+        if (candIndex >= 2 && (segments[candIndex - 2].toLowerCase() === 'organizations' || segments[candIndex - 2].toLowerCase() === 'organization')) {
+            orgId = segments[candIndex - 1];
+        } else {
+            orgId = segments[candIndex - 1];
+        }
     }
 
-    logger.info(`Processing new resume for Candidate: ${candidateId} in Org: ${orgId}`);
+    if (!orgId || !candidateId) {
+        logger.error(`Failed to extract IDs from path: ${filePath}`, { segments });
+        return;
+    }
+
+    logger.info(`Processing Resume: Org=${orgId}, Candidate=${candidateId}`);
 
     try {
         // 2. Download File to Memory
         const bucket = getStorage().bucket(fileBucket);
         const [fileBuffer] = await bucket.file(filePath).download();
+        logger.info(`Downloaded ${fileBuffer.length} bytes`);
 
         // 3. Extract Text based on format
         let resumeText = '';
 
         if (isPdf) {
-            logger.info("Parsing PDF resume...");
+            logger.info("Parsing PDF...");
             const data = await pdf(fileBuffer);
-            resumeText = data.text;
+            resumeText = data.text || '';
         } else if (isDocx) {
-            logger.info("Parsing DOCX resume...");
+            logger.info("Parsing DOCX...");
             const result = await mammoth.extractRawText({ buffer: fileBuffer });
-            resumeText = result.value;
+            resumeText = result.value || '';
         } else if (isDoc) {
-            logger.info("Parsing DOC resume...");
+            logger.info("Parsing DOC...");
             const extractor = new WordExtractor();
             const doc = await extractor.extract(fileBuffer);
-            resumeText = doc.getBody();
+            resumeText = doc.getBody() || '';
         }
 
+        resumeText = resumeText.trim();
+
         if (!resumeText || resumeText.length < 50) {
-            logger.warn("Resume text empty or too short.");
+            logger.warn(`Parsing produced insufficient text: ${resumeText.length} chars.`);
+            // Update candidate so UI knows we tried but failed to read the file
+            const db = getFirestore();
+            await db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId).update({
+                resumeText: 'FAILED_TO_PARSE: Unreadable or image-only file.',
+                score: 0,
+                matchReason: 'The uploaded file could not be read. Please upload a searchable PDF or Word document.'
+            });
             return;
         }
 
-        // 4. Update Candidate with Text (so manual trigger works too)
+        // 4. Update Candidate with Text
         const db = getFirestore();
         const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
 
@@ -193,24 +265,20 @@ export const onNewResumeUpload = onObjectFinalized({
         });
 
         // 5. Fetch Job Description for Analysis
-        // We need to know WHICH job this candidate applied for.
-        // The candidate doc has 'jobId'.
         const candidateSnap = await candidateRef.get();
         const candidateData = candidateSnap.data();
 
         if (!candidateData) {
-            logger.warn("Candidate data missing.");
+            logger.warn("Candidate doc deleted during processing.");
             return;
         }
 
         let jobData = null;
         if (candidateData.jobId) {
-            const jobRef = db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId);
-            const jobSnap = await jobRef.get();
+            const jobSnap = await db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId).get();
             jobData = jobSnap.data();
         }
 
-        // Fallback: If no jobId or job not found, try matching by role title
         if (!jobData && candidateData.role) {
             const jobsSnap = await db.collection('organizations').doc(orgId).collection('jobs').where('title', '==', candidateData.role).limit(1).get();
             if (!jobsSnap.empty) {
@@ -218,20 +286,21 @@ export const onNewResumeUpload = onObjectFinalized({
             }
         }
 
-        if (!jobData || (!jobData.description && !jobData.title)) {
-            logger.warn("Job data missing and could not determine job from role title.");
+        if (!jobData) {
+            logger.warn("No matching job found for analysis.");
             return;
         }
 
-        const jobDescription = jobData.description || jobData.title; // Fallback
+        const jobDescription = jobData.description || jobData.title;
 
-        // 6. Auto-Score (Run AI)
-        logger.info("Auto-scoring resume...");
+        // 6. AI Analysis
+        logger.info(`Analyzing with Gemini... (Text: ${resumeText.length} chars)`);
         const result = await analyzeResumeContent(resumeText, jobDescription);
 
-        // 7. Save Results
+        // 7. Map & Save
+        const finalScore = result.score || result.intelligence?.technicalScore || 0;
         const updateData: any = {
-            score: result.score || 0,
+            score: finalScore,
             matchReason: result.matchReason || result.summary,
             aiVerdict: result.verdict || 'Review',
             skills: result.skills || [],
@@ -239,9 +308,9 @@ export const onNewResumeUpload = onObjectFinalized({
             experience: result.experience || [],
             education: result.education || [],
             analysis: {
-                matchScore: result.score || 0,
+                matchScore: finalScore,
                 verdict: result.verdict || 'Review',
-                technicalScore: result.intelligence?.technicalScore || result.score || 0,
+                technicalScore: result.intelligence?.technicalScore || finalScore,
                 culturalScore: result.intelligence?.culturalScore || 0,
                 communicationScore: result.intelligence?.communicationScore || 0,
                 strengths: result.intelligence?.strengths || [],
@@ -252,10 +321,10 @@ export const onNewResumeUpload = onObjectFinalized({
         };
 
         await candidateRef.update(updateData);
-        logger.info("Auto-scoring complete!", { score: result.score });
+        logger.info(`Auto-scoring complete for ${candidateId}! Score: ${finalScore}`);
 
     } catch (error) {
-        logger.error("Error processing resume upload", error);
+        logger.error("Global processing error in onNewResumeUpload", error);
     }
 });
 
