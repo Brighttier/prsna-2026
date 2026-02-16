@@ -1327,7 +1327,14 @@ RecruiteAI`;
                 {activeTab === 'resume' && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-1 space-y-6">
-                            <button className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10">
+                            <button
+                                onClick={() => candidate.resumeUrl && window.open(candidate.resumeUrl, '_blank')}
+                                disabled={!candidate.resumeUrl}
+                                className={`w-full py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-lg ${candidate.resumeUrl
+                                        ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10'
+                                        : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200 shadow-none'
+                                    }`}
+                            >
                                 <Download className="w-4 h-4" /> Download Resume (PDF)
                             </button>
 

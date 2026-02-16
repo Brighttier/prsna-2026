@@ -62,6 +62,8 @@ async function analyzeResumeContent(resumeText: string, jobDescription: string) 
 
       OUTPUT SCHEMA (JSON ONLY):
       {
+        "name": "Candidate Name",
+        "email": "candidate@email.com",
         "score": number(0-100), 
         "verdict": "Proceed" | "Review" | "Reject",
         "matchReason": "A one sentence summary of the match.",
@@ -300,13 +302,16 @@ export const onNewResumeUpload = onObjectFinalized({
         // 7. Map & Save
         const finalScore = result.score || result.intelligence?.technicalScore || 0;
         const updateData: any = {
+            // Update core fields if they weren't fully provided (e.g. manual upload)
+            name: candidateData.name && !candidateData.name.includes('...') ? candidateData.name : (result.name || candidateData.name),
+            email: candidateData.email || result.email || '',
             score: finalScore,
             matchReason: result.matchReason || result.summary,
             aiVerdict: result.verdict || 'Review',
             skills: result.skills || [],
             summary: result.summary,
-            experience: result.experience || [],
-            education: result.education || [],
+            experience: (result.experience || []).map((exp: any, i: number) => ({ id: `exp_${i}`, ...exp })),
+            education: (result.education || []).map((edu: any, i: number) => ({ id: `edu_${i}`, ...edu })),
             analysis: {
                 matchScore: finalScore,
                 verdict: result.verdict || 'Review',
@@ -321,7 +326,7 @@ export const onNewResumeUpload = onObjectFinalized({
         };
 
         await candidateRef.update(updateData);
-        logger.info(`Auto-scoring complete for ${candidateId}! Score: ${finalScore}`);
+        logger.info(`Auto-scoring and Profile Update complete for ${candidateId}!`);
 
     } catch (error) {
         logger.error("Global processing error in onNewResumeUpload", error);
