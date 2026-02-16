@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ArrowLeft, User, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw, Edit2 } from 'lucide-react';
+import { ArrowLeft, User, Users, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw, Edit2 } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
 import {
     Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
@@ -17,35 +17,55 @@ import { generateCandidateReport } from '../services/ai';
 // --- MODALS (Copied for functionality in full page) ---
 
 const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, onClose: () => void, onScheduled: (session: InterviewSession) => void }) => {
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
+    const [mode, setMode] = useState<'AI' | 'Face-to-Face'>('AI');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState('10:00');
+    const [timezone, setTimezone] = useState('Asia/Kolkata');
+    const [expiryDays, setExpiryDays] = useState(3);
     const [type, setType] = useState('Lumina Screening (AI)');
     const [platform, setPlatform] = useState<'Google Meet' | 'Microsoft Teams'>('Google Meet');
     const [includeMeet, setIncludeMeet] = useState(true);
+    const [selectedAssessmentId, setSelectedAssessmentId] = useState('');
     const [isScheduling, setIsScheduling] = useState(false);
+    const [assessments] = useState(store.getState().assessments);
+
+    const timezones = [
+        { label: '(GMT-08:00) Pacific Time', value: 'America/Los_Angeles' },
+        { label: '(GMT-05:00) Eastern Time', value: 'America/New_York' },
+        { label: '(GMT+00:00) UTC', value: 'UTC' },
+        { label: '(GMT+05:30) IST', value: 'Asia/Kolkata' },
+        { label: '(GMT+08:00) SGT', value: 'Asia/Singapore' },
+    ];
 
     const handleSchedule = () => {
         setIsScheduling(true);
-        // Simulate API Latency for the "WOW" factor
         setTimeout(() => {
             let meetLink: string | undefined;
-            if (includeMeet) {
+            if (mode === 'Face-to-Face' && includeMeet) {
                 if (platform === 'Google Meet') {
                     meetLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
                 } else {
-                    // Simulated Microsoft Graph API link generation
                     meetLink = `https://teams.microsoft.com/l/meetup-join/${Math.random().toString(36).substring(2, 15)}`;
                 }
+            } else if (mode === 'AI') {
+                meetLink = `https://lumina.recruit.ai/v1/session/${Math.random().toString(36).substring(2, 15)}?token=${Math.random().toString(36).substring(2, 10)}`;
             }
+
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + expiryDays);
 
             const newSession: InterviewSession = {
                 id: Math.random().toString(36).substr(2, 9),
-                date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                time: time,
-                type: type,
+                date: mode === 'AI' ? 'Immediate' : new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                time: mode === 'AI' ? 'Anytime' : time,
+                timezone: mode === 'Face-to-Face' ? timezone : undefined,
+                expiryDate: mode === 'AI' ? expiryDate.toLocaleDateString() : undefined,
+                assessmentId: mode === 'AI' ? selectedAssessmentId : undefined,
+                mode: mode,
+                type: mode === 'AI' ? 'Lumina AI Interview' : type,
                 status: 'Upcoming',
                 meetLink: meetLink,
-                platform: includeMeet ? platform : undefined
+                platform: mode === 'Face-to-Face' && includeMeet ? platform : undefined
             };
 
             store.addInterviewSession(candidate.id, newSession);
@@ -59,101 +79,153 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
             <Card className="max-w-md w-full p-0 overflow-hidden shadow-2xl relative animate-scale-in">
                 <div className="bg-slate-900 p-8 text-white relative">
                     <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 transition-colors"><X className="w-5 h-5" /></button>
-                    <div className="flex items-center gap-4 mb-2">
+                    <div className="flex items-center gap-4 mb-6">
                         <div className="w-12 h-12 bg-brand-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
                             <Calendar className="w-6 h-6 text-white" />
                         </div>
                         <div>
                             <h2 className="text-xl font-black tracking-tight">Schedule Interview</h2>
-                            <p className="text-slate-400 text-sm">Automated Calendar Sync</p>
+                            <p className="text-slate-400 text-sm">Select interview orchestration mode</p>
                         </div>
+                    </div>
+
+                    <div className="flex p-1 bg-white/5 rounded-xl border border-white/10">
+                        <button
+                            onClick={() => setMode('AI')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'AI' ? 'bg-brand-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <BrainCircuit className="w-4 h-4" /> Lumina AI
+                        </button>
+                        <button
+                            onClick={() => setMode('Face-to-Face')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'Face-to-Face' ? 'bg-brand-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Users className="w-4 h-4" /> Face-to-Face
+                        </button>
                     </div>
                 </div>
 
-                <div className="p-8 space-y-5">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Interview Type</label>
-                        <select
-                            value={type}
-                            onChange={(e) => setType(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
-                        >
-                            <option>Lumina Screening (AI)</option>
-                            <option>Technical Round 1 (F2F)</option>
-                            <option>System Design (F2F)</option>
-                            <option>Cultural Fit Chat</option>
-                        </select>
-                    </div>
+                <div className="p-8 space-y-5 bg-white">
+                    {mode === 'AI' ? (
+                        <div className="space-y-4 animate-fade-in-up">
+                            <div className="bg-brand-50 border border-brand-100 p-4 rounded-2xl">
+                                <div className="flex items-start gap-3">
+                                    <Sparkles className="w-5 h-5 text-brand-600 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900 leading-tight">Instant Orchestration</p>
+                                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">Lumina will send a secure link immediately. Candidate can start the interview anytime beforeexpiry.</p>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
-                            <input
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Time</label>
-                            <input
-                                type="time"
-                                value={time}
-                                onChange={(e) => setTime(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
-                            />
-                        </div>
-                    </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Link Expiry</label>
+                                <select
+                                    value={expiryDays}
+                                    onChange={(e) => setExpiryDays(parseInt(e.target.value))}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                                >
+                                    <option value={1}>24 Hours</option>
+                                    <option value={3}>3 Days (Recommended)</option>
+                                    <option value={7}>7 Days</option>
+                                    <option value={14}>14 Days</option>
+                                </select>
+                            </div>
 
-                    <div className="space-y-3">
-                        <div className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${includeMeet && platform === 'Google Meet' ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500/30' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                            onClick={() => { setIncludeMeet(true); setPlatform('Google Meet'); }}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-100">
-                                    <Globe className="w-5 h-5 text-indigo-600" />
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assessment Module</label>
+                                <select
+                                    value={selectedAssessmentId}
+                                    onChange={(e) => setSelectedAssessmentId(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                                >
+                                    <option value="">Default (General Screening)</option>
+                                    {assessments.filter(a => a.type === 'QuestionBank').map(a => (
+                                        <option key={a.id} value={a.id}>{a.name}</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-slate-400 mt-1.5 ml-1 italic">Choice of module guides the AI's questioning focus.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 animate-fade-in-up">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Interview Type</label>
+                                <select
+                                    value={type}
+                                    onChange={(e) => setType(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium"
+                                >
+                                    <option>Technical Round 1</option>
+                                    <option>System Design Review</option>
+                                    <option>Cultural Fit Chat</option>
+                                    <option>Management Interview</option>
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-sm"
+                                    />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-slate-900 leading-none">Google Meet</p>
-                                    <p className="text-[10px] text-slate-500 font-medium mt-1">Synced with Google Workspace</p>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Time</label>
+                                    <input
+                                        type="time"
+                                        value={time}
+                                        onChange={(e) => setTime(e.target.value)}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-sm"
+                                    />
                                 </div>
                             </div>
-                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${includeMeet && platform === 'Google Meet' ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300'}`}>
-                                {includeMeet && platform === 'Google Meet' && <Check className="w-3 h-3" />}
-                            </div>
-                        </div>
 
-                        <div className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${includeMeet && platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-500/30' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                            onClick={() => { setIncludeMeet(true); setPlatform('Microsoft Teams'); }}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-100">
-                                    <div className="text-blue-600 font-black text-xs">T</div>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-900 leading-none">Microsoft Teams</p>
-                                    <p className="text-[10px] text-slate-500 font-medium mt-1">Synced with Microsoft Graph API</p>
-                                </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Timezone</label>
+                                <select
+                                    value={timezone}
+                                    onChange={(e) => setTimezone(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-sm"
+                                >
+                                    {timezones.map(tz => (
+                                        <option key={tz.value} value={tz.value}>{tz.label}</option>
+                                    ))}
+                                </select>
                             </div>
-                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${includeMeet && platform === 'Microsoft Teams' ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300'}`}>
-                                {includeMeet && platform === 'Microsoft Teams' && <Check className="w-3 h-3" />}
+
+                            <div className="flex gap-3 mt-4">
+                                <div className={`flex-1 p-3 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${includeMeet && platform === 'Google Meet' ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-500/30' : 'bg-white border-slate-100 hover:border-slate-200'}`}
+                                    onClick={() => { setIncludeMeet(true); setPlatform('Google Meet'); }}>
+                                    <Globe className={`w-5 h-5 ${includeMeet && platform === 'Google Meet' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                    <span className="text-[10px] font-bold text-slate-900 uppercase tracking-tighter">Google Meet</span>
+                                </div>
+                                <div className={`flex-1 p-3 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${includeMeet && platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-500/30' : 'bg-white border-slate-100 hover:border-slate-200'}`}
+                                    onClick={() => { setIncludeMeet(true); setPlatform('Microsoft Teams'); }}>
+                                    <div className={`text-xs font-black ${includeMeet && platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-slate-400'}`}>T</div>
+                                    <span className="text-[10px] font-bold text-slate-900 uppercase tracking-tighter">Teams</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     <button
                         onClick={handleSchedule}
-                        disabled={!date || !time || isScheduling}
+                        disabled={isScheduling}
                         className="w-full py-4 bg-brand-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-brand-500/20 hover:bg-brand-700 disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-3 mt-2"
                     >
                         {isScheduling ? (
                             <>
                                 <Loader2 className="w-6 h-6 animate-spin" />
-                                <span>Generating Link & Invite...</span>
+                                <span>Generating Secure Invite...</span>
                             </>
                         ) : (
                             <>
-                                <CheckCircle className="w-6 h-6" />
-                                <span>Finalize & Send Invites</span>
+                                <Send className="w-6 h-6" />
+                                <span>{mode === 'AI' ? 'Send AI Interview Link' : 'Confirm Face-to-Face'}</span>
                             </>
                         )}
                     </button>
@@ -184,7 +256,7 @@ const InterviewConfirmationModal = ({ candidate, session, onClose }: { candidate
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                Preview: Sending via {session.platform === 'Microsoft Teams' ? 'Outlook' : 'Gmail'}
+                                Preview: Sending via {session.mode === 'AI' ? 'Lumina Engine' : (session.platform === 'Microsoft Teams' ? 'Outlook' : 'Gmail')}
                             </span>
                             <div className="flex gap-2">
                                 <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
@@ -195,34 +267,58 @@ const InterviewConfirmationModal = ({ candidate, session, onClose }: { candidate
                         <div className="p-8 space-y-4 text-slate-600 font-serif leading-relaxed">
                             <p>Hi {candidate.name.split(' ')[0]},</p>
                             <p>I'm excited to move forward with your application for the <strong>{candidate.role}</strong> position.</p>
-                            <p>We've scheduled our <strong>{session.type}</strong> interview for:</p>
 
-                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex items-center gap-6 my-6 font-sans not-italic">
-                                <div className="flex flex-col items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-sm border border-brand-100">
-                                    <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">{session.date.split(' ')[0]}</span>
-                                    <span className="text-3xl font-black text-slate-900 leading-none">{session.date.split(' ')[1].replace(',', '')}</span>
-                                </div>
-                                <div>
-                                    <p className="text-lg font-black text-slate-900">{session.time}</p>
-                                    <p className="text-sm font-medium text-slate-500">{session.platform || 'Google Meet'} Invitation Sent</p>
-                                </div>
-                            </div>
+                            {session.mode === 'AI' ? (
+                                <>
+                                    <p>As the next step, we've prepared a <strong>Lumina AI Interview</strong> session for you. This is a conversational session where you can showcase your skills at your own pace.</p>
+                                    <div className="bg-brand-50 p-6 rounded-2xl border border-brand-100 my-6 font-sans not-italic">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-brand-200 flex items-center justify-center">
+                                                <BrainCircuit className="w-6 h-6 text-brand-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900">Secure Interview Link</p>
+                                                <p className="text-xs text-brand-600 font-bold uppercase tracking-widest">Expires on {session.expiryDate}</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 p-3 bg-white border border-brand-100 rounded-lg truncate text-xs text-slate-500 font-mono">
+                                            {session.meetLink}
+                                        </div>
+                                    </div>
+                                    <p>You can use the link above to start the session whenever you are ready. Please ensure you are in a quiet environment.</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p>We've scheduled our <strong>{session.type}</strong> interview for:</p>
 
-                            {session.meetLink && (
-                                <div className={`p-4 rounded-xl border flex items-center gap-3 font-sans text-sm ${session.platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                                    <Video className={`w-5 h-5 ${session.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`} />
-                                    <span className={`font-bold ${session.platform === 'Microsoft Teams' ? 'text-blue-900' : 'text-indigo-900'}`}>Meeting Link:</span>
-                                    <a href={session.meetLink} target="_blank" rel="noopener noreferrer" className={`underline font-medium truncate ${session.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`}>{session.meetLink}</a>
-                                </div>
+                                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex items-center gap-6 my-6 font-sans not-italic">
+                                        <div className="flex flex-col items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-sm border border-brand-100">
+                                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">{session.date.split(' ')[0]}</span>
+                                            <span className="text-3xl font-black text-slate-900 leading-none">{session.date.split(' ')[1].replace(',', '')}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-lg font-black text-slate-900">{session.time} ({session.timezone})</p>
+                                            <p className="text-sm font-medium text-slate-500">{session.platform || 'Google Meet'} Invitation Sent</p>
+                                        </div>
+                                    </div>
+
+                                    {session.meetLink && (
+                                        <div className={`p-4 rounded-xl border flex items-center gap-3 font-sans text-sm ${session.platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                                            <Video className={`w-5 h-5 ${session.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`} />
+                                            <span className={`font-bold ${session.platform === 'Microsoft Teams' ? 'text-blue-900' : 'text-indigo-900'}`}>Meeting Link:</span>
+                                            <a href={session.meetLink} target="_blank" rel="noopener noreferrer" className={`underline font-medium truncate ${session.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`}>{session.meetLink}</a>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
-                            <p className="mt-6 italic opacity-80">Looking forward to seeing you then!</p>
+                            <p className="mt-6 italic opacity-80">Looking forward to {session.mode === 'AI' ? 'reviewing your session' : 'speaking with you'}!</p>
                             <p className="pt-4 border-t border-slate-100">Best regards,<br /><strong>The Hiring Team</strong></p>
                         </div>
                     </div>
 
                     <div className="flex flex-col items-center gap-1">
-                        <p className="text-xs text-slate-400 italic">"Good luck {candidate.name.split(' ')[0]}! This email just opened in their inbox."</p>
+                        <p className="text-xs text-slate-400 italic">"{session.mode === 'AI' ? 'AI Link Dispatched! Verification active.' : 'Calendar invite synced across all stakeholders.'}"</p>
                         <button
                             onClick={onClose}
                             className="w-full mt-2 py-4 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-[0.98]"
@@ -1331,8 +1427,8 @@ RecruiteAI`;
                                 onClick={() => candidate.resumeUrl && window.open(candidate.resumeUrl, '_blank')}
                                 disabled={!candidate.resumeUrl}
                                 className={`w-full py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-lg ${candidate.resumeUrl
-                                        ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10'
-                                        : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200 shadow-none'
+                                    ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10'
+                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200 shadow-none'
                                     }`}
                             >
                                 <Download className="w-4 h-4" /> Download Resume (PDF)
@@ -1671,8 +1767,12 @@ RecruiteAI`;
 
                                     <Card className="overflow-hidden border-l-4 border-l-brand-500 relative">
                                         {/* Status Ribbon/Badge */}
-                                        <div className="absolute top-0 right-0 p-4">
-                                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${interview.status === 'Upcoming' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                        <div className="absolute top-0 right-0 p-4 flex gap-2">
+                                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${interview.mode === 'AI' ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                {interview.mode === 'AI' ? <BrainCircuit className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                                                {interview.mode === 'AI' ? 'AI Assistant' : 'Face-to-Face'}
+                                            </div>
+                                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${interview.status === 'Upcoming' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                                                 interview.sentiment === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                                     interview.sentiment === 'Negative' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
                                                 }`}>
@@ -1687,8 +1787,8 @@ RecruiteAI`;
                                                 {/* Left Column: Meta & Score */}
                                                 <div className="md:w-1/3 space-y-6">
                                                     <div className="flex items-start gap-4">
-                                                        <div className={`w-14 h-14 ${interview.platform === 'Microsoft Teams' ? 'bg-blue-600' : 'bg-slate-900'} text-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/20`}>
-                                                            {interview.platform === 'Microsoft Teams' ? <span className="font-bold text-lg">T</span> : <Video className="w-7 h-7" />}
+                                                        <div className={`w-14 h-14 ${interview.mode === 'AI' ? 'bg-brand-600' : (interview.platform === 'Microsoft Teams' ? 'bg-blue-600' : 'bg-slate-900')} text-white rounded-2xl flex items-center justify-center shadow-lg shadow-brand-600/20`}>
+                                                            {interview.mode === 'AI' ? <BrainCircuit className="w-7 h-7" /> : (interview.platform === 'Microsoft Teams' ? <span className="font-bold text-lg">T</span> : <Video className="w-7 h-7" />)}
                                                         </div>
                                                         <div>
                                                             <h4 className="font-bold text-xl text-slate-900 leading-tight">{interview.type}</h4>
@@ -1700,20 +1800,32 @@ RecruiteAI`;
 
                                                     {/* Score Card / Status Card */}
                                                     {interview.status === 'Upcoming' ? (
-                                                        <div className={`${interview.platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-100' : 'bg-indigo-50 border-indigo-100'} rounded-xl p-5 border`}>
-                                                            <p className={`text-xs font-bold ${interview.platform === 'Microsoft Teams' ? 'text-blue-400' : 'text-indigo-400'} uppercase tracking-wide mb-3`}>Meeting Details</p>
+                                                        <div className={`${interview.mode === 'AI' ? 'bg-emerald-50 border-emerald-100' : (interview.platform === 'Microsoft Teams' ? 'bg-blue-50 border-blue-100' : 'bg-indigo-50 border-indigo-100')} rounded-xl p-5 border`}>
+                                                            <p className={`text-[10px] font-black ${interview.mode === 'AI' ? 'text-emerald-500' : (interview.platform === 'Microsoft Teams' ? 'text-blue-400' : 'text-indigo-400')} uppercase tracking-widest mb-3`}>
+                                                                {interview.mode === 'AI' ? 'Secure Link Verification' : 'Meeting Details'}
+                                                            </p>
                                                             <div className="flex items-center gap-3 mb-4">
-                                                                <Clock className={`w-5 h-5 ${interview.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`} />
-                                                                <span className={`font-bold ${interview.platform === 'Microsoft Teams' ? 'text-blue-900' : 'text-indigo-900'}`}>{interview.time || 'TBD'}</span>
+                                                                {interview.mode === 'AI' ? (
+                                                                    <>
+                                                                        <AlertCircle className="w-5 h-5 text-emerald-600" />
+                                                                        <span className="font-bold text-emerald-900 text-sm">Expires: {interview.expiryDate}</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Clock className={`w-5 h-5 ${interview.platform === 'Microsoft Teams' ? 'text-blue-600' : 'text-indigo-600'}`} />
+                                                                        <span className={`font-bold ${interview.platform === 'Microsoft Teams' ? 'text-blue-900' : 'text-indigo-900 text-sm'}`}>{interview.time || 'TBD'} ({interview.timezone})</span>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                             {interview.meetLink && (
                                                                 <a
                                                                     href={interview.meetLink}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className={`w-full py-3 ${interview.platform === 'Microsoft Teams' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'} text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg`}
+                                                                    className={`w-full py-3 ${interview.mode === 'AI' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20' : (interview.platform === 'Microsoft Teams' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20')} text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg text-sm`}
                                                                 >
-                                                                    <Video className="w-4 h-4" /> Join {interview.platform === 'Microsoft Teams' ? 'Teams Call' : 'Google Meet'}
+                                                                    {interview.mode === 'AI' ? <ExternalLink className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+                                                                    {interview.mode === 'AI' ? 'View AI Session Link' : `Join ${interview.platform || 'Meet'}`}
                                                                 </a>
                                                             )}
                                                         </div>

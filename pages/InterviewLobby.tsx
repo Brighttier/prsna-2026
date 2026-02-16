@@ -313,7 +313,16 @@ export const InterviewLobby = () => {
                         </div>
 
                         <button
-                            onClick={() => navigate('/interview/room', { state: { candidateId: selectedCandidateId } })}
+                            onClick={() => {
+                                const candidate = candidates.find(c => c.id === selectedCandidateId);
+                                const upcomingAiSession = candidate?.interviews?.find(i => i.status === 'Upcoming' && i.mode === 'AI');
+                                navigate('/interview/room', {
+                                    state: {
+                                        candidateId: selectedCandidateId,
+                                        assessmentId: upcomingAiSession?.assessmentId
+                                    }
+                                });
+                            }}
                             disabled={!selectedCandidateId}
                             className="inline-flex items-center gap-2 bg-brand-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-brand-700 transition-all transform hover:scale-105 shadow-xl shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         >

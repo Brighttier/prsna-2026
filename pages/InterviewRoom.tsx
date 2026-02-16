@@ -53,6 +53,7 @@ export const InterviewRoom = () => {
    const [isRecording, setIsRecording] = useState(false);
 
    const candidateId = location.state?.candidateId;
+   const assessmentId = location.state?.assessmentId;
    const [candidate] = useState(candidateId ? store.getState().candidates.find(c => c.id === candidateId) : null);
 
    const [systemInstruction, setSystemInstruction] = useState<string>('');
@@ -73,7 +74,7 @@ export const InterviewRoom = () => {
                company: state.settings.branding.companyName || 'Prsna'
             };
 
-            startInterviewSession(candidate, jobDetails as any, persona, orgId).then(data => {
+            startInterviewSession(candidate, jobDetails as any, persona, orgId, assessmentId).then(data => {
                setSystemInstruction(data.systemInstruction);
             }).catch(err => console.error("Failed to init Lumina session:", err));
          });

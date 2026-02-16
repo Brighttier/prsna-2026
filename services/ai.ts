@@ -105,10 +105,10 @@ interface StartSessionResponse {
     systemInstruction: string;
 }
 
-export const startInterviewSession = async (candidate: ExtendedCandidate, job: Job, persona?: any, orgId?: string): Promise<StartSessionResponse> => {
+export const startInterviewSession = async (candidate: ExtendedCandidate, job: Job, persona?: any, orgId?: string, assessmentId?: string): Promise<StartSessionResponse> => {
     try {
         const startFn = httpsCallable<any, StartSessionResponse>(functions, 'startInterviewSession');
-        const result = await startFn({ candidate, job, persona, orgId });
+        const result = await startFn({ candidate, job, persona, orgId, assessmentId });
         return result.data;
     } catch (error) {
         console.error("Failed to Start Lumina Session:", error);

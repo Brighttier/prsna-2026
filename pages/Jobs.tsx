@@ -21,8 +21,7 @@ export const Jobs = () => {
       title: '',
       dept: '',
       loc: '',
-      screening: '',
-      technical: '',
+      type: 'Permanent',
       description: '',
       closeDate: '',
       currency: 'USD',
@@ -50,8 +49,7 @@ export const Jobs = () => {
          title: job.title,
          dept: job.department,
          loc: job.location,
-         screening: job.workflow?.screening || '',
-         technical: job.workflow?.technical || '',
+         type: job.type || 'Permanent',
          description: job.description || '',
          closeDate: '',
          currency: job.currency || 'USD',
@@ -68,15 +66,11 @@ export const Jobs = () => {
          title: newJob.title,
          department: newJob.dept,
          location: newJob.loc,
-         type: 'Full-time',
+         type: newJob.type,
          salaryMin: parseInt(newJob.salaryMin) || 0,
          salaryMax: parseInt(newJob.salaryMax) || 0,
          currency: newJob.currency,
-         description: newJob.description,
-         workflow: {
-            screening: newJob.screening,
-            technical: newJob.technical
-         }
+         description: newJob.description
       };
 
       if (editingJobId) {
@@ -96,7 +90,7 @@ export const Jobs = () => {
       setShowJobCreator(false);
       setCreatorStep(1);
       setNewJob({
-         title: '', dept: '', loc: '', screening: '', technical: '',
+         title: '', dept: '', loc: '', type: 'Permanent',
          description: '', closeDate: '', currency: 'USD', salaryMin: '', salaryMax: ''
       });
    };
@@ -162,7 +156,7 @@ export const Jobs = () => {
                onClick={() => {
                   setEditingJobId(null);
                   setNewJob({
-                     title: '', dept: '', loc: '', screening: '', technical: '',
+                     title: '', dept: '', loc: '', type: 'Permanent',
                      description: '', closeDate: '', currency: 'USD', salaryMin: '', salaryMax: ''
                   });
                   setShowJobCreator(true);
@@ -297,11 +291,6 @@ export const Jobs = () => {
                   {/* Quick Stats Footer */}
                   <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                      <div className="flex gap-4">
-                        {job.workflow?.technical && (
-                           <span className="flex items-center gap-1.5 text-slate-600">
-                              <Terminal className="w-3 h-3 text-brand-600" /> Linked Assessment
-                           </span>
-                        )}
                      </div>
                      <button
                         onClick={() => navigate('/candidates', { state: { roleFilter: job.title } })}
@@ -342,7 +331,7 @@ export const Jobs = () => {
                         </div>
                         <div>
                            <h2 className="text-xl font-bold text-slate-900">{editingJobId ? 'Edit Job Role' : 'Create New Job'}</h2>
-                           <p className="text-sm text-slate-500">{editingJobId ? 'Update position details and requirements.' : 'Define role details and interview workflow.'}</p>
+                           <p className="text-sm text-slate-500">{editingJobId ? 'Update position details and requirements.' : 'Define role details and publish to the career portal.'}</p>
                         </div>
                      </div>
                      <button onClick={() => setShowJobCreator(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
@@ -358,10 +347,6 @@ export const Jobs = () => {
                         </button>
                         <button onClick={() => setCreatorStep(2)} className={`text-left px-4 py-3 rounded-xl font-medium text-sm transition-all flex items-center gap-3 ${creatorStep === 2 ? 'bg-white text-brand-700 shadow-sm border border-slate-100' : 'text-slate-500 hover:bg-slate-100'}`}>
                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs border ${creatorStep === 2 ? 'bg-brand-600 border-brand-600 text-white' : 'bg-transparent border-slate-300'}`}>2</span>
-                           Workflow & Assessments
-                        </button>
-                        <button onClick={() => setCreatorStep(3)} className={`text-left px-4 py-3 rounded-xl font-medium text-sm transition-all flex items-center gap-3 ${creatorStep === 3 ? 'bg-white text-brand-700 shadow-sm border border-slate-100' : 'text-slate-500 hover:bg-slate-100'}`}>
-                           <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs border ${creatorStep === 3 ? 'bg-brand-600 border-brand-600 text-white' : 'bg-transparent border-slate-300'}`}>3</span>
                            Review & Publish
                         </button>
                      </div>
@@ -382,7 +367,7 @@ export const Jobs = () => {
                               </div>
 
                               {/* Department & Location */}
-                              <div className="grid grid-cols-2 gap-6">
+                              <div className="grid grid-cols-3 gap-6">
                                  <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">Department</label>
                                     <select
@@ -390,11 +375,13 @@ export const Jobs = () => {
                                        value={newJob.dept}
                                        onChange={e => setNewJob({ ...newJob, dept: e.target.value })}
                                     >
-                                       <option value="">Select Department...</option>
+                                       <option value="">Select Dept...</option>
                                        <option value="Engineering">Engineering</option>
                                        <option value="Design">Design</option>
                                        <option value="Product">Product</option>
                                        <option value="Marketing">Marketing</option>
+                                       <option value="Sales">Sales</option>
+                                       <option value="HR">HR</option>
                                     </select>
                                  </div>
                                  <div>
@@ -405,6 +392,20 @@ export const Jobs = () => {
                                        value={newJob.loc}
                                        onChange={e => setNewJob({ ...newJob, loc: e.target.value })}
                                     />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Job Type</label>
+                                    <select
+                                       className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                                       value={newJob.type}
+                                       onChange={e => setNewJob({ ...newJob, type: e.target.value })}
+                                    >
+                                       <option value="Permanent">Permanent</option>
+                                       <option value="Contract">Contract</option>
+                                       <option value="Temporary">Temporary</option>
+                                       <option value="Internship">Internship</option>
+                                       <option value="Remote">Remote (Full-time)</option>
+                                    </select>
                                  </div>
                               </div>
 
@@ -482,73 +483,12 @@ export const Jobs = () => {
                         )}
 
                         {creatorStep === 2 && (
-                           <div className="space-y-8">
-                              <div>
-                                 <h3 className="text-lg font-bold text-slate-900">Interview Workflow</h3>
-                                 <p className="text-slate-500 text-sm mb-6">Attach Knowledge Base modules to each stage to guide the AI.</p>
-                              </div>
-
-                              {/* Stage 1: Screening */}
-                              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                                 <div className="bg-slate-50 p-4 border-b border-slate-200 flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center">
-                                       <LayoutTemplate className="w-5 h-5" />
-                                    </div>
-                                    <span className="font-bold text-slate-700">Stage 1: Initial Screening</span>
-                                 </div>
-                                 <div className="p-6 bg-white">
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Attach Questionnaire Module</label>
-                                    <select
-                                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                                       value={newJob.screening}
-                                       onChange={e => setNewJob({ ...newJob, screening: e.target.value })}
-                                    >
-                                       <option value="">Select from Library...</option>
-                                       {assessments.filter(a => a.type === 'QuestionBank').map(a => (
-                                          <option key={a.id} value={a.id}>{a.name} ({a.estimatedDuration} mins)</option>
-                                       ))}
-                                    </select>
-                                    <p className="text-xs text-slate-500 mt-2">The AI Gatekeeper will use these questions during the CV screen.</p>
-                                 </div>
-                              </div>
-
-                              {/* Stage 2: Technical */}
-                              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                                 <div className="bg-slate-50 p-4 border-b border-slate-200 flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded bg-purple-100 text-purple-600 flex items-center justify-center">
-                                       <Terminal className="w-5 h-5" />
-                                    </div>
-                                    <span className="font-bold text-slate-700">Stage 2: Technical & Skills Assessment</span>
-                                 </div>
-                                 <div className="p-6 bg-white">
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                       Attach Technical Assessment Module
-                                    </label>
-                                    <select
-                                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-                                       value={newJob.technical}
-                                       onChange={e => setNewJob({ ...newJob, technical: e.target.value })}
-                                    >
-                                       <option value="">Select from Library...</option>
-                                       {assessments.filter(a => a.type === 'QuestionBank').map(a => (
-                                          <option key={a.id} value={a.id}>{a.name} ({a.difficulty})</option>
-                                       ))}
-                                    </select>
-                                    <p className="text-xs text-slate-500 mt-2">
-                                       Lumina will conduct a skills assessment based on the questions or knowledge base linked to this module.
-                                    </p>
-                                 </div>
-                              </div>
-                           </div>
-                        )}
-
-                        {creatorStep === 3 && (
                            <div className="text-center py-12">
                               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
                                  <CheckCircle className="w-10 h-10" />
                               </div>
                               <h3 className="text-2xl font-bold text-slate-900 mb-2">Ready to Publish</h3>
-                              <p className="text-slate-500 max-w-md mx-auto mb-8">Your job post "{newJob.title || 'Untitled'}" is ready with linked assessment modules.</p>
+                              <p className="text-slate-500 max-w-md mx-auto mb-8">Your job post "{newJob.title || 'Untitled'}" is ready.</p>
 
                               <div className="bg-slate-50 rounded-xl p-6 max-w-md mx-auto text-left space-y-3 mb-8 border border-slate-200">
                                  <div className="flex justify-between text-sm">
@@ -564,12 +504,8 @@ export const Jobs = () => {
                                     <span className="font-medium">{newJob.closeDate || 'Open Indefinitely'}</span>
                                  </div>
                                  <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Screening:</span>
-                                    <span className="font-medium">{newJob.screening ? 'Linked Module' : 'None'}</span>
-                                 </div>
-                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Technical:</span>
-                                    <span className="font-medium">{newJob.technical ? 'Linked Assessment' : 'None'}</span>
+                                    <span className="text-slate-500">Type:</span>
+                                    <span className="font-medium">{newJob.type}</span>
                                  </div>
                               </div>
                            </div>
@@ -586,10 +522,10 @@ export const Jobs = () => {
                         {creatorStep > 1 ? 'Back' : 'Cancel'}
                      </button>
                      <button
-                        onClick={() => creatorStep < 3 ? setCreatorStep(creatorStep + 1) : handlePublish()}
+                        onClick={() => creatorStep < 2 ? setCreatorStep(creatorStep + 1) : handlePublish()}
                         className="px-8 py-2.5 rounded-xl font-bold bg-brand-600 text-white hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20"
                      >
-                        {creatorStep === 3 ? 'Publish Job' : 'Continue'}
+                        {creatorStep === 2 ? 'Publish Job' : 'Continue'}
                      </button>
                   </div>
                </div>

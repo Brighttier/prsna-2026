@@ -36,6 +36,10 @@ export interface InterviewSession {
     id: string;
     date: string;
     time?: string;
+    timezone?: string;
+    expiryDate?: string;
+    assessmentId?: string;
+    mode: 'AI' | 'Face-to-Face';
     type: string;
     status: 'Upcoming' | 'Completed' | 'Cancelled';
     meetLink?: string;
