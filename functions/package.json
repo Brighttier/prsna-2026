@@ -18,9 +18,11 @@
         "firebase-functions": "^7.0.5",
         "mammoth": "^1.11.0",
         "pdf-parse": "^2.4.5",
+        "resend": "^6.9.2",
         "word-extractor": "^1.0.4"
     },
     "devDependencies": {
+        "@types/react": "^19.2.14",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3"
     },

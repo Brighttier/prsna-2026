@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
+exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
@@ -49,6 +49,8 @@ const WordExtractor = require('word-extractor');
 (0, app_1.initializeApp)();
 // Define Secrets (Best Practice: Use Google Secret Manager)
 const geminiApiKey = (0, params_1.defineSecret)("GEMINI_API_KEY");
+const resendApiKey = (0, params_1.defineSecret)("RESEND_API_KEY");
+const email_1 = require("./utils/email");
 // Configuration for scalable V2 functions
 const functionConfig = {
     cors: true,
@@ -57,7 +59,7 @@ const functionConfig = {
     concurrency: 80, // Performance: handle multiple concurrent requests per instance (I/O bound)
     memory: "512MiB", // Resource optimization
     timeoutSeconds: 120, // GenAI can be slow
-    secrets: [geminiApiKey] // Secure access to API key
+    secrets: [geminiApiKey, resendApiKey] // Secure access to API key
 };
 // Lazy initialization pattern for the GenAI client
 // We initialize it inside the function to ensure secrets are available
@@ -706,7 +708,7 @@ exports.generateJobDescription = (0, https_1.onCall)(functionConfig, async (requ
  * 7. INVITE TEAM MEMBER (Callable)
  *
  * Creates a Firebase Auth user (if needed), sets custom claims, and records the invitation.
- * The Client is responsible for triggering the "Reset Password" email to notify the user.
+ * Sends a secure invitation link via Resend.
  */
 exports.inviteTeamMember = (0, https_1.onCall)(functionConfig, async (request) => {
     const { email, role, orgId } = request.data;
@@ -758,10 +760,217 @@ exports.inviteTeamMember = (0, https_1.onCall)(functionConfig, async (request) =
             orgId,
             createdAt: new Date().toISOString()
         }, { merge: true });
+        // 6. Generate Password Reset Link (Secure Link)
+        const link = await auth.generatePasswordResetLink(email);
+        // 7. Send Invitation Email via Resend
+        if (resendApiKey.value()) {
+            await (0, email_1.sendSecureLinkEmail)({
+                to: email,
+                link: link,
+                type: 'INVITATION',
+                role,
+                apiKey: resendApiKey.value()
+            });
+            logger.info(`Invitation email sent to ${email}`);
+        }
+        else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+        }
         return { success: true, isNewUser, uid };
     }
     catch (error) {
         logger.error("Error inviting team member", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 8. REQUEST PASSWORD RESET (Callable)
+ *
+ * Generates a password reset link and sends it via Resend.
+ * Replaces the default Firebase client-side email trigger.
+ */
+// 8. REQUEST PASSWORD RESET
+exports.requestPasswordReset = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { email } = request.data;
+    if (!email) {
+        throw new https_1.HttpsError('invalid-argument', 'The function must be called with "email".');
+    }
+    try {
+        const auth = (0, auth_1.getAuth)();
+        const link = await auth.generatePasswordResetLink(email);
+        if (resendApiKey.value()) {
+            await (0, email_1.sendSecureLinkEmail)({
+                to: email,
+                link: link,
+                type: 'RESET_PASSWORD',
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        }
+        else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    }
+    catch (error) {
+        logger.error("Error sending password reset email", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 9. SEND OFFER LETTER EMAIL (Callable)
+ *
+ * Sends an offer letter email to the candidate.
+ */
+exports.sendOfferLetter = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { email, jobTitle, companyName, offerUrl } = request.data;
+    if (!email || !jobTitle) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
+    }
+    try {
+        if (resendApiKey.value()) {
+            await (0, email_1.sendSecureLinkEmail)({
+                to: email,
+                link: offerUrl, // This should point to the public offer page
+                type: 'OFFER',
+                jobTitle,
+                companyName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        }
+        else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    }
+    catch (error) {
+        logger.error("Error sending offer email", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 10. SEND AI INTERVIEW INVITE (Callable)
+ *
+ * Sends an AI interview invitation email to the candidate.
+ */
+exports.sendAiInterviewInvite = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { email, jobTitle, interviewUrl } = request.data;
+    if (!email || !jobTitle || !interviewUrl) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing "email", "jobTitle", or "interviewUrl".');
+    }
+    try {
+        if (resendApiKey.value()) {
+            await (0, email_1.sendSecureLinkEmail)({
+                to: email,
+                link: interviewUrl,
+                type: 'INTERVIEW_INVITE',
+                jobTitle,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        }
+        else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    }
+    catch (error) {
+        logger.error("Error sending interview invite", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 11. SEND APPLICATION RECEIPT (Callable)
+ *
+ * Sends a confirmation email to the candidate after they apply.
+ */
+exports.sendApplicationReceipt = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { email, jobTitle, candidateName } = request.data;
+    if (!email || !jobTitle) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
+    }
+    try {
+        if (resendApiKey.value()) {
+            await (0, email_1.sendSecureLinkEmail)({
+                to: email,
+                type: 'APPLICATION_RECEIPT',
+                jobTitle,
+                name: candidateName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        }
+        else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    }
+    catch (error) {
+        logger.error("Error sending application receipt", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 12. SEND REJECTION EMAIL (Callable)
+ *
+ * Sends a polite rejection email to the candidate.
+ */
+exports.sendRejectionEmail = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { email, jobTitle, candidateName } = request.data;
+    if (!email || !jobTitle) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
+    }
+    try {
+        if (resendApiKey.value()) {
+            await (0, email_1.sendSecureLinkEmail)({
+                to: email,
+                type: 'REJECTION',
+                jobTitle,
+                name: candidateName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        }
+        else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    }
+    catch (error) {
+        logger.error("Error sending rejection email", error);
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 13. SEND ONBOARDING INVITE (Callable)
+ *
+ * Sends an onboarding invitation to a hired candidate.
+ */
+exports.sendOnboardingInvite = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { email, jobTitle, candidateName, onboardingUrl } = request.data;
+    if (!email || !jobTitle || !onboardingUrl) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing "email", "jobTitle", or "onboardingUrl".');
+    }
+    try {
+        if (resendApiKey.value()) {
+            await (0, email_1.sendSecureLinkEmail)({
+                to: email,
+                link: onboardingUrl,
+                type: 'ONBOARDING_INVITE',
+                jobTitle,
+                name: candidateName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        }
+        else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    }
+    catch (error) {
+        logger.error("Error sending onboarding invite", error);
         throw new https_1.HttpsError('internal', error.message);
     }
 });

@@ -16,6 +16,9 @@ initializeApp();
 
 // Define Secrets (Best Practice: Use Google Secret Manager)
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const resendApiKey = defineSecret("RESEND_API_KEY");
+
+import { sendSecureLinkEmail } from './utils/email';
 
 // Configuration for scalable V2 functions
 const functionConfig = {
@@ -25,7 +28,7 @@ const functionConfig = {
     concurrency: 80,   // Performance: handle multiple concurrent requests per instance (I/O bound)
     memory: "512MiB" as const,  // Resource optimization
     timeoutSeconds: 120, // GenAI can be slow
-    secrets: [geminiApiKey] // Secure access to API key
+    secrets: [geminiApiKey, resendApiKey] // Secure access to API key
 };
 
 // Lazy initialization pattern for the GenAI client
@@ -738,7 +741,7 @@ export const generateJobDescription = onCall(functionConfig as any, async (reque
  * 7. INVITE TEAM MEMBER (Callable)
  * 
  * Creates a Firebase Auth user (if needed), sets custom claims, and records the invitation.
- * The Client is responsible for triggering the "Reset Password" email to notify the user.
+ * Sends a secure invitation link via Resend.
  */
 export const inviteTeamMember = onCall(functionConfig as any, async (request) => {
     const { email, role, orgId } = request.data;
@@ -795,10 +798,227 @@ export const inviteTeamMember = onCall(functionConfig as any, async (request) =>
             createdAt: new Date().toISOString()
         }, { merge: true });
 
+        // 6. Generate Password Reset Link (Secure Link)
+        const link = await auth.generatePasswordResetLink(email);
+
+        // 7. Send Invitation Email via Resend
+        if (resendApiKey.value()) {
+            await sendSecureLinkEmail({
+                to: email,
+                link: link,
+                type: 'INVITATION',
+                role,
+                apiKey: resendApiKey.value()
+            });
+            logger.info(`Invitation email sent to ${email}`);
+        } else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+        }
+
         return { success: true, isNewUser, uid };
+
 
     } catch (error: any) {
         logger.error("Error inviting team member", error);
         throw new HttpsError('internal', error.message);
     }
 });
+
+/**
+ * 8. REQUEST PASSWORD RESET (Callable)
+ * 
+ * Generates a password reset link and sends it via Resend.
+ * Replaces the default Firebase client-side email trigger.
+ */
+// 8. REQUEST PASSWORD RESET
+export const requestPasswordReset = onCall(functionConfig as any, async (request) => {
+    const { email } = request.data;
+
+    if (!email) {
+        throw new HttpsError('invalid-argument', 'The function must be called with "email".');
+    }
+
+    try {
+        const auth = getAuth();
+        const link = await auth.generatePasswordResetLink(email);
+
+        if (resendApiKey.value()) {
+            await sendSecureLinkEmail({
+                to: email,
+                link: link,
+                type: 'RESET_PASSWORD',
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        } else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    } catch (error: any) {
+        logger.error("Error sending password reset email", error);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * 9. SEND OFFER LETTER EMAIL (Callable)
+ * 
+ * Sends an offer letter email to the candidate.
+ */
+export const sendOfferLetter = onCall(functionConfig as any, async (request) => {
+    const { email, jobTitle, companyName, offerUrl } = request.data;
+
+    if (!email || !jobTitle) {
+        throw new HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
+    }
+
+    try {
+        if (resendApiKey.value()) {
+            await sendSecureLinkEmail({
+                to: email,
+                link: offerUrl, // This should point to the public offer page
+                type: 'OFFER',
+                jobTitle,
+                companyName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        } else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    } catch (error: any) {
+        logger.error("Error sending offer email", error);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * 10. SEND AI INTERVIEW INVITE (Callable)
+ * 
+ * Sends an AI interview invitation email to the candidate.
+ */
+export const sendAiInterviewInvite = onCall(functionConfig as any, async (request) => {
+    const { email, jobTitle, interviewUrl } = request.data;
+
+    if (!email || !jobTitle || !interviewUrl) {
+        throw new HttpsError('invalid-argument', 'Missing "email", "jobTitle", or "interviewUrl".');
+    }
+
+    try {
+        if (resendApiKey.value()) {
+            await sendSecureLinkEmail({
+                to: email,
+                link: interviewUrl,
+                type: 'INTERVIEW_INVITE',
+                jobTitle,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        } else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    } catch (error: any) {
+        logger.error("Error sending interview invite", error);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * 11. SEND APPLICATION RECEIPT (Callable)
+ * 
+ * Sends a confirmation email to the candidate after they apply.
+ */
+export const sendApplicationReceipt = onCall(functionConfig as any, async (request) => {
+    const { email, jobTitle, candidateName } = request.data;
+
+    if (!email || !jobTitle) {
+        throw new HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
+    }
+
+    try {
+        if (resendApiKey.value()) {
+            await sendSecureLinkEmail({
+                to: email,
+                type: 'APPLICATION_RECEIPT',
+                jobTitle,
+                name: candidateName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        } else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    } catch (error: any) {
+        logger.error("Error sending application receipt", error);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * 12. SEND REJECTION EMAIL (Callable)
+ * 
+ * Sends a polite rejection email to the candidate.
+ */
+export const sendRejectionEmail = onCall(functionConfig as any, async (request) => {
+    const { email, jobTitle, candidateName } = request.data;
+
+    if (!email || !jobTitle) {
+        throw new HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
+    }
+
+    try {
+        if (resendApiKey.value()) {
+            await sendSecureLinkEmail({
+                to: email,
+                type: 'REJECTION',
+                jobTitle,
+                name: candidateName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        } else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    } catch (error: any) {
+        logger.error("Error sending rejection email", error);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * 13. SEND ONBOARDING INVITE (Callable)
+ * 
+ * Sends an onboarding invitation to a hired candidate.
+ */
+export const sendOnboardingInvite = onCall(functionConfig as any, async (request) => {
+    const { email, jobTitle, candidateName, onboardingUrl } = request.data;
+
+    if (!email || !jobTitle || !onboardingUrl) {
+        throw new HttpsError('invalid-argument', 'Missing "email", "jobTitle", or "onboardingUrl".');
+    }
+
+    try {
+        if (resendApiKey.value()) {
+            await sendSecureLinkEmail({
+                to: email,
+                link: onboardingUrl,
+                type: 'ONBOARDING_INVITE',
+                jobTitle,
+                name: candidateName,
+                apiKey: resendApiKey.value()
+            });
+            return { success: true };
+        } else {
+            logger.warn("RESEND_API_KEY not set. Email not sent.");
+            return { success: false, error: 'Email service not configured.' };
+        }
+    } catch (error: any) {
+        logger.error("Error sending onboarding invite", error);
+        throw new HttpsError('internal', error.message);
+    }
+});
+

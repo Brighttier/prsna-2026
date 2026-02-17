@@ -1,10 +1,10 @@
-import { auth, db, doc, setDoc } from './firebase';
+import { auth, db, doc, setDoc, functions, httpsCallable } from './firebase';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut,
     updateProfile,
-    sendPasswordResetEmail,
+    updateProfile,
     User
 } from 'firebase/auth';
 
@@ -80,7 +80,8 @@ export const logout = async () => {
 
 export const resetPassword = async (email: string) => {
     try {
-        await sendPasswordResetEmail(auth, email);
+        const resetFn = httpsCallable(functions, 'requestPasswordReset');
+        await resetFn({ email });
         return { error: null };
     } catch (error: any) {
         console.error("Reset Password Error:", error);

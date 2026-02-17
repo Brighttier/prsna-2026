@@ -68,6 +68,13 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                 platform: mode === 'Face-to-Face' && includeMeet ? platform : undefined
             };
 
+            if (mode === 'AI') {
+                // Trigger the backend email via Store
+                store.sendAiInterviewInvite(candidate.id, candidate.email)
+                    .then(() => console.log("AI Invite sent to backend"))
+                    .catch(err => console.error("Failed to send AI invite", err));
+            }
+
             store.addInterviewSession(candidate.id, newSession);
             setIsScheduling(false);
             onScheduled(newSession);
@@ -1250,10 +1257,26 @@ RecruiteAI`;
         }, 1500);
     };
 
-    const handleSendOffer = () => {
-        setOfferData(prev => ({ ...prev, status: 'Sent' }));
+    const handleSendOffer = async () => {
+        const token = offerData.token || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const updatedOfferData = {
+            ...offerData,
+            status: 'Sent' as const,
+            sentDate: new Date().toLocaleDateString(),
+            token: token
+        };
+
+        setOfferData(updatedOfferData);
+
         if (id) {
-            store.updateOffer(candidate.id, { ...offerData, status: 'Sent', sentDate: new Date().toLocaleDateString() });
+            store.updateOffer(candidate.id, updatedOfferData);
+
+            // Send the real email via Resend
+            try {
+                await store.sendOffer(candidate.id, candidate.email, token);
+            } catch (err) {
+                console.error("Failed to send offer email", err);
+            }
         }
         setSentOfferPreview(true);
     };
@@ -1381,6 +1404,23 @@ RecruiteAI`;
                         >
                             <Calendar className="w-4 h-4 text-brand-600" /> Schedule
                         </button>
+
+                        {candidate.stage !== 'Rejected' && candidate.stage !== 'Hired' && (
+                            <button
+                                onClick={async () => {
+                                    if (window.confirm(`Are you sure you want to reject ${candidate.name}? This will send a polite rejection email.`)) {
+                                        if (id) {
+                                            await store.sendRejectionEmail(id);
+                                            await store.updateCandidateStage(id, 'Rejected');
+                                        }
+                                    }
+                                }}
+                                className="px-4 py-2.5 bg-white border border-red-200 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                                <XCircle className="w-4 h-4" /> Reject
+                            </button>
+                        )}
+
                         <button
                             onClick={() => {
                                 const stages: Candidate['stage'][] = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'];

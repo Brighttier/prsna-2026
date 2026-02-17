@@ -1,7 +1,7 @@
 import { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus } from '../types';
 export type { Job, Candidate, AssessmentModule, OnboardingTask, OfferDetails, JobStatus };
 import { db, collection, doc, setDoc, updateDoc, onSnapshot, auth, query, where, httpsCallable, functions } from './firebase';
-import { sendPasswordResetEmail } from 'firebase/auth';
+
 
 export interface TranscriptEntry {
     speaker: 'Lumina' | 'Candidate';
@@ -607,6 +607,112 @@ class Store {
         }
     }
 
+    async sendOffer(candidateId: string, email: string, token?: string) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (!candidate) return;
+
+        try {
+            const sendOfferLetterFn = httpsCallable(functions, 'sendOfferLetter');
+            // Assuming we have a public offer view page like /offer/:candidateId
+            // The origin should be dynamically retrieved
+            // Use token for secure link if available, otherwise fallback (though token is preferred)
+            const offerToken = token || candidate.offer?.token || candidateId;
+            const offerUrl = `${window.location.origin}/offer/${offerToken}`;
+
+            await sendOfferLetterFn({
+                candidateId,
+                email,
+                jobTitle: candidate.role,
+                companyName: this.state.branding.companyName,
+                offerUrl
+            });
+            console.log(`[Store] Offer letter sent to ${email}`);
+        } catch (e) {
+            console.error("Error sending offer letter:", e);
+            throw e;
+        }
+    }
+
+    async sendAiInterviewInvite(candidateId: string, email: string) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (!candidate) return;
+
+        try {
+            const sendInviteFn = httpsCallable(functions, 'sendAiInterviewInvite');
+            // Assuming we have an interview prep/start page like /interview/:candidateId
+            // Point to the lobby with pre-filled candidate ID
+            const interviewUrl = `${window.location.origin}/interview-lobby?candidateId=${candidateId}`;
+
+            await sendInviteFn({
+                email,
+                jobTitle: candidate.role,
+                interviewUrl
+            });
+            console.log(`[Store] AI Interview invite sent to ${email}`);
+        } catch (e) {
+            console.error("Error sending AI interview invite:", e);
+            throw e;
+        }
+    }
+
+    async sendApplicationReceipt(email: string, jobTitle: string, candidateName: string) {
+        try {
+            const sendReceiptFn = httpsCallable(functions, 'sendApplicationReceipt');
+            await sendReceiptFn({
+                email,
+                jobTitle,
+                candidateName
+            });
+            console.log(`[Store] Application receipt sent to ${email}`);
+        } catch (e) {
+            console.error("Error sending application receipt:", e);
+            // Don't throw, just log. It's not critical for the UI flow.
+        }
+    }
+
+    async sendRejectionEmail(candidateId: string) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (!candidate) return;
+
+        try {
+            const sendRejectionFn = httpsCallable(functions, 'sendRejectionEmail');
+            await sendRejectionFn({
+                email: candidate.email,
+                jobTitle: candidate.role,
+                candidateName: candidate.name
+            });
+            console.log(`[Store] Rejection email sent to ${candidate.email}`);
+        } catch (e) {
+            console.error("Error sending rejection email:", e);
+            throw e;
+        }
+    }
+
+    async sendOnboardingInvite(candidateId: string) {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (!candidate) return;
+
+        try {
+            const sendOnboardingFn = httpsCallable(functions, 'sendOnboardingInvite');
+            // Assuming we have an onboarding portal
+            // For now, let's use a placeholder or the same offer token concept if we want secure access
+            const onboardingToken = candidate.offer?.token || candidateId; // Reuse or create new
+            const onboardingUrl = `${window.location.origin}/onboarding-portal/${onboardingToken}`;
+
+            await sendOnboardingFn({
+                email: candidate.email,
+                jobTitle: candidate.role,
+                candidateName: candidate.name,
+                onboardingUrl
+            });
+            console.log(`[Store] Onboarding invite sent to ${candidate.email}`);
+        } catch (e) {
+            console.error("Error sending onboarding invite:", e);
+            throw e;
+        }
+    }
+
+
     async updateOnboardingTask(candidateId: string, taskId: string, updates: Partial<OnboardingTask>) {
         const candidate = this.state.candidates.find(c => c.id === candidateId);
         if (candidate && candidate.onboarding) {
@@ -642,133 +748,131 @@ class Store {
                     { id: 't4', category: 'Legal & Compliance', task: 'Sign Employment Agreement', type: 'upload', completed: false, assignee: 'HR' },
                 ];
 
-            const updates: Partial<ExtendedCandidate> = {
-                stage: "Hired" as Candidate['stage'],
+            stage: "Hired" as Candidate['stage'],
                 onboarding: {
-                    hrisSyncStatus: 'Not_Synced',
+                hrisSyncStatus: 'Not_Synced',
                     tasks: tasks
-                }
-            };
-            await this.updateCandidate(candidateId, updates);
-        }
+            }
+        };
+        await this.updateCandidate(candidateId, updates);
+
+        // Automatically send onboarding invite
+        await this.sendOnboardingInvite(candidateId);
     }
+}
 
     async updateCandidateStage(id: string, stage: Candidate['stage']) {
-        if (stage === 'Hired') {
-            await this.promoteToHired(id);
-        } else {
-            await this.updateCandidate(id, { stage });
-        }
+    if (stage === 'Hired') {
+        await this.promoteToHired(id);
+    } else if (stage === 'Rejected') {
+        // Optional: Auto-send rejection? Maybe better to keep it manual to allow personalization or delay.
+        // For now, let's just update the status. The UI can have a button to "Reject & Notify".
+        await this.updateCandidate(id, { stage });
+    } else {
+        await this.updateCandidate(id, { stage });
     }
+}
+
 
     async inviteTeamMember(email: string, role: string = 'Recruiter') {
-        if (!this.orgId) {
-            console.error("[Store] Cannot invite team member: Organization ID is missing.");
-            throw new Error("Organization ID not loaded. Please try again in 5 seconds.");
-        }
-        if (!email) return;
-
-        try {
-            console.log(`[Store] Inviting ${email} to org ${this.orgId} via Cloud Function...`);
-
-            // 1. Call Cloud Function to create User and Set Claims
-            const inviteFn = httpsCallable(functions, 'inviteTeamMember');
-            await inviteFn({
-                email,
-                role,
-                orgId: this.orgId
-            });
-
-            console.log(`[Store] User created/updated. Sending internal password reset email...`);
-
-            // 2. Send Firebase Auth Password Reset Email (as the invite)
-            try {
-                // We use the client SDK to send the email using Firebase's internal system
-                await sendPasswordResetEmail(auth, email);
-                console.log(`[Store] Password reset email sent to ${email}`);
-            } catch (emailError: any) {
-                console.error("[Store] Failed to send password reset email:", emailError);
-                // We don't throw here because the user is technically created/invited
-                // The UI will show success but mentioned they might need to reset password
-                throw new Error(`Invitation created but email failed: ${emailError.message}`);
-            }
-
-        } catch (e: any) {
-            console.error("[Store] Error inviting team member: ", e);
-            throw e;
-        }
+    if (!this.orgId) {
+        console.error("[Store] Cannot invite team member: Organization ID is missing.");
+        throw new Error("Organization ID not loaded. Please try again in 5 seconds.");
     }
+    if (!email) return;
+
+    try {
+        console.log(`[Store] Inviting ${email} to org ${this.orgId} via Cloud Function...`);
+
+        // 1. Call Cloud Function to create User and Set Claims
+        const inviteFn = httpsCallable(functions, 'inviteTeamMember');
+        await inviteFn({
+            email,
+            role,
+            orgId: this.orgId
+        });
+
+        console.log(`[Store] User invitation processed by backend.`);
+
+        // Backend now handles the email sending via Resend
+        console.log(`[Store] Secure invitation link sent to ${email}`);
+
+    } catch (e: any) {
+        console.error("[Store] Error inviting team member: ", e);
+        throw e;
+    }
+}
     async revokeInvitation(inviteId: string) {
-        if (!this.orgId) return;
-        try {
-            const { deleteDoc } = await import('firebase/firestore');
-            await deleteDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId));
-            console.log(`Invitation ${inviteId} revoked`);
-        } catch (e) {
-            console.error("Error revoking invitation: ", e);
-        }
+    if (!this.orgId) return;
+    try {
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId));
+        console.log(`Invitation ${inviteId} revoked`);
+    } catch (e) {
+        console.error("Error revoking invitation: ", e);
     }
+}
 
     async publishAssessment(assessment: Partial<AssessmentModule>) {
-        if (!this.orgId) return;
-        try {
-            const id = assessment.id || `asm_${Date.now()}`;
-            await setDoc(doc(db, 'organizations', this.orgId, 'assessments', id), {
-                ...assessment,
-                id: id,
-                updatedAt: new Date().toISOString()
-            }, { merge: true });
-        } catch (e) {
-            console.error("Error publishing assessment: ", e);
-        }
+    if (!this.orgId) return;
+    try {
+        const id = assessment.id || `asm_${Date.now()}`;
+        await setDoc(doc(db, 'organizations', this.orgId, 'assessments', id), {
+            ...assessment,
+            id: id,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+    } catch (e) {
+        console.error("Error publishing assessment: ", e);
     }
+}
 
     async deleteAssessment(id: string) {
-        if (!this.orgId) return;
-        try {
-            const { deleteDoc } = await import('firebase/firestore');
-            await deleteDoc(doc(db, 'organizations', this.orgId, 'assessments', id));
-        } catch (e) {
-            console.error("Error deleting assessment: ", e);
-        }
+    if (!this.orgId) return;
+    try {
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(doc(db, 'organizations', this.orgId, 'assessments', id));
+    } catch (e) {
+        console.error("Error deleting assessment: ", e);
     }
+}
 
 
-    // Check if AI is allowed
-    isAiAllowed(feature: 'resume' | 'interview'): boolean {
-        if (this.state.settings.killSwitches.global) return false;
-        if (feature === 'resume' && this.state.settings.killSwitches.resume) return false;
-        if (feature === 'interview' && this.state.settings.killSwitches.interview) return false;
-        return true;
-    }
+// Check if AI is allowed
+isAiAllowed(feature: 'resume' | 'interview'): boolean {
+    if (this.state.settings.killSwitches.global) return false;
+    if (feature === 'resume' && this.state.settings.killSwitches.resume) return false;
+    if (feature === 'interview' && this.state.settings.killSwitches.interview) return false;
+    return true;
+}
 
     // Platform Admin Actions
     async updateTenantStatus(tenantId: string, status: 'Active' | 'Suspended') {
-        try {
-            await updateDoc(doc(db, 'organizations', tenantId), { status });
-        } catch (e) {
-            console.error("Error updating tenant status: ", e);
-        }
+    try {
+        await updateDoc(doc(db, 'organizations', tenantId), { status });
+    } catch (e) {
+        console.error("Error updating tenant status: ", e);
     }
+}
 
     async updateTenantPlan(tenantId: string, plan: string) {
-        try {
-            await updateDoc(doc(db, 'organizations', tenantId), { plan });
-        } catch (e) {
-            console.error("Error updating tenant plan: ", e);
-        }
+    try {
+        await updateDoc(doc(db, 'organizations', tenantId), { plan });
+    } catch (e) {
+        console.error("Error updating tenant plan: ", e);
     }
+}
 
     async updateOnboardingTemplate(tasks: OnboardingTask[]) {
-        if (!this.orgId) return;
-        try {
-            await updateDoc(doc(db, 'organizations', this.orgId), {
-                onboardingTemplate: tasks
-            });
-        } catch (e) {
-            console.error("Error updating onboarding template: ", e);
-        }
+    if (!this.orgId) return;
+    try {
+        await updateDoc(doc(db, 'organizations', this.orgId), {
+            onboardingTemplate: tasks
+        });
+    } catch (e) {
+        console.error("Error updating onboarding template: ", e);
     }
+}
 }
 
 export const store = new Store();

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Job } from '../types';
 import { X, Upload, Video, Mic, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, updateDoc, doc, auth } from '../services/firebase';
+import { store } from '../services/store';
 import { signInAnonymously } from 'firebase/auth';
 import { query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { uploadBytesResumable } from 'firebase/storage';
@@ -244,6 +245,9 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
             });
 
             setStep(3); // Success
+
+            // Send Application Receipt Email
+            await store.sendApplicationReceipt(email, job.title, `${firstName} ${lastName}`);
         } catch (err: any) {
             console.error("Submission error:", err);
             setError(err.message || "Failed to submit application.");
@@ -544,6 +548,9 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                                                         manualInput: true
                                                     });
                                                     setStep(3);
+
+                                                    // Send Application Receipt Email
+                                                    await store.sendApplicationReceipt(email, job.title, `${firstName} ${lastName}`);
                                                 }
                                             } catch (err: any) {
                                                 setError("Manual update failed: " + err.message);

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { ShieldCheck, Camera, RefreshCw, CheckCircle, ArrowRight, Monitor, Scan, User as UserIcon, CreditCard, AlertCircle, Users } from 'lucide-react';
 import { store } from '../services/store';
@@ -32,7 +32,8 @@ export const InterviewLobby = () => {
 
     // Candidate Selection
     const [candidates] = useState(store.getState().candidates);
-    const [selectedCandidateId, setSelectedCandidateId] = useState('');
+    const [searchParams] = useSearchParams();
+    const [selectedCandidateId, setSelectedCandidateId] = useState(searchParams.get('candidateId') || '');
 
     // Initialize Camera
     useEffect(() => {
