@@ -87,6 +87,7 @@ export interface Candidate {
   jobId?: string;
   resumeUrl?: string;
   videoUrl?: string;
+  thumbnailUrl?: string;
   stage: 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Hired' | 'Rejected'; // Added Hired
   score: number;
   match?: number;

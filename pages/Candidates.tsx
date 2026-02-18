@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
 import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, Clock, Mail, MessageSquare, ChevronDown, User, Briefcase, Download, Plus, Users, ChevronRight } from 'lucide-react';
+import { CandidateAvatar } from '../components/CandidateAvatar';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Candidate } from '../types';
 import { store, ExtendedCandidate } from '../services/store';
@@ -139,13 +140,13 @@ export const Candidates = () => {
                                 >
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            {blindMode ? (
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-400">
-                                                    <User className="w-5 h-5" />
-                                                </div>
-                                            ) : (
-                                                <img src={candidate.avatar} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200" />
-                                            )}
+                                            <CandidateAvatar
+                                                avatar={candidate.avatar || candidate.thumbnailUrl}
+                                                videoUrl={candidate.videoUrl}
+                                                name={candidate.name}
+                                                size="sm"
+                                                blindMode={blindMode}
+                                            />
                                             <div>
                                                 <div className="font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
                                                     {blindMode ? `Candidate #${candidate.id}` : candidate.name}

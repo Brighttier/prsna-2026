@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
+import { CandidateAvatar } from '../components/CandidateAvatar';
 import { ArrowLeft, User, Users, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw, Edit2 } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
 import {
@@ -1373,7 +1374,12 @@ RecruiteAI`;
 
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex justify-between items-start">
                     <div className="flex gap-6">
-                        <img src={candidate.avatar} className="w-24 h-24 rounded-2xl object-cover border-4 border-slate-50 shadow-md" alt={candidate.name} />
+                        <CandidateAvatar
+                            avatar={candidate.avatar || candidate.thumbnailUrl}
+                            videoUrl={candidate.videoUrl}
+                            name={candidate.name}
+                            size="lg"
+                        />
                         <div>
                             <h1 className="text-3xl font-bold text-slate-900">{candidate.name}</h1>
                             <div className="flex items-center gap-3 mt-2 text-slate-500 font-medium">

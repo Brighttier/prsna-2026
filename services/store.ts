@@ -68,7 +68,7 @@ export interface Education {
 
 // Extended candidate for UI
 export interface ExtendedCandidate extends Candidate {
-    avatar: string;
+    avatar?: string;
     appliedDate: string;
     lastActive: string;
     location: string;
@@ -339,7 +339,10 @@ class Store {
         // Candidates Listener
         const candidatesUnsub = onSnapshot(collection(db, 'organizations', orgId, 'candidates'), (snapshot) => {
             console.log(`[Store] Candidates snapshot received: ${snapshot.size} docs`);
-            this.state.candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExtendedCandidate));
+            this.state.candidates = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return { id: doc.id, ...data, avatar: data.thumbnailUrl || data.avatar || '' } as ExtendedCandidate;
+            });
             if (snapshot.empty) {
                 console.log(`[Store] Candidates empty, seeding...`);
                 this.seedCandidates(orgId);

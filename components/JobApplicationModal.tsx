@@ -28,6 +28,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
     const [isRecording, setIsRecording] = useState(false);
     const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
     const [videoPreview, setVideoPreview] = useState<string | null>(null);
+    const [thumbnailBlob, setThumbnailBlob] = useState<Blob | null>(null);
     const [timeLeft, setTimeLeft] = useState(10);
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -96,12 +97,19 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 if (e.data.size > 0) chunksRef.current.push(e.data);
             };
 
-            recorder.onstop = () => {
+            recorder.onstop = async () => {
                 const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
                 setVideoBlob(blob);
                 const url = URL.createObjectURL(blob);
                 setVideoPreview(url);
                 stopStream();
+
+                try {
+                    const thumb = await extractThumbnail(url);
+                    setThumbnailBlob(thumb);
+                } catch (err) {
+                    console.warn('Thumbnail extraction failed:', err);
+                }
             };
 
             recorder.start();
@@ -118,6 +126,38 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
             mediaRecorderRef.current.stop();
             setIsRecording(false);
         }
+    };
+
+    const extractThumbnail = (videoUrl: string): Promise<Blob> => {
+        return new Promise((resolve, reject) => {
+            const vid = document.createElement('video');
+            vid.muted = true;
+            vid.playsInline = true;
+            vid.src = videoUrl;
+
+            vid.onloadeddata = () => {
+                vid.currentTime = Math.min(1, vid.duration * 0.3);
+            };
+
+            vid.onseeked = () => {
+                const canvas = document.createElement('canvas');
+                const ratio = vid.videoWidth / vid.videoHeight;
+                canvas.width = 320;
+                canvas.height = Math.round(320 / ratio);
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { reject(new Error('No canvas context')); return; }
+                ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(
+                    (blob) => blob ? resolve(blob) : reject(new Error('toBlob failed')),
+                    'image/jpeg',
+                    0.85
+                );
+                vid.src = '';
+                vid.load();
+            };
+
+            vid.onerror = () => reject(new Error('Video load failed'));
+        });
     };
 
     const stopStream = () => {
@@ -238,10 +278,19 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 videoUrl = await getDownloadURL(videoStorageRef);
             }
 
+            // 4b. Upload Thumbnail
+            let thumbnailUrl = '';
+            if (thumbnailBlob) {
+                const thumbRef = ref(storage, `${orgId}/candidates/${candidateId}/thumbnail.jpg`);
+                await uploadBytes(thumbRef, thumbnailBlob);
+                thumbnailUrl = await getDownloadURL(thumbRef);
+            }
+
             // 5. Update Candidate Doc with URLs
             await updateDoc(candidateRef, {
                 resumeUrl,
-                videoUrl
+                videoUrl,
+                ...(thumbnailUrl && { thumbnailUrl })
             });
 
             setStep(3); // Success
@@ -476,6 +525,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                                                 if (videoPreview) URL.revokeObjectURL(videoPreview);
                                                 setVideoBlob(null);
                                                 setVideoPreview(null);
+                                                setThumbnailBlob(null);
                                             }}
                                             className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white px-3 py-1.5 rounded-lg text-xs font-medium backdrop-blur transition-colors"
                                         >
