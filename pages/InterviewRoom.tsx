@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import { Card } from '../components/Card';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Code, MessageSquare, ShieldCheck, User, ChevronRight, Sparkles, Cpu } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Code, MessageSquare, ShieldCheck, User, ChevronRight, Sparkles, Cpu, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { store, InterviewSession, TranscriptEntry } from '../services/store';
 import { summarizeInterview } from '../services/geminiService';
@@ -51,6 +51,7 @@ export const InterviewRoom = () => {
    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
    const chunksRef = useRef<Blob[]>([]);
    const [isRecording, setIsRecording] = useState(false);
+   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
    const candidateId = location.state?.candidateId;
    const assessmentId = location.state?.assessmentId;
@@ -106,8 +107,9 @@ export const InterviewRoom = () => {
 
    // Removed editorValue for simplification
 
-   const { isConnected, error, connect, disconnect, sendVideoFrame, sendContent } = useGeminiLive({
+   const { isConnected, isConnecting, error, connect, disconnect, sendVideoFrame, sendContent } = useGeminiLive({
       systemInstruction: systemInstruction || "You are a helpful assistant.",
+      existingStream: mediaStream,
       onTranscript: (text, isUser) => {
          setTranscript(prev => {
             const lastMsg = prev[prev.length - 1];
@@ -134,6 +136,7 @@ export const InterviewRoom = () => {
             if (videoRef.current) {
                videoRef.current.srcObject = stream;
             }
+            setMediaStream(stream);
 
             // Start Recording
             const recorder = new MediaRecorder(stream);
@@ -296,11 +299,13 @@ export const InterviewRoom = () => {
                      </div>
                      <div className="text-center space-y-2 max-w-md">
                         <h2 className="text-2xl font-bold text-slate-900">
-                           {isConnected ? (isAiSpeaking ? "Lumina is speaking..." : "Lumina is listening") : "Ready to Interview"}
+                           {isConnected ? (isAiSpeaking ? "Lumina is speaking..." : "Lumina is listening") : isConnecting ? "Connecting..." : "Ready to Interview"}
                         </h2>
                         <p className="text-slate-500">
                            {isConnected
                               ? "Speak clearly. Lumina analyzes both your audio and visual cues."
+                              : isConnecting
+                              ? "Establishing secure connection to Lumina AI..."
                               : "Click 'Start Session' to begin your AI-powered technical interview."}
                         </p>
                      </div>
@@ -308,9 +313,14 @@ export const InterviewRoom = () => {
                      {!isConnected && (
                         <button
                            onClick={handleStart}
-                           className="mt-8 bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl shadow-brand-500/20 hover:shadow-brand-500/40 transform hover:-translate-y-1 transition-all flex items-center gap-2"
+                           disabled={isConnecting}
+                           className={`mt-8 bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl shadow-brand-500/20 hover:shadow-brand-500/40 transform hover:-translate-y-1 transition-all flex items-center gap-2 ${isConnecting ? 'opacity-80 cursor-wait' : ''}`}
                         >
-                           <Sparkles className="w-5 h-5" /> Start Session
+                           {isConnecting ? (
+                              <><Loader2 className="w-5 h-5 animate-spin" /> Connecting to Lumina...</>
+                           ) : (
+                              <><Sparkles className="w-5 h-5" /> Start Session</>
+                           )}
                         </button>
                      )}
                   </div>
@@ -347,9 +357,12 @@ export const InterviewRoom = () => {
                </div>
 
                {error && (
-                  <div className="absolute top-6 animate-fade-in-down bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3">
-                     <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                     {error}
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 animate-fade-in-down bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 z-30 max-w-lg">
+                     <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
+                     <div>
+                        <p className="font-semibold text-sm">{error}</p>
+                        <p className="text-xs text-red-400 mt-1">Check your internet connection and try again.</p>
+                     </div>
                   </div>
                )}
             </div>

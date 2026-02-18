@@ -5,10 +5,12 @@ import { createPcmBlob, convertBlobToBase64, decodeAudioData } from '../services
 interface UseGeminiLiveProps {
   systemInstruction?: string;
   onTranscript?: (text: string, isUser: boolean) => void;
+  existingStream?: MediaStream | null;
 }
 
-export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLiveProps) => {
+export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream }: UseGeminiLiveProps) => {
   const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Refs for audio context and processing
@@ -26,12 +28,14 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
   const videoIntervalRef = useRef<number | null>(null);
 
   const connect = async () => {
-    if (isConnected) return;
+    if (isConnected || isConnecting) return;
+    setIsConnecting(true);
 
     // Check kill switch
     const { store } = await import('../services/store');
     if (!store.isAiAllowed('interview')) {
       setError("AI Interviews are currently disabled by Platform Admin.");
+      setIsConnecting(false);
       return;
     }
 
@@ -45,8 +49,8 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       inputContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
 
-      // Get Microphone Stream
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Reuse existing stream if provided (avoids duplicate getUserMedia conflicts), otherwise request new one
+      const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
       const sessionPromise = ai.live.connect({
@@ -64,6 +68,7 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
           onopen: () => {
             console.log("Gemini Live Connected");
             setIsConnected(true);
+            setIsConnecting(false);
 
             // Setup Audio Streaming to Model
             if (!inputContextRef.current || !streamRef.current) return;
@@ -147,8 +152,9 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
           },
           onerror: (e) => {
             console.error("Gemini Live Error", e);
-            setError("Connection error occurred.");
+            setError("Connection error occurred. Please try again.");
             setIsConnected(false);
+            setIsConnecting(false);
           }
         }
       });
@@ -158,16 +164,17 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
       await sessionPromise;
 
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to connect to Lumina");
+      console.error("Lumina connect failed:", err);
+      setError(err.message || "Failed to connect to Lumina. Please try again.");
       setIsConnected(false);
+      setIsConnecting(false);
       sessionPromiseRef.current = null;
 
-      // Cleanup streams if connection failed
-      if (streamRef.current) {
+      // Cleanup streams if connection failed (only stop if we created it)
+      if (streamRef.current && !existingStream) {
         streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
       }
+      streamRef.current = null;
       if (audioContextRef.current) audioContextRef.current.close();
       if (inputContextRef.current) inputContextRef.current.close();
     }
@@ -192,11 +199,11 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
       inputContextRef.current.close();
     }
 
-    // Stop Stream
-    if (streamRef.current) {
+    // Only stop stream tracks if we created it (not shared from parent)
+    if (streamRef.current && !existingStream) {
       streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
     }
+    streamRef.current = null;
 
     // Stop Interval
     if (videoIntervalRef.current) {
@@ -245,6 +252,7 @@ export const useGeminiLive = ({ systemInstruction, onTranscript }: UseGeminiLive
 
   return {
     isConnected,
+    isConnecting,
     error,
     connect,
     disconnect,
