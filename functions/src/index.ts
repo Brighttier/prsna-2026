@@ -1115,6 +1115,25 @@ export const resolveInterviewToken = onCall(functionConfig as any, async (reques
         const interviews = candidateData.interviews || [];
         const session = interviews.find((i: any) => i.token === token && i.status === 'Upcoming');
 
+        // Fetch org settings (persona, branding) for the interview room
+        const orgDoc = await db.collection('organizations').doc(invite.orgId).get();
+        const orgData = orgDoc.exists ? orgDoc.data()! : {};
+        const settings = orgData.settings || {};
+
+        // Fetch job details if candidate has jobId
+        let jobDetails = null;
+        if (candidateData.jobId) {
+            const jobDoc = await db
+                .collection('organizations')
+                .doc(invite.orgId)
+                .collection('jobs')
+                .doc(candidateData.jobId)
+                .get();
+            if (jobDoc.exists) {
+                jobDetails = { id: jobDoc.id, ...jobDoc.data() };
+            }
+        }
+
         return {
             candidateId: invite.candidateId,
             candidateName: invite.candidateName,
@@ -1122,11 +1141,49 @@ export const resolveInterviewToken = onCall(functionConfig as any, async (reques
             orgId: invite.orgId,
             assessmentId: invite.assessmentId || session?.assessmentId || null,
             sessionId: session?.id || null,
+            candidate: { id: invite.candidateId, ...candidateData },
+            persona: settings.persona || null,
+            branding: settings.branding || null,
+            job: jobDetails,
         };
     } catch (error: any) {
         if (error.code) throw error; // Re-throw HttpsError
         logger.error("Error resolving interview token", error);
         throw new HttpsError('internal', 'Failed to resolve interview token.');
+    }
+});
+
+/**
+ * 16. SAVE INTERVIEW SESSION (Callable)
+ *
+ * Saves a completed interview session for token-based (unauthenticated) candidates.
+ */
+export const saveInterviewSession = onCall(functionConfig as any, async (request) => {
+    const { orgId, candidateId, session } = request.data;
+
+    if (!orgId || !candidateId || !session) {
+        throw new HttpsError('invalid-argument', 'Missing orgId, candidateId, or session.');
+    }
+
+    try {
+        const db = getFirestore();
+        const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+        const candidateDoc = await candidateRef.get();
+
+        if (!candidateDoc.exists) {
+            throw new HttpsError('not-found', 'Candidate not found.');
+        }
+
+        const data = candidateDoc.data()!;
+        const interviews = data.interviews || [];
+        interviews.push(session);
+
+        await candidateRef.update({ interviews });
+        return { success: true };
+    } catch (error: any) {
+        if (error.code) throw error;
+        logger.error("Error saving interview session", error);
+        throw new HttpsError('internal', 'Failed to save interview session.');
     }
 });
 

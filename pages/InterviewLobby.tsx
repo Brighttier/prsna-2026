@@ -12,6 +12,10 @@ interface InviteData {
     orgId: string;
     assessmentId: string | null;
     sessionId: string | null;
+    candidate: any;
+    persona: any;
+    branding: any;
+    job: any;
 }
 
 const Step = ({ active, completed, number, title }: any) => (
@@ -134,7 +138,13 @@ export const InterviewLobby = () => {
             navigate('/interview/room', {
                 state: {
                     candidateId: inviteData.candidateId,
-                    assessmentId: inviteData.assessmentId
+                    assessmentId: inviteData.assessmentId,
+                    orgId: inviteData.orgId,
+                    candidate: inviteData.candidate,
+                    persona: inviteData.persona,
+                    branding: inviteData.branding,
+                    job: inviteData.job,
+                    tokenMode: true,
                 }
             });
         } else {

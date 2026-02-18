@@ -54,7 +54,16 @@ export const InterviewRoom = () => {
 
    const candidateId = location.state?.candidateId;
    const assessmentId = location.state?.assessmentId;
-   const [candidate] = useState(candidateId ? store.getState().candidates.find(c => c.id === candidateId) : null);
+   const isTokenMode = location.state?.tokenMode;
+
+   // In token mode, candidate data comes from navigation state (via Cloud Function)
+   // In normal mode, it comes from the store
+   const [candidate] = useState(() => {
+      if (isTokenMode && location.state?.candidate) {
+         return location.state.candidate;
+      }
+      return candidateId ? store.getState().candidates.find(c => c.id === candidateId) : null;
+   });
 
    const [systemInstruction, setSystemInstruction] = useState<string>('');
 
@@ -62,17 +71,31 @@ export const InterviewRoom = () => {
    useEffect(() => {
       if (candidate) {
          import('../services/ai').then(({ startInterviewSession }) => {
-            const state = store.getState();
-            const persona = state.settings.persona;
-            const realJob = state.jobs.find(j => j.id === candidate.jobId);
-            const orgId = state.orgId;
+            let persona, orgId, jobDetails;
 
-            // Use real job if available, otherwise fallback to mock
-            const jobDetails = realJob || {
-               title: candidate.role,
-               department: 'Engineering',
-               company: state.settings.branding.companyName || 'Prsna'
-            };
+            if (isTokenMode) {
+               // Use data passed from InterviewLobby (resolved via Cloud Function)
+               persona = location.state?.persona;
+               orgId = location.state?.orgId;
+               const job = location.state?.job;
+               const branding = location.state?.branding;
+               jobDetails = job || {
+                  title: candidate.role || location.state?.candidate?.role || 'Engineer',
+                  department: 'Engineering',
+                  company: branding?.companyName || 'Prsna'
+               };
+            } else {
+               // Normal authenticated mode — read from store
+               const state = store.getState();
+               persona = state.settings.persona;
+               orgId = state.orgId;
+               const realJob = state.jobs.find(j => j.id === candidate.jobId);
+               jobDetails = realJob || {
+                  title: candidate.role,
+                  department: 'Engineering',
+                  company: state.branding.companyName || 'Prsna'
+               };
+            }
 
             startInterviewSession(candidate, jobDetails as any, persona, orgId, assessmentId).then(data => {
                setSystemInstruction(data.systemInstruction);
@@ -161,7 +184,7 @@ export const InterviewRoom = () => {
 
       let videoUrl = '';
       const sessionId = Math.random().toString(36).substr(2, 9);
-      const orgId = store.getState().orgId;
+      const orgId = isTokenMode ? location.state?.orgId : store.getState().orgId;
 
       // Stop Recording and Upload
       if (mediaRecorderRef.current && isRecording && candidateId && orgId) {
@@ -193,7 +216,8 @@ export const InterviewRoom = () => {
             const session: InterviewSession = {
                id: sessionId,
                date: new Date().toLocaleDateString(),
-               type: 'Lumina Live Interview', // Renamed from Technical
+               mode: 'AI',
+               type: 'Lumina Live Interview',
                status: 'Completed',
                score: data.score || 0,
                sentiment: data.sentiment || 'Neutral',
@@ -207,13 +231,25 @@ export const InterviewRoom = () => {
                videoUrl: videoUrl // Link video
             };
 
-            store.addInterviewSession(candidateId, session);
+            // In token mode, save via Cloud Function since store isn't loaded
+            if (isTokenMode) {
+               const { httpsCallable, functions } = await import('../services/firebase');
+               const saveFn = httpsCallable(functions, 'saveInterviewSession');
+               await saveFn({ orgId, candidateId, session }).catch(err => console.error("Failed to save via function", err));
+            } else {
+               store.addInterviewSession(candidateId, session);
+            }
          } catch (e) {
             console.error("Failed to save session", e);
          }
       }
 
-      navigate('/dashboard');
+      // Token-mode candidates see a completion page, not admin dashboard
+      if (isTokenMode) {
+         navigate('/interview-complete');
+      } else {
+         navigate('/dashboard');
+      }
    };
 
    return (

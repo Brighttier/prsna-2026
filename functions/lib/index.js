@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveInterviewToken = exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
+exports.saveInterviewSession = exports.resolveInterviewToken = exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
@@ -1044,6 +1044,23 @@ exports.resolveInterviewToken = (0, https_1.onCall)(functionConfig, async (reque
         const candidateData = candidateDoc.data();
         const interviews = candidateData.interviews || [];
         const session = interviews.find((i) => i.token === token && i.status === 'Upcoming');
+        // Fetch org settings (persona, branding) for the interview room
+        const orgDoc = await db.collection('organizations').doc(invite.orgId).get();
+        const orgData = orgDoc.exists ? orgDoc.data() : {};
+        const settings = orgData.settings || {};
+        // Fetch job details if candidate has jobId
+        let jobDetails = null;
+        if (candidateData.jobId) {
+            const jobDoc = await db
+                .collection('organizations')
+                .doc(invite.orgId)
+                .collection('jobs')
+                .doc(candidateData.jobId)
+                .get();
+            if (jobDoc.exists) {
+                jobDetails = { id: jobDoc.id, ...jobDoc.data() };
+            }
+        }
         return {
             candidateId: invite.candidateId,
             candidateName: invite.candidateName,
@@ -1051,6 +1068,10 @@ exports.resolveInterviewToken = (0, https_1.onCall)(functionConfig, async (reque
             orgId: invite.orgId,
             assessmentId: invite.assessmentId || session?.assessmentId || null,
             sessionId: session?.id || null,
+            candidate: { id: invite.candidateId, ...candidateData },
+            persona: settings.persona || null,
+            branding: settings.branding || null,
+            job: jobDetails,
         };
     }
     catch (error) {
@@ -1058,6 +1079,36 @@ exports.resolveInterviewToken = (0, https_1.onCall)(functionConfig, async (reque
             throw error; // Re-throw HttpsError
         logger.error("Error resolving interview token", error);
         throw new https_1.HttpsError('internal', 'Failed to resolve interview token.');
+    }
+});
+/**
+ * 16. SAVE INTERVIEW SESSION (Callable)
+ *
+ * Saves a completed interview session for token-based (unauthenticated) candidates.
+ */
+exports.saveInterviewSession = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { orgId, candidateId, session } = request.data;
+    if (!orgId || !candidateId || !session) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing orgId, candidateId, or session.');
+    }
+    try {
+        const db = (0, firestore_1.getFirestore)();
+        const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+        const candidateDoc = await candidateRef.get();
+        if (!candidateDoc.exists) {
+            throw new https_1.HttpsError('not-found', 'Candidate not found.');
+        }
+        const data = candidateDoc.data();
+        const interviews = data.interviews || [];
+        interviews.push(session);
+        await candidateRef.update({ interviews });
+        return { success: true };
+    }
+    catch (error) {
+        if (error.code)
+            throw error;
+        logger.error("Error saving interview session", error);
+        throw new https_1.HttpsError('internal', 'Failed to save interview session.');
     }
 });
 //# sourceMappingURL=index.js.map
