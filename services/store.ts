@@ -419,26 +419,55 @@ class Store {
         this.platformAdminListening = true;
 
         console.log("[Store] Initializing Platform Admin Listeners...");
-        const tenantsUnsub = onSnapshot(collection(db, 'organizations'), (snapshot) => {
-            this.state.tenants = snapshot.docs.map(doc => {
-                const data = doc.data();
+        const tenantsUnsub = onSnapshot(collection(db, 'organizations'), async (snapshot) => {
+            const { getCountFromServer } = await import('firebase/firestore');
+
+            const tenantPromises = snapshot.docs.map(async (orgDoc) => {
+                const data = orgDoc.data();
+                const orgId = orgDoc.id;
+
+                // Get real counts from sub-collections
+                let candidatesCount = 0;
+                let jobsCount = 0;
+                let membersCount = 0;
+                try {
+                    const [candSnap, jobsSnap, membersSnap] = await Promise.all([
+                        getCountFromServer(collection(db, 'organizations', orgId, 'candidates')),
+                        getCountFromServer(collection(db, 'organizations', orgId, 'jobs')),
+                        getCountFromServer(collection(db, 'organizations', orgId, 'invitations'))
+                    ]);
+                    candidatesCount = candSnap.data().count;
+                    jobsCount = jobsSnap.data().count;
+                    membersCount = membersSnap.data().count + 1; // +1 for owner
+                } catch (e) {
+                    console.warn(`[Store] Failed to count sub-collections for ${orgId}`, e);
+                }
+
+                // Derive usage tier from candidate volume
+                const apiUsage: Tenant['apiUsage'] =
+                    candidatesCount > 100 ? 'Critical' :
+                    candidatesCount > 50 ? 'High' :
+                    candidatesCount > 10 ? 'Medium' : 'Low';
+
                 return {
-                    id: doc.id,
-                    name: data.name || data.settings?.branding?.companyName || 'Unnamed Organization',
-                    plan: data.plan || 'Free',
-                    usersCount: data.usersCount || 0,
-                    apiUsage: data.apiUsage || 'Low',
+                    id: orgId,
+                    name: data.settings?.branding?.companyName || data.name || 'Unnamed Organization',
+                    plan: data.plan || 'Starter',
+                    usersCount: membersCount,
+                    apiUsage,
                     status: data.status || 'Active',
                     spend: data.spend || 0,
                     createdAt: data.createdAt || new Date().toISOString()
                 } as Tenant;
             });
 
+            this.state.tenants = await Promise.all(tenantPromises);
+
             // Calculate aggregate stats
             const stats = this.state.tenants.reduce((acc, tenant) => {
-                acc.totalRevenue += tenant.spend * 1.5; // Example calc
+                acc.totalRevenue += tenant.spend * 1.5;
                 acc.infraOverhead += tenant.spend;
-                acc.computeCredits += (tenant.apiUsage === 'High' ? 500000 : 100000);
+                acc.computeCredits += (tenant.apiUsage === 'High' || tenant.apiUsage === 'Critical' ? 500000 : 100000);
                 return acc;
             }, { totalRevenue: 0, infraOverhead: 0, computeCredits: 0, netProfit: 0 });
 
