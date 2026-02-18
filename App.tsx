@@ -36,7 +36,13 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       if (!user) {
         setIsLoaded(true);
         // If we are on a protected page and user logs out, go to login
-        const isProtected = !['/login', '/', '/onboarding'].includes(location.pathname) && !location.pathname.startsWith('/career/');
+        // Public routes: login, landing, onboarding, career pages, interview flows, offer portal, onboarding portal
+        const isPublic = ['/login', '/', '/onboarding'].includes(location.pathname) ||
+          location.pathname.startsWith('/career/') ||
+          location.pathname.includes('/interview') ||
+          location.pathname.includes('/offer') ||
+          location.pathname.startsWith('/onboarding-portal/');
+        const isProtected = !isPublic;
         if (isProtected) {
           navigate('/login');
         }
