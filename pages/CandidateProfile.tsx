@@ -55,6 +55,8 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
             const expiryDate = new Date();
             expiryDate.setDate(expiryDate.getDate() + expiryDays);
 
+            const interviewToken = mode === 'AI' ? crypto.randomUUID() : undefined;
+
             const newSession: InterviewSession = {
                 id: Math.random().toString(36).substr(2, 9),
                 date: mode === 'AI' ? 'Immediate' : new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -62,6 +64,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                 timezone: mode === 'Face-to-Face' ? timezone : undefined,
                 expiryDate: mode === 'AI' ? expiryDate.toLocaleDateString() : undefined,
                 assessmentId: mode === 'AI' ? selectedAssessmentId : undefined,
+                token: interviewToken,
                 mode: mode,
                 type: mode === 'AI' ? 'Lumina AI Interview' : type,
                 status: 'Upcoming',
@@ -69,9 +72,9 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                 platform: mode === 'Face-to-Face' && includeMeet ? platform : undefined
             };
 
-            if (mode === 'AI') {
-                // Trigger the backend email via Store
-                store.sendAiInterviewInvite(candidate.id, candidate.email)
+            if (mode === 'AI' && interviewToken) {
+                // Trigger the backend email via Store with secure token
+                store.sendAiInterviewInvite(candidate.id, candidate.email, interviewToken, selectedAssessmentId)
                     .then(() => console.log("AI Invite sent to backend"))
                     .catch(err => console.error("Failed to send AI invite", err));
             }

@@ -111,6 +111,7 @@ export default function App() {
           <Route path="/candidates/:id" element={<CandidateProfile />} />
           <Route path="/resume-screener" element={<ResumeScreener />} />
           <Route path="/interview-lobby" element={<InterviewLobby />} />
+          <Route path="/interview-invite/:token" element={<InterviewLobby />} />
           <Route path="/interview/room" element={<InterviewRoom />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/platform-admin" element={<PlatformAdmin />} />

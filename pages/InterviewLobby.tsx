@@ -1,8 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { ShieldCheck, Camera, RefreshCw, CheckCircle, ArrowRight, Monitor, Scan, User as UserIcon, CreditCard, AlertCircle, Users } from 'lucide-react';
+import { ShieldCheck, Camera, RefreshCw, CheckCircle, ArrowRight, Monitor, CreditCard, AlertCircle, Users, Loader2 } from 'lucide-react';
 import { store } from '../services/store';
+import { httpsCallable, functions } from '../services/firebase';
+
+interface InviteData {
+    candidateId: string;
+    candidateName: string;
+    jobTitle: string;
+    orgId: string;
+    assessmentId: string | null;
+    sessionId: string | null;
+}
 
 const Step = ({ active, completed, number, title }: any) => (
     <div className={`flex items-center gap-2 ${active ? 'opacity-100' : 'opacity-40 grayscale'}`}>
@@ -17,6 +27,12 @@ const Step = ({ active, completed, number, title }: any) => (
 export const InterviewLobby = () => {
     const navigate = useNavigate();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const { token } = useParams<{ token: string }>();
+
+    // Token-based invite data
+    const [inviteData, setInviteData] = useState<InviteData | null>(null);
+    const [tokenLoading, setTokenLoading] = useState(!!token);
+    const [tokenError, setTokenError] = useState('');
 
     // Overall Process Step
     const [step, setStep] = useState(1);
@@ -30,10 +46,34 @@ export const InterviewLobby = () => {
     const [analyzing, setAnalyzing] = useState(false);
     const [scanProgress, setScanProgress] = useState(0);
 
-    // Candidate Selection
+    // Legacy admin mode (no token)
     const [candidates] = useState(store.getState().candidates);
     const [searchParams] = useSearchParams();
     const [selectedCandidateId, setSelectedCandidateId] = useState(searchParams.get('candidateId') || '');
+
+    const isTokenMode = !!token;
+
+    // Resolve token on mount
+    useEffect(() => {
+        if (!token) return;
+
+        const resolve = async () => {
+            try {
+                const resolveFn = httpsCallable(functions, 'resolveInterviewToken');
+                const result = await resolveFn({ token });
+                const data = result.data as InviteData;
+                setInviteData(data);
+                setSelectedCandidateId(data.candidateId);
+            } catch (err: any) {
+                console.error('Failed to resolve interview token:', err);
+                setTokenError(err.message || 'Invalid or expired interview link.');
+            } finally {
+                setTokenLoading(false);
+            }
+        };
+
+        resolve();
+    }, [token]);
 
     // Initialize Camera
     useEffect(() => {
@@ -70,7 +110,6 @@ export const InterviewLobby = () => {
 
     const processVerification = () => {
         setVerificationStage('processing');
-        // Simulate AI matching
         setTimeout(() => {
             setVerificationStage('success');
         }, 2500);
@@ -80,7 +119,7 @@ export const InterviewLobby = () => {
         setAnalyzing(true);
         let progress = 0;
         const interval = setInterval(() => {
-            progress += 2; // Faster for demo
+            progress += 2;
             setScanProgress(progress);
             if (progress >= 100) {
                 clearInterval(interval);
@@ -90,8 +129,60 @@ export const InterviewLobby = () => {
         }, 50);
     };
 
+    const handleEnterRoom = () => {
+        if (isTokenMode && inviteData) {
+            navigate('/interview/room', {
+                state: {
+                    candidateId: inviteData.candidateId,
+                    assessmentId: inviteData.assessmentId
+                }
+            });
+        } else {
+            const candidate = candidates.find(c => c.id === selectedCandidateId);
+            const upcomingAiSession = candidate?.interviews?.find(i => i.status === 'Upcoming' && i.mode === 'AI');
+            navigate('/interview/room', {
+                state: {
+                    candidateId: selectedCandidateId,
+                    assessmentId: upcomingAiSession?.assessmentId
+                }
+            });
+        }
+    };
+
+    // Token loading state
+    if (tokenLoading) {
+        return (
+            <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4">
+                <Loader2 className="w-10 h-10 text-brand-600 animate-spin mb-4" />
+                <p className="text-slate-600 font-medium">Verifying your interview link...</p>
+            </div>
+        );
+    }
+
+    // Token error state
+    if (tokenError) {
+        return (
+            <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Invalid Interview Link</h2>
+                <p className="text-slate-500 max-w-md text-center">{tokenError}</p>
+                <p className="text-slate-400 text-sm mt-4">Please contact the recruiter for a new invitation.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 font-sans">
+
+            {/* Welcome banner for token-based access */}
+            {isTokenMode && inviteData && step === 1 && verificationStage === 'selfie' && !selfieImage && (
+                <div className="w-full max-w-2xl mb-6 text-center">
+                    <h1 className="text-3xl font-black text-slate-900 mb-1">Welcome, {inviteData.candidateName}</h1>
+                    <p className="text-slate-500">AI Interview for <span className="font-semibold text-slate-700">{inviteData.jobTitle}</span></p>
+                </div>
+            )}
 
             {/* Stepper */}
             <div className="w-full max-w-3xl mb-12 flex justify-center">
@@ -295,36 +386,46 @@ export const InterviewLobby = () => {
                         <div className="w-24 h-24 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
                             <CheckCircle className="w-12 h-12 text-brand-600" />
                         </div>
-                        <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100 text-left max-w-md mx-auto">
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Confirm Identity</label>
-                            <select
-                                className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm transition-all"
-                                value={selectedCandidateId}
-                                onChange={(e) => setSelectedCandidateId(e.target.value)}
-                            >
-                                <option value="">Select your profile...</option>
-                                {candidates.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name} ({c.role})</option>
-                                ))}
-                            </select>
-                            <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1.5">
-                                <ShieldCheck className="w-3 h-3 text-brand-500" />
-                                Biometrically linked to your verified credentials.
-                            </p>
-                        </div>
+
+                        {isTokenMode && inviteData ? (
+                            <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100 text-left max-w-md mx-auto">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center">
+                                        <CheckCircle className="w-5 h-5 text-brand-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-900">{inviteData.candidateName}</p>
+                                        <p className="text-xs text-slate-500">{inviteData.jobTitle}</p>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3 h-3 text-brand-500" />
+                                    Identity verified. Ready to begin your AI interview.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100 text-left max-w-md mx-auto">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Confirm Identity</label>
+                                <select
+                                    className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm transition-all"
+                                    value={selectedCandidateId}
+                                    onChange={(e) => setSelectedCandidateId(e.target.value)}
+                                >
+                                    <option value="">Select your profile...</option>
+                                    {candidates.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name} ({c.role})</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3 h-3 text-brand-500" />
+                                    Biometrically linked to your verified credentials.
+                                </p>
+                            </div>
+                        )}
 
                         <button
-                            onClick={() => {
-                                const candidate = candidates.find(c => c.id === selectedCandidateId);
-                                const upcomingAiSession = candidate?.interviews?.find(i => i.status === 'Upcoming' && i.mode === 'AI');
-                                navigate('/interview/room', {
-                                    state: {
-                                        candidateId: selectedCandidateId,
-                                        assessmentId: upcomingAiSession?.assessmentId
-                                    }
-                                });
-                            }}
-                            disabled={!selectedCandidateId}
+                            onClick={handleEnterRoom}
+                            disabled={!isTokenMode && !selectedCandidateId}
                             className="inline-flex items-center gap-2 bg-brand-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-brand-700 transition-all transform hover:scale-105 shadow-xl shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         >
                             Enter Interview Room <ArrowRight className="w-5 h-5" />

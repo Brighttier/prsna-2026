@@ -39,6 +39,7 @@ export interface InterviewSession {
     timezone?: string;
     expiryDate?: string;
     assessmentId?: string;
+    token?: string;
     mode: 'AI' | 'Face-to-Face';
     type: string;
     status: 'Upcoming' | 'Completed' | 'Cancelled';
@@ -675,15 +676,24 @@ class Store {
         }
     }
 
-    async sendAiInterviewInvite(candidateId: string, email: string) {
+    async sendAiInterviewInvite(candidateId: string, email: string, token: string, assessmentId?: string) {
         const candidate = this.state.candidates.find(c => c.id === candidateId);
-        if (!candidate) return;
+        if (!candidate || !this.orgId) return;
 
         try {
+            // Save interview invite mapping doc for token-based access
+            await setDoc(doc(db, 'interviewInvites', token), {
+                orgId: this.orgId,
+                candidateId,
+                assessmentId: assessmentId || null,
+                candidateName: candidate.name,
+                jobTitle: candidate.role,
+                email,
+                createdAt: new Date().toISOString(),
+            });
+
             const sendInviteFn = httpsCallable(functions, 'sendAiInterviewInvite');
-            // Assuming we have an interview prep/start page like /interview/:candidateId
-            // Point to the lobby with pre-filled candidate ID
-            const interviewUrl = `${window.location.origin}/interview-lobby?candidateId=${candidateId}`;
+            const interviewUrl = `${window.location.origin}/#/interview-invite/${token}`;
 
             await sendInviteFn({
                 email,

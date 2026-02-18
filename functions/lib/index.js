@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
+exports.resolveInterviewToken = exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
@@ -998,6 +998,53 @@ exports.sendOnboardingInvite = (0, https_1.onCall)(functionConfig, async (reques
     catch (error) {
         logger.error("Error sending onboarding invite", error);
         throw new https_1.HttpsError('internal', error.message);
+    }
+});
+/**
+ * 15. RESOLVE INTERVIEW TOKEN (Callable)
+ *
+ * Resolves an interview invite token to candidate/session data.
+ * Does NOT require authentication — candidates access this without login.
+ */
+exports.resolveInterviewToken = (0, https_1.onCall)(functionConfig, async (request) => {
+    const { token } = request.data;
+    if (!token) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing "token".');
+    }
+    try {
+        const db = (0, firestore_1.getFirestore)();
+        const inviteDoc = await db.collection('interviewInvites').doc(token).get();
+        if (!inviteDoc.exists) {
+            throw new https_1.HttpsError('not-found', 'Invalid or expired interview link.');
+        }
+        const invite = inviteDoc.data();
+        // Fetch the candidate doc to get the upcoming AI interview session
+        const candidateDoc = await db
+            .collection('organizations')
+            .doc(invite.orgId)
+            .collection('candidates')
+            .doc(invite.candidateId)
+            .get();
+        if (!candidateDoc.exists) {
+            throw new https_1.HttpsError('not-found', 'Candidate not found.');
+        }
+        const candidateData = candidateDoc.data();
+        const interviews = candidateData.interviews || [];
+        const session = interviews.find((i) => i.token === token && i.status === 'Upcoming');
+        return {
+            candidateId: invite.candidateId,
+            candidateName: invite.candidateName,
+            jobTitle: invite.jobTitle,
+            orgId: invite.orgId,
+            assessmentId: invite.assessmentId || session?.assessmentId || null,
+            sessionId: session?.id || null,
+        };
+    }
+    catch (error) {
+        if (error.code)
+            throw error; // Re-throw HttpsError
+        logger.error("Error resolving interview token", error);
+        throw new https_1.HttpsError('internal', 'Failed to resolve interview token.');
     }
 });
 //# sourceMappingURL=index.js.map
