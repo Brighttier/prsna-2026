@@ -48,8 +48,6 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                 } else {
                     meetLink = `https://teams.microsoft.com/l/meetup-join/${Math.random().toString(36).substring(2, 15)}`;
                 }
-            } else if (mode === 'AI') {
-                meetLink = `https://lumina.recruit.ai/v1/session/${Math.random().toString(36).substring(2, 15)}?token=${Math.random().toString(36).substring(2, 10)}`;
             }
 
             const expiryDate = new Date();
