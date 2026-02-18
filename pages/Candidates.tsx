@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
-import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, Clock, Mail, MessageSquare, ChevronDown, User, Briefcase, Download, Plus, Users, ChevronRight } from 'lucide-react';
+import { Search, Filter, Eye, EyeOff, MoreHorizontal, CheckCircle, Clock, Mail, MessageSquare, ChevronDown, User, Briefcase, Download, Plus, Users, ChevronRight, Trash2 } from 'lucide-react';
 import { CandidateAvatar } from '../components/CandidateAvatar';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Candidate } from '../types';
@@ -16,6 +16,7 @@ export const Candidates = () => {
     const [filterStage, setFilterStage] = useState('All Stages');
     const [blindMode, setBlindMode] = useState(false);
     const [candidates, setCandidates] = useState(store.getState().candidates);
+    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
     useEffect(() => {
         return store.subscribe(() => {
@@ -194,9 +195,30 @@ export const Candidates = () => {
                                             <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Chat" onClick={(e) => e.stopPropagation()}>
                                                 <MessageSquare className="w-4 h-4" />
                                             </button>
-                                            <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" onClick={(e) => e.stopPropagation()}>
-                                                <MoreHorizontal className="w-4 h-4" />
-                                            </button>
+                                            {deleteConfirm === candidate.id ? (
+                                                <button
+                                                    className="px-2.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        await store.deleteCandidate(candidate.id);
+                                                        setDeleteConfirm(null);
+                                                    }}
+                                                >
+                                                    Confirm
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Delete Candidate"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteConfirm(candidate.id);
+                                                        setTimeout(() => setDeleteConfirm(null), 3000);
+                                                    }}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

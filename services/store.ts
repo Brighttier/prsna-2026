@@ -531,6 +531,16 @@ class Store {
         }
     }
 
+    async deleteCandidate(id: string) {
+        if (!this.orgId) return;
+        try {
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(doc(db, 'organizations', this.orgId, 'candidates', id));
+        } catch (e) {
+            console.error("Error deleting candidate: ", e);
+        }
+    }
+
     async addInterviewSession(candidateId: string, session: InterviewSession) {
         const candidate = this.state.candidates.find(c => c.id === candidateId);
         if (candidate) {
