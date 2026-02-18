@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { User } from 'lucide-react';
+import { User, Volume2, VolumeX } from 'lucide-react';
 
 interface CandidateAvatarProps {
     avatar?: string;
@@ -18,6 +18,7 @@ export const CandidateAvatar: React.FC<CandidateAvatarProps> = ({
 }) => {
     const [isHovering, setIsHovering] = useState(false);
     const [videoReady, setVideoReady] = useState(false);
+    const [isMuted, setIsMuted] = useState(true);
     const videoRef = useRef<HTMLVideoElement>(null);
     const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -29,9 +30,17 @@ export const CandidateAvatar: React.FC<CandidateAvatarProps> = ({
         if (!videoUrl || blindMode) return;
         hoverTimeoutRef.current = setTimeout(() => {
             setIsHovering(true);
+            setIsMuted(true);
             if (videoRef.current) {
+                videoRef.current.muted = true;
                 videoRef.current.currentTime = 0;
-                videoRef.current.play().catch(() => {});
+                videoRef.current.play().then(() => {
+                    // Autoplay succeeded muted — try to unmute
+                    if (videoRef.current) {
+                        videoRef.current.muted = false;
+                        setIsMuted(false);
+                    }
+                }).catch(() => {});
             }
         }, 200);
     }, [videoUrl, blindMode]);
@@ -40,9 +49,18 @@ export const CandidateAvatar: React.FC<CandidateAvatarProps> = ({
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         setIsHovering(false);
         setVideoReady(false);
+        setIsMuted(true);
         if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
+        }
+    }, []);
+
+    const toggleMute = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (videoRef.current) {
+            videoRef.current.muted = !videoRef.current.muted;
+            setIsMuted(videoRef.current.muted);
         }
     }, []);
 
@@ -58,7 +76,7 @@ export const CandidateAvatar: React.FC<CandidateAvatarProps> = ({
 
     return (
         <div
-            className={`relative ${sizeClasses} overflow-hidden ${borderClasses} cursor-pointer`}
+            className={`relative ${sizeClasses} overflow-hidden ${borderClasses} cursor-pointer group`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -72,6 +90,7 @@ export const CandidateAvatar: React.FC<CandidateAvatarProps> = ({
                 <video
                     ref={videoRef}
                     src={isHovering ? videoUrl : undefined}
+                    muted
                     playsInline
                     loop
                     preload="none"
@@ -80,8 +99,18 @@ export const CandidateAvatar: React.FC<CandidateAvatarProps> = ({
                 />
             )}
 
+            {/* Sound toggle for large avatar */}
+            {isLg && isHovering && videoReady && videoUrl && (
+                <button
+                    onClick={toggleMute}
+                    className="absolute bottom-1.5 right-1.5 p-1 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors z-10"
+                >
+                    {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                </button>
+            )}
+
             {isHovering && videoUrl && !videoReady && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-inherit">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                     <div className={`bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center ${isLg ? 'w-8 h-8' : 'w-5 h-5'}`}>
                         <div className={`w-0 h-0 border-t-transparent border-b-transparent ${isLg ? 'border-l-[8px] border-t-[5px] border-b-[5px] ml-0.5' : 'border-l-[5px] border-t-[3px] border-b-[3px] ml-px'} border-l-black/70`} />
                     </div>
