@@ -693,7 +693,7 @@ class Store {
             });
 
             const sendInviteFn = httpsCallable(functions, 'sendAiInterviewInvite');
-            const interviewUrl = `${window.location.origin}/#/interview-invite/${token}`;
+            const interviewUrl = `${window.location.origin}/interview-invite/${token}`;
 
             await sendInviteFn({
                 email,

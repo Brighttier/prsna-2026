@@ -10,6 +10,19 @@
 </head>
 
 <body>
+  <script>
+    // Redirect clean paths to HashRouter equivalents (email clients strip # fragments)
+    (function() {
+      var p = window.location.pathname;
+      var routes = ['/interview-invite/', '/offer/', '/onboarding-portal/', '/career/'];
+      for (var i = 0; i < routes.length; i++) {
+        if (p.indexOf(routes[i]) === 0) {
+          window.location.replace(window.location.origin + '/#' + p);
+          return;
+        }
+      }
+    })();
+  </script>
   <div id="root"></div>
 </body>
 
