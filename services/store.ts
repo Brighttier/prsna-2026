@@ -555,7 +555,9 @@ class Store {
     async updateCandidate(id: string, updates: Partial<ExtendedCandidate>) {
         if (!this.orgId) return;
         try {
-            await updateDoc(doc(db, 'organizations', this.orgId, 'candidates', id), updates as any);
+            // Firestore rejects undefined values — strip them recursively
+            const clean = JSON.parse(JSON.stringify(updates));
+            await updateDoc(doc(db, 'organizations', this.orgId, 'candidates', id), clean);
         } catch (e) {
             console.error("Error updating candidate: ", e);
         }
@@ -681,24 +683,19 @@ class Store {
         if (!candidate || !this.orgId) return;
 
         try {
-            // Save interview invite mapping doc for token-based access
-            await setDoc(doc(db, 'interviewInvites', token), {
-                orgId: this.orgId,
-                candidateId,
-                assessmentId: assessmentId || null,
-                candidateName: candidate.name,
-                jobTitle: candidate.role,
-                email,
-                createdAt: new Date().toISOString(),
-            });
-
             const sendInviteFn = httpsCallable(functions, 'sendAiInterviewInvite');
             const interviewUrl = `${window.location.origin}/interview-invite/${token}`;
 
+            // Cloud Function creates the interviewInvites doc (Admin SDK) and sends the email
             await sendInviteFn({
                 email,
                 jobTitle: candidate.role,
-                interviewUrl
+                interviewUrl,
+                token,
+                orgId: this.orgId,
+                candidateId,
+                candidateName: candidate.name,
+                assessmentId: assessmentId || null,
             });
             console.log(`[Store] AI Interview invite sent to ${email}`);
         } catch (e) {

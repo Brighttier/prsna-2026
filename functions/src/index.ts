@@ -939,13 +939,27 @@ export const sendOfferLetter = onCall(functionConfig as any, async (request) => 
  * Sends an AI interview invitation email to the candidate.
  */
 export const sendAiInterviewInvite = onCall(functionConfig as any, async (request) => {
-    const { email, jobTitle, interviewUrl } = request.data;
+    const { email, jobTitle, interviewUrl, token, orgId, candidateId, candidateName, assessmentId } = request.data;
 
     if (!email || !jobTitle || !interviewUrl) {
         throw new HttpsError('invalid-argument', 'Missing "email", "jobTitle", or "interviewUrl".');
     }
 
     try {
+        // Save interview invite mapping doc for token-based access (Admin SDK bypasses rules)
+        if (token && orgId && candidateId) {
+            const db = getFirestore();
+            await db.collection('interviewInvites').doc(token).set({
+                orgId,
+                candidateId,
+                assessmentId: assessmentId || null,
+                candidateName: candidateName || '',
+                jobTitle,
+                email,
+                createdAt: new Date().toISOString(),
+            });
+        }
+
         if (resendApiKey.value()) {
             await sendSecureLinkEmail({
                 to: email,
