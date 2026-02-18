@@ -8,9 +8,6 @@ import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { getAuth } from "firebase-admin/auth";
-const pdf = require('pdf-parse');
-const mammoth = require('mammoth');
-const WordExtractor = require('word-extractor');
 
 initializeApp();
 
@@ -19,6 +16,7 @@ const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const resendApiKey = defineSecret("RESEND_API_KEY");
 
 import { sendSecureLinkEmail } from './utils/email';
+import { generateEmbedding, calculateCosineSimilarity } from './utils/embeddings';
 
 // Configuration for scalable V2 functions
 const functionConfig = {
@@ -40,6 +38,37 @@ const getGenAIClient = () => {
     }
     return new GoogleGenAI({ apiKey });
 };
+
+// --- HELPER: Extract text from any document using Gemini multimodal ---
+const MIME_MAP: Record<string, string> = {
+    '.pdf': 'application/pdf',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.doc': 'application/msword'
+};
+
+async function extractTextFromFile(fileBuffer: Buffer, filePath: string): Promise<string> {
+    const ext = '.' + filePath.toLowerCase().split('.').pop();
+    const mimeType = MIME_MAP[ext];
+    if (!mimeType) return '';
+
+    const genAI = getGenAIClient();
+    const base64 = fileBuffer.toString('base64');
+
+    const response = await genAI.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [
+            {
+                role: 'user',
+                parts: [
+                    { inlineData: { mimeType, data: base64 } },
+                    { text: 'Extract ALL text content from this document verbatim. Return only the raw text, preserving structure. Do not summarize or interpret.' }
+                ]
+            }
+        ]
+    });
+
+    return response.text?.trim() || '';
+}
 
 // --- HELPER: Analyze Resume Logic (Shared) ---
 async function analyzeResumeContent(resumeText: string, jobDescription: string) {
@@ -138,17 +167,7 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
                 const storagePath = decodeURIComponent(pathWithMedia).split('?')[0];
                 const [fileBuffer] = await bucket.file(storagePath).download();
 
-                if (storagePath.toLowerCase().endsWith('.pdf')) {
-                    const data = await pdf(fileBuffer);
-                    resumeText = data.text;
-                } else if (storagePath.toLowerCase().endsWith('.docx')) {
-                    const res = await mammoth.extractRawText({ buffer: fileBuffer });
-                    resumeText = res.value;
-                } else if (storagePath.toLowerCase().endsWith('.doc')) {
-                    const ext = new WordExtractor();
-                    const d = await ext.extract(fileBuffer);
-                    resumeText = d.getBody();
-                }
+                resumeText = await extractTextFromFile(fileBuffer, storagePath);
             }
         } catch (e) {
             logger.error("Failed to recover text from URL during screening", e);
@@ -180,7 +199,8 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
  */
 export const onNewResumeUpload = onObjectFinalized({
     memory: "1GiB",
-    timeoutSeconds: 300
+    timeoutSeconds: 300,
+    secrets: [geminiApiKey]
 }, async (event) => {
     const filePath = event.data.name; // organization/orgId/candidates/candidateId/resume_name
     const contentType = event.data.contentType;
@@ -227,22 +247,10 @@ export const onNewResumeUpload = onObjectFinalized({
         const [fileBuffer] = await bucket.file(filePath).download();
         logger.info(`Downloaded ${fileBuffer.length} bytes`);
 
-        // 4. Extract Text
-        let resumeText = '';
-        if (isPdf) {
-            logger.info("Parsing PDF");
-            const data = await pdf(fileBuffer);
-            resumeText = data.text || '';
-        } else if (isDocx) {
-            logger.info("Parsing DOCX");
-            const result = await mammoth.extractRawText({ buffer: fileBuffer });
-            resumeText = result.value || '';
-        } else if (isDoc) {
-            logger.info("Parsing DOC");
-            const extractor = new WordExtractor();
-            const doc = await extractor.extract(fileBuffer);
-            resumeText = doc.getBody() || '';
-        }
+        // 4. Extract Text (Gemini Document AI for PDFs, mammoth/word-extractor for Office)
+        const fileName = filePath.split('/').pop() || filePath;
+        logger.info(`Parsing file: ${fileName}`);
+        let resumeText = await extractTextFromFile(fileBuffer, fileName);
 
         resumeText = resumeText.trim();
 
@@ -276,16 +284,9 @@ export const onNewResumeUpload = onObjectFinalized({
         }
 
         if (!jobData) {
-            logger.warn("No matching job found.");
-            // We still update the profile with parsed content but no score
-            const result = await analyzeResumeContent(resumeText, "General Role");
+            logger.warn("No matching job found. Saving parsed text only — no AI analysis without a job.");
             await candidateRef.update({
                 resumeText,
-                name: candidateData.name && !candidateData.name.includes('...') ? candidateData.name : (result.name || candidateData.name),
-                email: candidateData.email || result.email || '',
-                experience: (result.experience || []).map((exp: any, i: number) => ({ id: `exp_${i}`, ...exp })),
-                education: (result.education || []).map((edu: any, i: number) => ({ id: `edu_${i}`, ...edu })),
-                skills: result.skills || [],
                 parsedAt: new Date().toISOString()
             });
             return;
@@ -295,6 +296,55 @@ export const onNewResumeUpload = onObjectFinalized({
         logger.info(`Analyzing with Gemini... (Text: ${resumeText.length} chars)`);
         const result = await analyzeResumeContent(resumeText, jobData.description || jobData.title);
         const finalScore = result.score || result.intelligence?.technicalScore || 0;
+
+        // 6b. Vector Embeddings & Similarity Matching
+        let vectorScore = 0;
+        let resumeEmbedding: number[] = [];
+        try {
+            const apiKey = geminiApiKey.value();
+            if (apiKey) {
+                // Generate Resume Embedding
+                // We construct a rich representation for the embedding
+                const textToEmbed = `
+                Candidate: ${result.name || candidateData.name || 'Unknown'}
+                Role: ${candidateData.role || 'Unknown'}
+                Skills: ${(result.skills || []).join(', ')}
+                Summary: ${result.summary || ''}
+                Experience: ${(result.experience || []).map((e: any) => `${e.role} at ${e.company}`).join('; ')}
+                EXTRACT: ${resumeText.substring(0, 4000)}
+                `.trim();
+
+                resumeEmbedding = await generateEmbedding(apiKey, textToEmbed);
+
+                // Check/Generate Job Embedding
+                if (jobData && (!jobData.embedding || jobData.embedding.length === 0)) {
+                    logger.info(`Generating missing embedding for Job ${candidateData.jobId || 'Unknown'}`);
+                    const jobText = `
+                    Title: ${jobData.title}
+                    Description: ${jobData.description}
+                    Requirements: ${(jobData.requirements || []).join(', ')}
+                    `.trim();
+
+                    const jobEmbedding = await generateEmbedding(apiKey, jobText);
+
+                    if (jobEmbedding.length > 0 && candidateData.jobId) {
+                        // Update Job Doc - do this in background to not block too long, but await for this flow
+                        await db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId).update({
+                            embedding: jobEmbedding
+                        });
+                        jobData.embedding = jobEmbedding;
+                    }
+                }
+
+                if (jobData && jobData.embedding) {
+                    const cosine = calculateCosineSimilarity(resumeEmbedding, jobData.embedding);
+                    vectorScore = Math.round(cosine * 100);
+                    logger.info(`Vector Match Score: ${vectorScore}`);
+                }
+            }
+        } catch (embedError) {
+            logger.error("Embedding generation failed", embedError);
+        }
 
         // Threshold Logic
         const meetsThreshold = settings.autoReportEnabled && finalScore >= (settings.autoReportThreshold || 80);
@@ -308,7 +358,9 @@ export const onNewResumeUpload = onObjectFinalized({
             skills: result.skills || [],
             experience: (result.experience || []).map((exp: any, i: number) => ({ id: `exp_${i}`, ...exp })),
             education: (result.education || []).map((edu: any, i: number) => ({ id: `edu_${i}`, ...edu })),
-            parsedAt: new Date().toISOString()
+            parsedAt: new Date().toISOString(),
+            embedding: resumeEmbedding,
+            vectorMatchScore: vectorScore
         };
 
         // Only save "Report" fields if threshold met
@@ -418,19 +470,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
                     logger.info(`Bucket: ${bucket.name}, Path: ${storagePath}`);
 
                     const [fileBuffer] = await bucket.file(storagePath).download();
-                    const contentType = storagePath.toLowerCase();
-
-                    if (contentType.endsWith('.pdf')) {
-                        const data = await pdf(fileBuffer);
-                        resumeText = data.text;
-                    } else if (contentType.endsWith('.docx')) {
-                        const result = await mammoth.extractRawText({ buffer: fileBuffer });
-                        resumeText = result.value;
-                    } else if (contentType.endsWith('.doc')) {
-                        const extractor = new WordExtractor();
-                        const extracted = await extractor.extract(fileBuffer);
-                        resumeText = extracted.getBody();
-                    }
+                    resumeText = await extractTextFromFile(fileBuffer, storagePath);
 
                     if (resumeText && orgId) {
                         logger.info(`Success! Parsed ${resumeText.length} chars. Caching to DB...`);

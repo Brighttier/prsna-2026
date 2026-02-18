@@ -748,131 +748,132 @@ class Store {
                     { id: 't4', category: 'Legal & Compliance', task: 'Sign Employment Agreement', type: 'upload', completed: false, assignee: 'HR' },
                 ];
 
-            stage: "Hired" as Candidate['stage'],
+            const updates: Partial<ExtendedCandidate> = {
+                stage: "Hired" as Candidate['stage'],
                 onboarding: {
-                hrisSyncStatus: 'Not_Synced',
+                    hrisSyncStatus: 'Not_Synced',
                     tasks: tasks
-            }
-        };
-        await this.updateCandidate(candidateId, updates);
+                }
+            };
+            await this.updateCandidate(candidateId, updates);
 
-        // Automatically send onboarding invite
-        await this.sendOnboardingInvite(candidateId);
+            // Automatically send onboarding invite
+            await this.sendOnboardingInvite(candidateId);
+        }
     }
-}
 
     async updateCandidateStage(id: string, stage: Candidate['stage']) {
-    if (stage === 'Hired') {
-        await this.promoteToHired(id);
-    } else if (stage === 'Rejected') {
-        // Optional: Auto-send rejection? Maybe better to keep it manual to allow personalization or delay.
-        // For now, let's just update the status. The UI can have a button to "Reject & Notify".
-        await this.updateCandidate(id, { stage });
-    } else {
-        await this.updateCandidate(id, { stage });
+        if (stage === 'Hired') {
+            await this.promoteToHired(id);
+        } else if (stage === 'Rejected') {
+            // Optional: Auto-send rejection? Maybe better to keep it manual to allow personalization or delay.
+            // For now, let's just update the status. The UI can have a button to "Reject & Notify".
+            await this.updateCandidate(id, { stage });
+        } else {
+            await this.updateCandidate(id, { stage });
+        }
     }
-}
 
 
     async inviteTeamMember(email: string, role: string = 'Recruiter') {
-    if (!this.orgId) {
-        console.error("[Store] Cannot invite team member: Organization ID is missing.");
-        throw new Error("Organization ID not loaded. Please try again in 5 seconds.");
+        if (!this.orgId) {
+            console.error("[Store] Cannot invite team member: Organization ID is missing.");
+            throw new Error("Organization ID not loaded. Please try again in 5 seconds.");
+        }
+        if (!email) return;
+
+        try {
+            console.log(`[Store] Inviting ${email} to org ${this.orgId} via Cloud Function...`);
+
+            // 1. Call Cloud Function to create User and Set Claims
+            const inviteFn = httpsCallable(functions, 'inviteTeamMember');
+            await inviteFn({
+                email,
+                role,
+                orgId: this.orgId
+            });
+
+            console.log(`[Store] User invitation processed by backend.`);
+
+            // Backend now handles the email sending via Resend
+            console.log(`[Store] Secure invitation link sent to ${email}`);
+
+        } catch (e: any) {
+            console.error("[Store] Error inviting team member: ", e);
+            throw e;
+        }
     }
-    if (!email) return;
-
-    try {
-        console.log(`[Store] Inviting ${email} to org ${this.orgId} via Cloud Function...`);
-
-        // 1. Call Cloud Function to create User and Set Claims
-        const inviteFn = httpsCallable(functions, 'inviteTeamMember');
-        await inviteFn({
-            email,
-            role,
-            orgId: this.orgId
-        });
-
-        console.log(`[Store] User invitation processed by backend.`);
-
-        // Backend now handles the email sending via Resend
-        console.log(`[Store] Secure invitation link sent to ${email}`);
-
-    } catch (e: any) {
-        console.error("[Store] Error inviting team member: ", e);
-        throw e;
-    }
-}
     async revokeInvitation(inviteId: string) {
-    if (!this.orgId) return;
-    try {
-        const { deleteDoc } = await import('firebase/firestore');
-        await deleteDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId));
-        console.log(`Invitation ${inviteId} revoked`);
-    } catch (e) {
-        console.error("Error revoking invitation: ", e);
+        if (!this.orgId) return;
+        try {
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(doc(db, 'organizations', this.orgId, 'invitations', inviteId));
+            console.log(`Invitation ${inviteId} revoked`);
+        } catch (e) {
+            console.error("Error revoking invitation: ", e);
+        }
     }
-}
 
     async publishAssessment(assessment: Partial<AssessmentModule>) {
-    if (!this.orgId) return;
-    try {
-        const id = assessment.id || `asm_${Date.now()}`;
-        await setDoc(doc(db, 'organizations', this.orgId, 'assessments', id), {
-            ...assessment,
-            id: id,
-            updatedAt: new Date().toISOString()
-        }, { merge: true });
-    } catch (e) {
-        console.error("Error publishing assessment: ", e);
+        if (!this.orgId) return;
+        try {
+            const id = assessment.id || `asm_${Date.now()}`;
+            await setDoc(doc(db, 'organizations', this.orgId, 'assessments', id), {
+                ...assessment,
+                id: id,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+        } catch (e) {
+            console.error("Error publishing assessment: ", e);
+        }
     }
-}
 
     async deleteAssessment(id: string) {
-    if (!this.orgId) return;
-    try {
-        const { deleteDoc } = await import('firebase/firestore');
-        await deleteDoc(doc(db, 'organizations', this.orgId, 'assessments', id));
-    } catch (e) {
-        console.error("Error deleting assessment: ", e);
+        if (!this.orgId) return;
+        try {
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(doc(db, 'organizations', this.orgId, 'assessments', id));
+        } catch (e) {
+            console.error("Error deleting assessment: ", e);
+        }
     }
-}
 
 
-// Check if AI is allowed
-isAiAllowed(feature: 'resume' | 'interview'): boolean {
-    if (this.state.settings.killSwitches.global) return false;
-    if (feature === 'resume' && this.state.settings.killSwitches.resume) return false;
-    if (feature === 'interview' && this.state.settings.killSwitches.interview) return false;
-    return true;
-}
+    // Check if AI is allowed
+    isAiAllowed(feature: 'resume' | 'interview'): boolean {
+        if (this.state.settings.killSwitches.global) return false;
+        if (feature === 'resume' && this.state.settings.killSwitches.resume) return false;
+        if (feature === 'interview' && this.state.settings.killSwitches.interview) return false;
+        return true;
+    }
 
     // Platform Admin Actions
     async updateTenantStatus(tenantId: string, status: 'Active' | 'Suspended') {
-    try {
-        await updateDoc(doc(db, 'organizations', tenantId), { status });
-    } catch (e) {
-        console.error("Error updating tenant status: ", e);
+        try {
+            await updateDoc(doc(db, 'organizations', tenantId), { status });
+        } catch (e) {
+            console.error("Error updating tenant status: ", e);
+        }
     }
-}
 
     async updateTenantPlan(tenantId: string, plan: string) {
-    try {
-        await updateDoc(doc(db, 'organizations', tenantId), { plan });
-    } catch (e) {
-        console.error("Error updating tenant plan: ", e);
+        try {
+            await updateDoc(doc(db, 'organizations', tenantId), { plan });
+        } catch (e) {
+            console.error("Error updating tenant plan: ", e);
+        }
     }
-}
 
     async updateOnboardingTemplate(tasks: OnboardingTask[]) {
-    if (!this.orgId) return;
-    try {
-        await updateDoc(doc(db, 'organizations', this.orgId), {
-            onboardingTemplate: tasks
-        });
-    } catch (e) {
-        console.error("Error updating onboarding template: ", e);
+        if (!this.orgId) return;
+        try {
+            await updateDoc(doc(db, 'organizations', this.orgId), {
+                onboardingTemplate: tasks
+            });
+        } catch (e) {
+            console.error("Error updating onboarding template: ", e);
+        }
     }
-}
 }
 
 export const store = new Store();

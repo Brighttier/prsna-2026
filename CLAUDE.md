@@ -8,7 +8,7 @@ AI-powered recruitment SaaS platform (RecruiteAI) that automates hiring workflow
 
 - **Frontend**: React 19, TypeScript 5.8, Vite 6.2, Tailwind CSS 3.4, React Router v7 (HashRouter)
 - **Backend**: Firebase Cloud Functions v2 (Node.js 22), Firestore, Firebase Auth, Firebase Storage, Firebase Hosting
-- **AI**: Google Gemini 2.0 Flash (batch), Gemini 2.5 Flash Native Audio (real-time interviews)
+- **AI**: Google Gemini 2.0 Flash (batch + document parsing), Gemini 2.5 Flash Native Audio (real-time interviews), text-embedding-004 (vector embeddings)
 - **Email**: Resend (transactional emails)
 - **Icons**: Lucide React
 - **Charts**: Recharts
@@ -33,7 +33,7 @@ AI-powered recruitment SaaS platform (RecruiteAI) that automates hiring workflow
 │   └── useGeminiLive.ts # Real-time audio/video interview hook
 ├── functions/          # Firebase Cloud Functions (separate Node.js project)
 │   ├── src/index.ts    # All Cloud Function implementations
-│   ├── src/utils/      # Utility modules (email templates)
+│   ├── src/utils/      # Utility modules (email templates, vector embeddings)
 │   └── lib/            # Compiled JS output (generated)
 ├── vite.config.ts      # Vite config (port 3000, path alias @/*)
 ├── tailwind.config.js  # Tailwind with CSS variable-based brand colors
@@ -77,7 +77,9 @@ npm run sync-deploy              # Git commit + push + firebase deploy (auto)
 - Protected routes redirect to `/login` when unauthenticated
 
 ### AI Integration
+- **Document Parsing**: Gemini 2.0 Flash multimodal extracts text from PDF/DOCX/DOC (no third-party parsers)
 - **Resume Screening**: Frontend calls `httpsCallable` -> Cloud Function -> Gemini analysis
+- **Vector Embeddings**: text-embedding-004 generates candidate/job embeddings; cosine similarity for semantic matching
 - **Live Interviews**: Direct Gemini Live API via WebSocket in `useGeminiLive` hook
 - **Kill Switches**: `settings.killSwitches.global|resume|interview` can disable AI features per org
 
