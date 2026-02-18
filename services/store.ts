@@ -420,25 +420,25 @@ class Store {
 
         console.log("[Store] Initializing Platform Admin Listeners...");
         const tenantsUnsub = onSnapshot(collection(db, 'organizations'), async (snapshot) => {
-            const { getCountFromServer } = await import('firebase/firestore');
+            const { getCountFromServer, query, where } = await import('firebase/firestore');
 
             const tenantPromises = snapshot.docs.map(async (orgDoc) => {
                 const data = orgDoc.data();
                 const orgId = orgDoc.id;
 
-                // Get real counts from sub-collections
+                // Get real counts from sub-collections + users collection
                 let candidatesCount = 0;
                 let jobsCount = 0;
-                let membersCount = 0;
+                let usersCount = 0;
                 try {
-                    const [candSnap, jobsSnap, membersSnap] = await Promise.all([
+                    const [candSnap, jobsSnap, usersSnap] = await Promise.all([
                         getCountFromServer(collection(db, 'organizations', orgId, 'candidates')),
                         getCountFromServer(collection(db, 'organizations', orgId, 'jobs')),
-                        getCountFromServer(collection(db, 'organizations', orgId, 'invitations'))
+                        getCountFromServer(query(collection(db, 'users'), where('orgId', '==', orgId)))
                     ]);
                     candidatesCount = candSnap.data().count;
                     jobsCount = jobsSnap.data().count;
-                    membersCount = membersSnap.data().count + 1; // +1 for owner
+                    usersCount = usersSnap.data().count;
                 } catch (e) {
                     console.warn(`[Store] Failed to count sub-collections for ${orgId}`, e);
                 }
@@ -453,7 +453,7 @@ class Store {
                     id: orgId,
                     name: data.settings?.branding?.companyName || data.name || 'Unnamed Organization',
                     plan: data.plan || 'Starter',
-                    usersCount: membersCount,
+                    usersCount: usersCount || 1,
                     apiUsage,
                     status: data.status || 'Active',
                     spend: data.spend || 0,
