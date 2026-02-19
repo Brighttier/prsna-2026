@@ -59,7 +59,7 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
       streamRef.current = stream;
 
       const sessionPromise = ai.live.connect({
-        model: 'gemini-live-2.5-flash-preview',
+        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -157,13 +157,17 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
               }
             }
           },
-          onclose: () => {
-            console.log("Gemini Live Disconnected");
+          onclose: (e: CloseEvent) => {
+            console.log(`Gemini Live Disconnected — code: ${e.code}, reason: "${e.reason}", wasClean: ${e.wasClean}`);
             setIsConnected(false);
+            setIsConnecting(false);
+            if (e.code !== 1000) {
+              setError(`Connection closed unexpectedly (code ${e.code}). Please try again.`);
+            }
           },
-          onerror: (e) => {
-            console.error("Gemini Live Error", e);
-            setError("Connection error occurred. Please try again.");
+          onerror: (e: ErrorEvent) => {
+            console.error("Gemini Live Error", e.message || e);
+            setError(e.message || "Connection error occurred. Please try again.");
             setIsConnected(false);
             setIsConnecting(false);
           }
