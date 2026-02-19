@@ -64,20 +64,35 @@ export const Dashboard = () => {
   const avgTime = totalHires > 0 ? "14 days" : "—";
 
   const chartData = useMemo(() => {
-    // Create last 7 days array
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(today);
       d.setDate(d.getDate() - (6 - i));
-      return days[d.getDay()];
+      d.setHours(0, 0, 0, 0);
+      return { label: days[d.getDay()], start: d.getTime(), end: d.getTime() + 86400000 };
     });
 
-    return last7Days.map(day => ({
-      name: day,
-      applicants: Math.floor(Math.random() * (totalCandidates > 0 ? 5 : 0)), // Mock distribution if data exists, else 0
-      interviews: 0
-    }));
+    return last7Days.map(({ label, start, end }) => {
+      const applicants = candidates.filter(c => {
+        const dateStr = (c as any).appliedAt || c.appliedDate;
+        if (!dateStr) return false;
+        const ts = new Date(dateStr).getTime();
+        return ts >= start && ts < end;
+      }).length;
+
+      const interviews = candidates.filter(c => {
+        return (c as any).interviews?.some((interview: any) => {
+          if (!interview.date) return false;
+          const ts = new Date(interview.date).getTime();
+          return ts >= start && ts < end;
+        });
+      }).length;
+
+      return { name: label, applicants, interviews };
+    });
   }, [candidates]);
 
   return (
@@ -130,13 +145,13 @@ export const Dashboard = () => {
           <h2 className="text-lg font-bold text-slate-900 mb-6">Pipeline Status</h2>
           <div className="space-y-6">
             {[
-              { label: 'Applied', stage: 'Applied', color: 'bg-slate-400' },
-              { label: 'Screening', stage: 'Screening', color: 'bg-blue-500' },
-              { label: 'Interview', stage: 'Interview', color: 'bg-purple-500' },
-              { label: 'Offer', stage: 'Offer', color: 'bg-orange-500' },
-              { label: 'Hired', stage: 'Hired', color: 'bg-emerald-500' },
+              { label: 'Applied', stages: ['Applied', 'New'], color: 'bg-slate-400' },
+              { label: 'Screening', stages: ['Screening'], color: 'bg-blue-500' },
+              { label: 'Interview', stages: ['Interview'], color: 'bg-purple-500' },
+              { label: 'Offer', stages: ['Offer'], color: 'bg-orange-500' },
+              { label: 'Hired', stages: ['Hired'], color: 'bg-emerald-500' },
             ].map((item, idx) => {
-              const count = candidates.filter(c => c.stage === item.stage).length;
+              const count = candidates.filter(c => item.stages.includes(c.stage)).length;
               const width = candidates.length > 0 ? `${(count / candidates.length) * 100}%` : '0%';
               return (
                 <div key={idx}>
