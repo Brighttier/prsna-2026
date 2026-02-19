@@ -67,10 +67,14 @@ export const InterviewRoom = () => {
    });
 
    const [systemInstruction, setSystemInstruction] = useState<string>('');
+   const [sessionReady, setSessionReady] = useState(false);
+   const [sessionError, setSessionError] = useState<string | null>(null);
 
    // Fetch dynamic persona from Backend V2
    useEffect(() => {
       if (candidate) {
+         setSessionReady(false);
+         setSessionError(null);
          import('../services/ai').then(({ startInterviewSession }) => {
             let persona, orgId, jobDetails;
 
@@ -100,7 +104,12 @@ export const InterviewRoom = () => {
 
             startInterviewSession(candidate, jobDetails as any, persona, orgId, assessmentId).then(data => {
                setSystemInstruction(data.systemInstruction);
-            }).catch(err => console.error("Failed to init Lumina session:", err));
+               setSessionReady(true);
+            }).catch(err => {
+               console.error("Failed to init Lumina session:", err);
+               setSessionError("Failed to prepare interview persona. A generic assistant will be used.");
+               setSessionReady(true); // Allow proceeding with fallback
+            });
          });
       }
    }, [candidate]);
@@ -299,13 +308,18 @@ export const InterviewRoom = () => {
                      </div>
                      <div className="text-center space-y-2 max-w-md">
                         <h2 className="text-2xl font-bold text-slate-900">
-                           {isConnected ? (isAiSpeaking ? "Lumina is speaking..." : "Lumina is listening") : isConnecting ? "Connecting..." : "Ready to Interview"}
+                           {isConnected ? (isAiSpeaking ? "Lumina is speaking..." : "Lumina is listening")
+                              : isConnecting ? "Connecting..."
+                              : !sessionReady ? "Preparing Interview..."
+                              : "Ready to Interview"}
                         </h2>
                         <p className="text-slate-500">
                            {isConnected
                               ? "Speak clearly. Lumina analyzes both your audio and visual cues."
                               : isConnecting
                               ? "Establishing secure connection to Lumina AI..."
+                              : !sessionReady
+                              ? "Loading your personalized interview configuration..."
                               : "Click 'Start Session' to begin your AI-powered technical interview."}
                         </p>
                      </div>
@@ -313,11 +327,13 @@ export const InterviewRoom = () => {
                      {!isConnected && (
                         <button
                            onClick={handleStart}
-                           disabled={isConnecting}
-                           className={`mt-8 bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl shadow-brand-500/20 hover:shadow-brand-500/40 transform hover:-translate-y-1 transition-all flex items-center gap-2 ${isConnecting ? 'opacity-80 cursor-wait' : ''}`}
+                           disabled={isConnecting || !sessionReady}
+                           className={`mt-8 bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl shadow-brand-500/20 hover:shadow-brand-500/40 transform hover:-translate-y-1 transition-all flex items-center gap-2 ${(isConnecting || !sessionReady) ? 'opacity-80 cursor-wait' : ''}`}
                         >
                            {isConnecting ? (
                               <><Loader2 className="w-5 h-5 animate-spin" /> Connecting to Lumina...</>
+                           ) : !sessionReady ? (
+                              <><Loader2 className="w-5 h-5 animate-spin" /> Preparing Interview...</>
                            ) : (
                               <><Sparkles className="w-5 h-5" /> Start Session</>
                            )}
@@ -362,6 +378,15 @@ export const InterviewRoom = () => {
                      <div>
                         <p className="font-semibold text-sm">{error}</p>
                         <p className="text-xs text-red-400 mt-1">Check your internet connection and try again.</p>
+                     </div>
+                  </div>
+               )}
+               {sessionError && !error && (
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 animate-fade-in-down bg-amber-50 border border-amber-200 text-amber-700 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 z-30 max-w-lg">
+                     <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0"></div>
+                     <div>
+                        <p className="font-semibold text-sm">{sessionError}</p>
+                        <p className="text-xs text-amber-500 mt-1">The interview will proceed with a generic assistant persona.</p>
                      </div>
                   </div>
                )}

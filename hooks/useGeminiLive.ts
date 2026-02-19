@@ -49,12 +49,17 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       inputContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
 
+      // Resume AudioContexts — they may start in 'suspended' state because the await above
+      // broke the synchronous user-gesture chain that browsers require for auto-play
+      await audioContextRef.current.resume();
+      await inputContextRef.current.resume();
+
       // Reuse existing stream if provided (avoids duplicate getUserMedia conflicts), otherwise request new one
       const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        model: 'gemini-live-2.5-flash-preview',
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -71,7 +76,11 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
             setIsConnecting(false);
 
             // Setup Audio Streaming to Model
-            if (!inputContextRef.current || !streamRef.current) return;
+            if (!inputContextRef.current || !streamRef.current) {
+              console.error("Audio setup failed: inputContext or stream is null");
+              setError("Audio initialization failed. Please refresh the page and try again.");
+              return;
+            }
 
             const source = inputContextRef.current.createMediaStreamSource(streamRef.current);
             sourceRef.current = source;
@@ -128,6 +137,8 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
             if (audioData && audioContextRef.current && audioContextRef.current.state !== 'closed') {
               const ctx = audioContextRef.current;
               try {
+                // Ensure context is running (browser may auto-suspend after inactivity)
+                if (ctx.state === 'suspended') await ctx.resume();
                 const buffer = await decodeAudioData(audioData, ctx);
 
                 const source = ctx.createBufferSource();
