@@ -18,6 +18,20 @@ const resendApiKey = defineSecret("RESEND_API_KEY");
 import { sendSecureLinkEmail } from './utils/email';
 import { generateEmbedding, calculateCosineSimilarity } from './utils/embeddings';
 
+// Helper: Fetch org-specific email template override from Firestore
+async function getEmailTemplateOverride(orgId: string | undefined, emailType: string) {
+    if (!orgId) return undefined;
+    try {
+        const db = getFirestore();
+        const orgDoc = await db.collection('organizations').doc(orgId).get();
+        const data = orgDoc.data();
+        return data?.settings?.emailTemplates?.[emailType] || undefined;
+    } catch (e) {
+        logger.warn(`Failed to fetch email template override for ${orgId}/${emailType}`, e);
+        return undefined;
+    }
+}
+
 // Configuration for scalable V2 functions
 const functionConfig = {
     cors: true,
@@ -874,12 +888,14 @@ export const inviteTeamMember = onCall(functionConfig as any, async (request) =>
 
         // 7. Send Invitation Email via Resend
         if (resendApiKey.value()) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'INVITATION');
             await sendSecureLinkEmail({
                 to: email,
                 link: link,
                 type: 'INVITATION',
                 role,
-                apiKey: resendApiKey.value()
+                apiKey: resendApiKey.value(),
+                templateOverride
             });
             logger.info(`Invitation email sent to ${email}`);
         } else {
@@ -937,7 +953,7 @@ export const requestPasswordReset = onCall(functionConfig as any, async (request
  * Sends an offer letter email to the candidate.
  */
 export const sendOfferLetter = onCall(functionConfig as any, async (request) => {
-    const { email, jobTitle, companyName, offerUrl } = request.data;
+    const { email, jobTitle, companyName, offerUrl, orgId } = request.data;
 
     if (!email || !jobTitle) {
         throw new HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
@@ -945,13 +961,15 @@ export const sendOfferLetter = onCall(functionConfig as any, async (request) => 
 
     try {
         if (resendApiKey.value()) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'OFFER');
             await sendSecureLinkEmail({
                 to: email,
-                link: offerUrl, // This should point to the public offer page
+                link: offerUrl,
                 type: 'OFFER',
                 jobTitle,
                 companyName,
-                apiKey: resendApiKey.value()
+                apiKey: resendApiKey.value(),
+                templateOverride
             });
             return { success: true };
         } else {
@@ -992,12 +1010,14 @@ export const sendAiInterviewInvite = onCall(functionConfig as any, async (reques
         }
 
         if (resendApiKey.value()) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'INTERVIEW_INVITE');
             await sendSecureLinkEmail({
                 to: email,
                 link: interviewUrl,
                 type: 'INTERVIEW_INVITE',
                 jobTitle,
-                apiKey: resendApiKey.value()
+                apiKey: resendApiKey.value(),
+                templateOverride
             });
             return { success: true };
         } else {
@@ -1016,7 +1036,7 @@ export const sendAiInterviewInvite = onCall(functionConfig as any, async (reques
  * Sends a confirmation email to the candidate after they apply.
  */
 export const sendApplicationReceipt = onCall(functionConfig as any, async (request) => {
-    const { email, jobTitle, candidateName } = request.data;
+    const { email, jobTitle, candidateName, orgId } = request.data;
 
     if (!email || !jobTitle) {
         throw new HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
@@ -1024,12 +1044,14 @@ export const sendApplicationReceipt = onCall(functionConfig as any, async (reque
 
     try {
         if (resendApiKey.value()) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'APPLICATION_RECEIPT');
             await sendSecureLinkEmail({
                 to: email,
                 type: 'APPLICATION_RECEIPT',
                 jobTitle,
                 name: candidateName,
-                apiKey: resendApiKey.value()
+                apiKey: resendApiKey.value(),
+                templateOverride
             });
             return { success: true };
         } else {
@@ -1048,7 +1070,7 @@ export const sendApplicationReceipt = onCall(functionConfig as any, async (reque
  * Sends a polite rejection email to the candidate.
  */
 export const sendRejectionEmail = onCall(functionConfig as any, async (request) => {
-    const { email, jobTitle, candidateName } = request.data;
+    const { email, jobTitle, candidateName, orgId } = request.data;
 
     if (!email || !jobTitle) {
         throw new HttpsError('invalid-argument', 'Missing "email" or "jobTitle".');
@@ -1056,12 +1078,14 @@ export const sendRejectionEmail = onCall(functionConfig as any, async (request) 
 
     try {
         if (resendApiKey.value()) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'REJECTION');
             await sendSecureLinkEmail({
                 to: email,
                 type: 'REJECTION',
                 jobTitle,
                 name: candidateName,
-                apiKey: resendApiKey.value()
+                apiKey: resendApiKey.value(),
+                templateOverride
             });
             return { success: true };
         } else {
@@ -1080,7 +1104,7 @@ export const sendRejectionEmail = onCall(functionConfig as any, async (request) 
  * Sends an onboarding invitation to a hired candidate.
  */
 export const sendOnboardingInvite = onCall(functionConfig as any, async (request) => {
-    const { email, jobTitle, candidateName, onboardingUrl } = request.data;
+    const { email, jobTitle, candidateName, onboardingUrl, orgId } = request.data;
 
     if (!email || !jobTitle || !onboardingUrl) {
         throw new HttpsError('invalid-argument', 'Missing "email", "jobTitle", or "onboardingUrl".');
@@ -1088,13 +1112,15 @@ export const sendOnboardingInvite = onCall(functionConfig as any, async (request
 
     try {
         if (resendApiKey.value()) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'ONBOARDING_INVITE');
             await sendSecureLinkEmail({
                 to: email,
                 link: onboardingUrl,
                 type: 'ONBOARDING_INVITE',
                 jobTitle,
                 name: candidateName,
-                apiKey: resendApiKey.value()
+                apiKey: resendApiKey.value(),
+                templateOverride
             });
             return { success: true };
         } else {

@@ -101,12 +101,25 @@ export interface ExtendedCandidate extends Candidate {
     interviews?: InterviewSession[];
 }
 
+export type EmailType = 'INVITATION' | 'OFFER' | 'INTERVIEW_INVITE' | 'APPLICATION_RECEIPT' | 'REJECTION' | 'ONBOARDING_INVITE';
+
+export interface EmailTemplateOverride {
+    subject?: string;
+    headline?: string;
+    message?: string;
+    buttonText?: string;
+    footerNote?: string;
+}
+
+export type EmailTemplateOverrides = Partial<Record<EmailType, EmailTemplateOverride>>;
+
 interface PlatformSettings {
     killSwitches: {
         global: boolean;
         resume: boolean;
         interview: boolean;
     };
+    emailTemplates?: EmailTemplateOverrides;
     persona?: {
         intensity: number;
         voice: string;
@@ -653,6 +666,17 @@ class Store {
         }
     }
 
+    async updateEmailTemplates(templates: EmailTemplateOverrides) {
+        if (!this.orgId) return;
+        try {
+            await updateDoc(doc(db, 'organizations', this.orgId), {
+                'settings.emailTemplates': templates
+            });
+        } catch (e) {
+            console.error("Error updating email templates: ", e);
+        }
+    }
+
     async updateOffer(candidateId: string, offer: Partial<OfferDetails>) {
         const candidate = this.state.candidates.find(c => c.id === candidateId);
         if (candidate) {
@@ -679,7 +703,8 @@ class Store {
                 email,
                 jobTitle: candidate.role,
                 companyName: this.state.branding.companyName,
-                offerUrl
+                offerUrl,
+                orgId: this.orgId
             });
             console.log(`[Store] Offer letter sent to ${email}`);
         } catch (e) {
@@ -720,7 +745,8 @@ class Store {
             await sendReceiptFn({
                 email,
                 jobTitle,
-                candidateName
+                candidateName,
+                orgId: this.orgId
             });
             console.log(`[Store] Application receipt sent to ${email}`);
         } catch (e) {
@@ -738,7 +764,8 @@ class Store {
             await sendRejectionFn({
                 email: candidate.email,
                 jobTitle: candidate.role,
-                candidateName: candidate.name
+                candidateName: candidate.name,
+                orgId: this.orgId
             });
             console.log(`[Store] Rejection email sent to ${candidate.email}`);
         } catch (e) {
@@ -762,7 +789,8 @@ class Store {
                 email: candidate.email,
                 jobTitle: candidate.role,
                 candidateName: candidate.name,
-                onboardingUrl
+                onboardingUrl,
+                orgId: this.orgId
             });
             console.log(`[Store] Onboarding invite sent to ${candidate.email}`);
         } catch (e) {

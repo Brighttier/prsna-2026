@@ -4,6 +4,14 @@ import { Resend } from 'resend';
 
 type EmailType = 'INVITATION' | 'RESET_PASSWORD' | 'OFFER' | 'INTERVIEW_INVITE' | 'APPLICATION_RECEIPT' | 'REJECTION' | 'ONBOARDING_INVITE';
 
+interface EmailTemplateOverride {
+    subject?: string;
+    headline?: string;
+    message?: string;
+    buttonText?: string;
+    footerNote?: string;
+}
+
 interface EmailParams {
     to: string;
     link?: string;
@@ -13,6 +21,7 @@ interface EmailParams {
     jobTitle?: string;
     companyName?: string;
     apiKey: string;
+    templateOverride?: EmailTemplateOverride;
 }
 
 interface EmailContent {
@@ -309,10 +318,29 @@ function buildEmailHtml(content: EmailContent, link?: string): string {
 }
 
 
-export const sendSecureLinkEmail = async ({ to, link, type, role, name, apiKey, jobTitle, companyName }: EmailParams) => {
+function applyTemplateVariables(text: string, vars: Record<string, string>): string {
+    return text
+        .replace(/\{\{name\}\}/gi, vars.name || 'there')
+        .replace(/\{\{jobTitle\}\}/gi, vars.jobTitle || '')
+        .replace(/\{\{company\}\}/gi, vars.company || 'our team')
+        .replace(/\{\{role\}\}/gi, vars.role || '');
+}
+
+export const sendSecureLinkEmail = async ({ to, link, type, role, name, apiKey, jobTitle, companyName, templateOverride }: EmailParams) => {
     const resend = new Resend(apiKey);
 
     const content = getEmailContent(type, { name, role, jobTitle, companyName });
+
+    // Apply custom template overrides if provided
+    if (templateOverride) {
+        const vars = { name: name || 'there', jobTitle: jobTitle || '', company: companyName || 'our team', role: role || '' };
+        if (templateOverride.subject) content.subject = applyTemplateVariables(templateOverride.subject, vars);
+        if (templateOverride.headline) content.headline = applyTemplateVariables(templateOverride.headline, vars);
+        if (templateOverride.message) content.message = applyTemplateVariables(templateOverride.message, vars);
+        if (templateOverride.buttonText) content.buttonText = templateOverride.buttonText;
+        if (templateOverride.footerNote !== undefined) content.footerNote = templateOverride.footerNote || undefined;
+    }
+
     const html = buildEmailHtml(content, link);
 
     return resend.emails.send({

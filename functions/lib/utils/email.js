@@ -268,9 +268,30 @@ function buildEmailHtml(content, link) {
 </body>
 </html>`;
 }
-const sendSecureLinkEmail = async ({ to, link, type, role, name, apiKey, jobTitle, companyName }) => {
+function applyTemplateVariables(text, vars) {
+    return text
+        .replace(/\{\{name\}\}/gi, vars.name || 'there')
+        .replace(/\{\{jobTitle\}\}/gi, vars.jobTitle || '')
+        .replace(/\{\{company\}\}/gi, vars.company || 'our team')
+        .replace(/\{\{role\}\}/gi, vars.role || '');
+}
+const sendSecureLinkEmail = async ({ to, link, type, role, name, apiKey, jobTitle, companyName, templateOverride }) => {
     const resend = new resend_1.Resend(apiKey);
     const content = getEmailContent(type, { name, role, jobTitle, companyName });
+    // Apply custom template overrides if provided
+    if (templateOverride) {
+        const vars = { name: name || 'there', jobTitle: jobTitle || '', company: companyName || 'our team', role: role || '' };
+        if (templateOverride.subject)
+            content.subject = applyTemplateVariables(templateOverride.subject, vars);
+        if (templateOverride.headline)
+            content.headline = applyTemplateVariables(templateOverride.headline, vars);
+        if (templateOverride.message)
+            content.message = applyTemplateVariables(templateOverride.message, vars);
+        if (templateOverride.buttonText)
+            content.buttonText = templateOverride.buttonText;
+        if (templateOverride.footerNote !== undefined)
+            content.footerNote = templateOverride.footerNote || undefined;
+    }
     const html = buildEmailHtml(content, link);
     return resend.emails.send({
         from: 'RecruiteAI <noreply@updates.personarecruit.ai>',

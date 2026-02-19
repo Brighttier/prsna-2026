@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
 import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2, List, FileText, CheckCircle, AlertCircle, UserCheck, UploadCloud, BookOpen, Sparkles, BrainCircuit, ClipboardList, FileCheck, Video, Settings as SettingsIcon } from 'lucide-react';
-import { store, Invitation } from '../services/store';
+import { store, Invitation, EmailType, EmailTemplateOverride, EmailTemplateOverrides } from '../services/store';
 import { auth } from '../services/firebase';
 import { logout } from '../services/auth';
 import { LogOut } from 'lucide-react';
@@ -21,6 +21,7 @@ const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => v
         { id: 'persona', label: 'AI Persona', icon: Zap },
         { id: 'library', label: 'Assessments', icon: Library },
         { id: 'onboarding', label: 'Onboarding', icon: ClipboardList },
+        { id: 'templates', label: 'Email Templates', icon: Mail },
         { id: 'team', label: 'Team', icon: Users },
         { id: 'profile', label: 'Profile', icon: UserCheck },
     ];
@@ -71,6 +72,7 @@ export const Settings = () => {
             setMembers(state.members || []);
             setAssessments(state.assessments || []);
             setOnboardingTasks(state.onboardingTemplate);
+            setEmailTemplates(state.settings.emailTemplates || {});
         });
     }, []);
 
@@ -160,6 +162,19 @@ export const Settings = () => {
     // --- LIBRARY STATE ---
     const [showCreateModule, setShowCreateModule] = useState(false);
 
+    // --- EMAIL TEMPLATES STATE ---
+    const EMAIL_TYPES: { key: EmailType; label: string; description: string; icon: string }[] = [
+        { key: 'INVITATION', label: 'Team Invitation', description: 'Sent when inviting a new team member', icon: '🚀' },
+        { key: 'OFFER', label: 'Offer Letter', description: 'Sent when extending a job offer', icon: '🎉' },
+        { key: 'INTERVIEW_INVITE', label: 'Interview Invitation', description: 'Sent when scheduling an AI interview', icon: '🎤' },
+        { key: 'APPLICATION_RECEIPT', label: 'Application Receipt', description: 'Sent when a candidate applies', icon: '✅' },
+        { key: 'REJECTION', label: 'Rejection Notice', description: 'Sent when declining a candidate', icon: '💬' },
+        { key: 'ONBOARDING_INVITE', label: 'Onboarding Welcome', description: 'Sent when a candidate is hired', icon: '🌟' },
+    ];
+    const [emailTemplates, setEmailTemplates] = useState<EmailTemplateOverrides>(store.getState().settings.emailTemplates || {});
+    const [editingTemplate, setEditingTemplate] = useState<EmailType | null>(null);
+    const [templateDraft, setTemplateDraft] = useState<EmailTemplateOverride>({});
+
     // --- ONBOARDING STATE ---
     const [onboardingTasks, setOnboardingTasks] = useState<OnboardingTask[]>(store.getState().onboardingTemplate);
     const [newTaskCategory, setNewTaskCategory] = useState<OnboardingCategory>('Legal & Compliance');
@@ -220,6 +235,7 @@ export const Settings = () => {
             interviewTimeLimit
         });
         store.updateOnboardingTemplate(onboardingTasks);
+        store.updateEmailTemplates(emailTemplates);
         setTimeout(() => {
             setLoading(false);
             setSaved(true);
@@ -1137,6 +1153,183 @@ export const Settings = () => {
                             </div>
                         )}
                     </Card>
+                </div>
+            )}
+
+            {/* --- EMAIL TEMPLATES TAB --- */}
+            {activeTab === 'templates' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-4">
+                        <div className="bg-white p-6 rounded-xl border border-slate-200">
+                            <h2 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                <Mail className="w-5 h-5 text-brand-600" /> Email Templates
+                            </h2>
+                            <p className="text-slate-500 text-sm mb-6">Customize the emails sent to candidates and team members. Use variables like <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono text-brand-700">{'{{name}}'}</code>, <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono text-brand-700">{'{{jobTitle}}'}</code>, <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono text-brand-700">{'{{company}}'}</code>, <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono text-brand-700">{'{{role}}'}</code> in your text.</p>
+
+                            <div className="space-y-3">
+                                {EMAIL_TYPES.map((et) => {
+                                    const isEditing = editingTemplate === et.key;
+                                    const hasCustom = !!emailTemplates[et.key] && Object.values(emailTemplates[et.key]!).some(v => v);
+                                    return (
+                                        <div key={et.key} className={`border rounded-xl transition-all ${isEditing ? 'border-brand-300 bg-brand-50/30 shadow-lg shadow-brand-500/10' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}>
+                                            <div
+                                                className="flex items-center justify-between p-4 cursor-pointer"
+                                                onClick={() => {
+                                                    if (isEditing) {
+                                                        setEditingTemplate(null);
+                                                    } else {
+                                                        setEditingTemplate(et.key);
+                                                        setTemplateDraft(emailTemplates[et.key] || {});
+                                                    }
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-2xl w-10 h-10 flex items-center justify-center bg-white rounded-lg border border-slate-100 shadow-sm">{et.icon}</div>
+                                                    <div>
+                                                        <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                                            {et.label}
+                                                            {hasCustom && <span className="text-[10px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-bold uppercase">Customized</span>}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500">{et.description}</div>
+                                                    </div>
+                                                </div>
+                                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isEditing ? 'rotate-180' : ''}`} />
+                                            </div>
+
+                                            {isEditing && (
+                                                <div className="px-4 pb-4 space-y-4 border-t border-slate-200/60 pt-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Subject Line</label>
+                                                        <input
+                                                            value={templateDraft.subject || ''}
+                                                            onChange={(e) => setTemplateDraft({ ...templateDraft, subject: e.target.value })}
+                                                            placeholder="Leave empty for default"
+                                                            className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Headline</label>
+                                                        <input
+                                                            value={templateDraft.headline || ''}
+                                                            onChange={(e) => setTemplateDraft({ ...templateDraft, headline: e.target.value })}
+                                                            placeholder="Leave empty for default"
+                                                            className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Message Body <span className="font-normal text-slate-400">(HTML supported)</span></label>
+                                                        <textarea
+                                                            value={templateDraft.message || ''}
+                                                            onChange={(e) => setTemplateDraft({ ...templateDraft, message: e.target.value })}
+                                                            placeholder="Leave empty for default. Use {{name}}, {{jobTitle}}, {{company}} for dynamic values."
+                                                            rows={5}
+                                                            className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-mono"
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-700 mb-1.5">Button Text</label>
+                                                            <input
+                                                                value={templateDraft.buttonText || ''}
+                                                                onChange={(e) => setTemplateDraft({ ...templateDraft, buttonText: e.target.value })}
+                                                                placeholder="Leave empty for default"
+                                                                className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-700 mb-1.5">Footer Note</label>
+                                                            <input
+                                                                value={templateDraft.footerNote || ''}
+                                                                onChange={(e) => setTemplateDraft({ ...templateDraft, footerNote: e.target.value })}
+                                                                placeholder="Leave empty for default"
+                                                                className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 pt-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEmailTemplates({ ...emailTemplates, [et.key]: templateDraft });
+                                                                setEditingTemplate(null);
+                                                            }}
+                                                            className="flex items-center gap-1.5 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition-colors"
+                                                        >
+                                                            <Check className="w-3.5 h-3.5" /> Apply Changes
+                                                        </button>
+                                                        {hasCustom && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const updated = { ...emailTemplates };
+                                                                    delete updated[et.key];
+                                                                    setEmailTemplates(updated);
+                                                                    setTemplateDraft({});
+                                                                }}
+                                                                className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                                                            >
+                                                                <RefreshCw className="w-3.5 h-3.5" /> Reset to Default
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => setEditingTemplate(null)}
+                                                            className="text-slate-400 hover:text-slate-600 px-3 py-2 text-sm"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="lg:col-span-1 space-y-6">
+                        <Card className="p-6 sticky top-6">
+                            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-brand-600" /> Template Variables
+                            </h3>
+                            <p className="text-xs text-slate-500 mb-4">Use these placeholders in your templates. They will be replaced with real values when the email is sent.</p>
+                            <div className="space-y-2">
+                                {[
+                                    { var: '{{name}}', desc: "Recipient's name" },
+                                    { var: '{{jobTitle}}', desc: 'Job position title' },
+                                    { var: '{{company}}', desc: 'Your company name' },
+                                    { var: '{{role}}', desc: 'Team member role (for invites)' },
+                                ].map(v => (
+                                    <div key={v.var} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                                        <code className="text-xs font-mono font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">{v.var}</code>
+                                        <span className="text-xs text-slate-500">{v.desc}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+
+                        <Card className="p-6">
+                            <h3 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-amber-500" /> Tips
+                            </h3>
+                            <ul className="space-y-3 text-xs text-slate-600">
+                                <li className="flex gap-2">
+                                    <CheckCircle className="w-3.5 h-3.5 text-brand-500 mt-0.5 flex-shrink-0" />
+                                    <span>Leave fields empty to use the platform default.</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <CheckCircle className="w-3.5 h-3.5 text-brand-500 mt-0.5 flex-shrink-0" />
+                                    <span>Message body supports basic HTML like <code className="bg-slate-100 px-1 rounded">&lt;strong&gt;</code>, <code className="bg-slate-100 px-1 rounded">&lt;br&gt;</code>, and <code className="bg-slate-100 px-1 rounded">&lt;a&gt;</code> tags.</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <CheckCircle className="w-3.5 h-3.5 text-brand-500 mt-0.5 flex-shrink-0" />
+                                    <span>Click "Publish Changes" at the top to save all template edits.</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <CheckCircle className="w-3.5 h-3.5 text-brand-500 mt-0.5 flex-shrink-0" />
+                                    <span>Password Reset emails cannot be customized (security policy).</span>
+                                </li>
+                            </ul>
+                        </Card>
+                    </div>
                 </div>
             )}
 
