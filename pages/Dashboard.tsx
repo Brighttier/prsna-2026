@@ -60,8 +60,36 @@ export const Dashboard = () => {
   const activeJobs = jobs.filter(j => j.status === 'Open' as any).length;
   const totalHires = candidates.filter(c => c.stage === 'Hired').length;
 
-  // Calculate Avg Time to Hire (mock logic for now as dates are strings)
-  const avgTime = totalHires > 0 ? "14 days" : "—";
+  // Avg Time to Hire — compute from appliedAt to last completed interview for hired candidates
+  const avgTime = useMemo(() => {
+    const hiredWithDates = candidates.filter(c => c.stage === 'Hired').map(c => {
+      const appliedAt = (c as any).appliedAt;
+      if (!appliedAt) return null;
+      const applied = new Date(appliedAt).getTime();
+      const lastInterview = (c as any).interviews
+        ?.filter((i: any) => i.status === 'Completed')
+        ?.map((i: any) => new Date(i.date).getTime())
+        ?.sort((a: number, b: number) => b - a)?.[0];
+      if (!lastInterview || isNaN(lastInterview)) return null;
+      return Math.max(1, Math.round((lastInterview - applied) / 86400000));
+    }).filter(Boolean) as number[];
+    if (hiredWithDates.length === 0) return "—";
+    const avg = Math.round(hiredWithDates.reduce((a, b) => a + b, 0) / hiredWithDates.length);
+    return `${avg} day${avg !== 1 ? 's' : ''}`;
+  }, [candidates]);
+
+  // Trends — compare last 30 days vs previous 30 days
+  const trends = useMemo(() => {
+    const now = Date.now();
+    const d30 = 30 * 86400000;
+    const getDate = (c: any) => new Date((c as any).appliedAt || c.appliedDate || 0).getTime();
+
+    const recent = candidates.filter(c => (now - getDate(c)) < d30).length;
+    const prev = candidates.filter(c => { const d = now - getDate(c); return d >= d30 && d < d30 * 2; }).length;
+    const candidateTrend = prev > 0 ? `${recent >= prev ? '+' : ''}${Math.round(((recent - prev) / prev) * 100)}%` : recent > 0 ? `+${recent} new` : undefined;
+
+    return { candidateTrend };
+  }, [candidates]);
 
   const chartData = useMemo(() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -107,9 +135,9 @@ export const Dashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={Users} label="Total Candidates" value={totalCandidates} trend={totalCandidates > 0 ? "+100%" : undefined} color="bg-blue-500" />
-        <StatCard icon={Briefcase} label="Active Jobs" value={activeJobs} trend={activeJobs > 0 ? "+100%" : undefined} color="bg-purple-500" />
-        <StatCard icon={CheckCircle} label="Hires made" value={totalHires} trend={totalHires > 0 ? "+100%" : undefined} color="bg-emerald-500" />
+        <StatCard icon={Users} label="Total Candidates" value={totalCandidates} trend={trends.candidateTrend} color="bg-blue-500" />
+        <StatCard icon={Briefcase} label="Active Jobs" value={activeJobs} trend={undefined} color="bg-purple-500" />
+        <StatCard icon={CheckCircle} label="Hires made" value={totalHires} trend={undefined} color="bg-emerald-500" />
         <StatCard icon={Clock} label="Avg. Time to Hire" value={avgTime} trend={undefined} color="bg-orange-500" />
       </div>
 

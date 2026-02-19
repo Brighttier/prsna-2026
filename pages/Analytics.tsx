@@ -52,13 +52,18 @@ export const Analytics = () => {
 
     // --- CHART DATA ---
     const funnelData = useMemo(() => {
-        const stages = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'];
-        const counts = stages.map(stage => ({
-            stage,
-            count: candidates.filter(c => c.stage === stage).length,
-            fill: stage === 'Hired' ? '#10b981' : stage === 'Offer' ? '#f59e0b' : '#3b82f6'
+        const stages: { label: string; match: string[]; fill: string }[] = [
+            { label: 'Applied', match: ['Applied', 'New'], fill: '#3b82f6' },
+            { label: 'Screening', match: ['Screening'], fill: '#3b82f6' },
+            { label: 'Interview', match: ['Interview'], fill: '#3b82f6' },
+            { label: 'Offer', match: ['Offer'], fill: '#f59e0b' },
+            { label: 'Hired', match: ['Hired'], fill: '#10b981' },
+        ];
+        return stages.map(s => ({
+            stage: s.label,
+            count: candidates.filter(c => s.match.includes(c.stage)).length,
+            fill: s.fill
         }));
-        return counts;
     }, [candidates]);
 
     const missingSkillsData = useMemo(() => {
