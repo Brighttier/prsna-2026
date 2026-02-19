@@ -10,27 +10,27 @@ import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase'
 // Removed Monaco editor for simplification
 
 const Orb = ({ active, speaking }: { active: boolean, speaking: boolean }) => {
+   const stateClass = active ? (speaking ? 'orb-speaking' : 'orb-active') : 'orb-idle';
    return (
-      <div className="relative flex items-center justify-center w-32 h-32 md:w-48 md:h-48">
-         {/* Core */}
-         <div className={`absolute w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-brand-400 to-emerald-600 shadow-[0_0_40px_rgba(34,197,94,0.6)] z-10 transition-transform duration-300 ${speaking ? 'scale-110' : 'scale-100'}`}></div>
-
-         {/* Inner Glow - Breathing */}
-         {active && (
-            <div className={`absolute w-full h-full rounded-full bg-brand-500/20 animate-ping duration-[3000ms] transition-all`} style={{ animationDuration: speaking ? '1s' : '3s' }}></div>
-         )}
-
-         {/* Outer Rings */}
-         <div className={`absolute w-[120%] h-[120%] rounded-full border border-brand-200/50 animate-[spin_10s_linear_infinite] opacity-60`}></div>
-         <div className={`absolute w-[150%] h-[150%] rounded-full border border-brand-100/30 animate-[spin_15s_linear_infinite_reverse] opacity-40`}></div>
-
-         {/* Particles/Sparkles */}
-         {speaking && (
-            <>
-               <div className="absolute top-0 right-0 w-2 h-2 bg-brand-400 rounded-full animate-bounce"></div>
-               <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-emerald-300 rounded-full animate-pulse"></div>
-            </>
-         )}
+      <div className="orb-wrapper">
+         <div className={`orb-container ${stateClass}`}>
+            <div className="orb-canvas">
+               <div className="orb-blob orb-blob-1" />
+               <div className="orb-blob orb-blob-2" />
+               <div className="orb-blob orb-blob-3" />
+               <div className="orb-blob orb-blob-4" />
+            </div>
+         </div>
+         <svg xmlns="http://www.w3.org/2000/svg" style={{ display: 'none' }}>
+            <defs>
+               <filter id="goo">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
+                  <feColorMatrix in="blur" mode="matrix"
+                     values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -10" result="goo" />
+                  <feBlend in="SourceGraphic" in2="goo" />
+               </filter>
+            </defs>
+         </svg>
       </div>
    );
 };
@@ -62,6 +62,7 @@ export const InterviewRoom = () => {
 
    const candidateId = location.state?.candidateId;
    const assessmentId = location.state?.assessmentId;
+   const existingSessionId = location.state?.existingSessionId;
    const isTokenMode = location.state?.tokenMode;
 
    // In token mode, candidate data comes from navigation state (via Cloud Function)
@@ -302,7 +303,8 @@ export const InterviewRoom = () => {
       disconnect();
 
       let videoUrl = '';
-      const sessionId = Math.random().toString(36).substr(2, 9);
+      // Reuse the existing Upcoming session ID if available, otherwise generate new
+      const sessionId = existingSessionId || Math.random().toString(36).substr(2, 9);
       const orgId = isTokenMode ? location.state?.orgId : store.getState().orgId;
 
       // Stop Recording and Upload
@@ -364,7 +366,7 @@ export const InterviewRoom = () => {
             if (isTokenMode) {
                const { httpsCallable, functions } = await import('../services/firebase');
                const saveFn = httpsCallable(functions, 'saveInterviewSession');
-               await saveFn({ orgId, candidateId, session });
+               await saveFn({ orgId, candidateId, session, existingSessionId: sessionId });
             } else {
                store.addInterviewSession(candidateId, session);
             }

@@ -64,6 +64,8 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, onTurnComplete,
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: systemInstruction || "You are a helpful assistant.",
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
         },
         callbacks: {
           onopen: () => {
@@ -136,11 +138,9 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, onTurnComplete,
               onTranscript(msg.serverContent.inputTranscription.text, true);
             }
 
-            // Fallback: capture any text parts from model turn
-            const textPart = msg.serverContent?.modelTurn?.parts?.find(p => p.text);
-            if (textPart?.text && onTranscript) {
-              onTranscript(textPart.text, false);
-            }
+            // Note: With outputAudioTranscription enabled, speech text comes via
+            // outputTranscription events above. Do NOT capture modelTurn.parts text
+            // here — those contain internal model text/prompts, not spoken words.
 
             // Signal turn completion (AI finished speaking)
             if (msg.serverContent?.turnComplete && onTurnComplete) {

@@ -1190,7 +1190,7 @@ export const resolveInterviewToken = onCall(functionConfig as any, async (reques
  * Saves a completed interview session for token-based (unauthenticated) candidates.
  */
 export const saveInterviewSession = onCall(functionConfig as any, async (request) => {
-    const { orgId, candidateId, session } = request.data;
+    const { orgId, candidateId, session, existingSessionId } = request.data;
 
     if (!orgId || !candidateId || !session) {
         throw new HttpsError('invalid-argument', 'Missing orgId, candidateId, or session.');
@@ -1206,8 +1206,16 @@ export const saveInterviewSession = onCall(functionConfig as any, async (request
         }
 
         const data = candidateDoc.data()!;
-        const interviews = data.interviews || [];
-        interviews.push(session);
+        const interviews: any[] = data.interviews || [];
+
+        // Replace the matching Upcoming session if it exists, otherwise append
+        const matchId = existingSessionId || session.id;
+        const matchIdx = interviews.findIndex((i: any) => i.id === matchId && i.status === 'Upcoming');
+        if (matchIdx >= 0) {
+            interviews[matchIdx] = session;
+        } else {
+            interviews.push(session);
+        }
 
         await candidateRef.update({ interviews });
         return { success: true };

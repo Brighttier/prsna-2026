@@ -120,6 +120,7 @@ export const InterviewLobby = () => {
                 state: {
                     candidateId: inviteData.candidateId,
                     assessmentId: inviteData.assessmentId,
+                    existingSessionId: inviteData.sessionId,
                     orgId: inviteData.orgId,
                     candidate: inviteData.candidate,
                     persona: inviteData.persona,
@@ -136,6 +137,7 @@ export const InterviewLobby = () => {
                 state: {
                     candidateId: selectedCandidateId,
                     assessmentId: upcomingAiSession?.assessmentId,
+                    existingSessionId: upcomingAiSession?.id,
                     selfieImage,
                 }
             });

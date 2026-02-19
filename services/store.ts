@@ -577,7 +577,16 @@ class Store {
     async addInterviewSession(candidateId: string, session: InterviewSession) {
         const candidate = this.state.candidates.find(c => c.id === candidateId);
         if (candidate) {
-            const updatedInterviews = [...(candidate.interviews || []), session];
+            const existing = (candidate.interviews || []);
+            // If the session has an ID matching an existing Upcoming session, replace it
+            const matchIdx = existing.findIndex(i => i.id === session.id && i.status === 'Upcoming');
+            let updatedInterviews: InterviewSession[];
+            if (matchIdx >= 0) {
+                updatedInterviews = [...existing];
+                updatedInterviews[matchIdx] = session;
+            } else {
+                updatedInterviews = [...existing, session];
+            }
             await this.updateCandidate(candidateId, { interviews: updatedInterviews });
         }
     }
