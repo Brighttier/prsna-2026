@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { CandidateAvatar } from '../components/CandidateAvatar';
-import { ArrowLeft, User, Users, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw, Edit2 } from 'lucide-react';
+import { ArrowLeft, User, Users, BrainCircuit, MessageSquare, DollarSign, Server, Mail, Phone, Linkedin, Github, Download, Briefcase, CheckCircle, AlertCircle, Sparkles, MapPin, MoreHorizontal, Video, PlayCircle, ChevronRight, X, Play, Pause, Volume2, VolumeX, Maximize, Flag, VideoOff, PenTool, Send, FileText, Check, Loader2, Laptop, Calendar, XCircle, UploadCloud, FileCheck, Code, Minus, Clock, Globe, Folder, File, Plus, Search, Trash2, MoreVertical, ExternalLink, Activity, BellRing, Cpu, RefreshCw, Edit2, ShieldCheck, Eye } from 'lucide-react';
 import { Candidate, OfferDetails, OnboardingTask } from '../types';
 import {
     Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
@@ -1956,6 +1956,48 @@ RecruiteAI`;
                                                                                 </div>
                                                                             </div>
                                                                         ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* Proctoring Report */}
+                                                            {interview.proctoring && (
+                                                                <div>
+                                                                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                                        <Eye className="w-3 h-3" /> Proctoring Report
+                                                                    </h5>
+                                                                    <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+                                                                        interview.proctoring.integrity === 'Clean' ? 'bg-emerald-50 border-emerald-200' :
+                                                                        interview.proctoring.integrity === 'Flagged' ? 'bg-red-50 border-red-200' :
+                                                                        'bg-amber-50 border-amber-200'
+                                                                    }`}>
+                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                                                            interview.proctoring.integrity === 'Clean' ? 'bg-emerald-200 text-emerald-700' :
+                                                                            interview.proctoring.integrity === 'Flagged' ? 'bg-red-200 text-red-700' :
+                                                                            'bg-amber-200 text-amber-700'
+                                                                        }`}>
+                                                                            <ShieldCheck className="w-4 h-4" />
+                                                                        </div>
+                                                                        <div className="flex-1">
+                                                                            <div className={`text-sm font-bold ${
+                                                                                interview.proctoring.integrity === 'Clean' ? 'text-emerald-800' :
+                                                                                interview.proctoring.integrity === 'Flagged' ? 'text-red-800' :
+                                                                                'text-amber-800'
+                                                                            }`}>
+                                                                                Integrity: {interview.proctoring.integrity}
+                                                                            </div>
+                                                                            {interview.proctoring.observations.length > 0 ? (
+                                                                                <ul className="mt-2 space-y-1">
+                                                                                    {interview.proctoring.observations.map((obs, idx) => (
+                                                                                        <li key={idx} className="text-xs text-slate-600 flex items-start gap-1.5">
+                                                                                            <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-amber-500" />
+                                                                                            {obs}
+                                                                                        </li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            ) : (
+                                                                                <p className="text-xs text-slate-500 mt-1">No integrity concerns detected during this session.</p>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             )}

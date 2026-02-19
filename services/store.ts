@@ -52,6 +52,7 @@ export interface InterviewSession {
     videoHighlights?: VideoHighlight[];
     videoUrl?: string;
     identityVerification?: { score: number; match: boolean };
+    proctoring?: { integrity: 'Clean' | 'Minor Concerns' | 'Flagged'; observations: string[] };
 }
 
 export interface Experience {

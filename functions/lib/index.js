@@ -565,13 +565,19 @@ exports.analyzeInterview = (0, https_1.onCall)(functionConfig, async (request) =
         const genAI = getGenAIClient();
         const prompt = `
         ROLE: ${jobTitle}
-        TRANSCRIPT: 
+        TRANSCRIPT:
         ${JSON.stringify(transcript)}
 
-        Analyze this interview.
+        Analyze this interview thoroughly.
         1. Calculate an overall score (0-10) based on quality of answers.
         2. Determine sentiment.
-        3. Extract key highlights (positive signals, red flags).
+        3. Extract key highlights (positive signals, red flags, insights).
+        4. Proctoring analysis: Look for any signs in the transcript that suggest potential integrity concerns during the interview, such as:
+           - The interviewer mentioning the candidate appeared distracted or was looking elsewhere
+           - Signs of someone else providing answers (unnaturally perfect responses after pauses, sudden change in vocabulary/sophistication)
+           - The interviewer noting background activity or other people present
+           - Inconsistent response quality suggesting external help
+           Rate integrity as "Clean", "Minor Concerns", or "Flagged" with specific observations.
 
         OUTPUT JSON:
         {
@@ -580,7 +586,11 @@ exports.analyzeInterview = (0, https_1.onCall)(functionConfig, async (request) =
             "summary": "Executive summary of performance...",
             "highlights": [
                 { "timestamp": number, "type": "Positive" | "Flag" | "Insight", "text": "..." }
-            ]
+            ],
+            "proctoring": {
+                "integrity": "Clean" | "Minor Concerns" | "Flagged",
+                "observations": ["List of specific proctoring observations, empty if clean"]
+            }
         }
         `;
         const response = await genAI.models.generateContent({
@@ -713,6 +723,17 @@ exports.startInterviewSession = (0, https_1.onCall)(functionConfig, async (reque
         5. Keep your responses concise (under 30s of speaking).
         6. Be conversational. Listen 80% of the time.
         7. END the interview with exactly this outro: "${outro}"
+        8. Once you have finished the outro, do NOT continue the conversation. The interview is complete.
+
+        PROCTORING:
+        You can see the candidate's video feed. While conducting the interview, silently observe for:
+        - Another person visible in the background or whispering answers
+        - Candidate frequently looking away at another screen or device
+        - Someone off-camera dictating or feeding answers
+        - Unusual eye movements suggesting reading from hidden notes
+        - Significant background activity or environment changes
+        Do NOT confront the candidate about suspicious behavior. Simply continue the interview normally.
+        If you notice anything, subtly mention it in your conversation (e.g. "I notice you seem distracted" or "take your time") so it appears in context.
 
         Begin the interview IMMEDIATELY with your introduction. Do NOT wait for the candidate to speak first.
         `;

@@ -75,6 +75,9 @@ export const InterviewRoom = () => {
    const [systemInstruction, setSystemInstruction] = useState<string>('');
    const [sessionReady, setSessionReady] = useState(false);
    const [sessionError, setSessionError] = useState<string | null>(null);
+   const interviewTimeLimitRef = useRef<number>(30); // minutes
+   const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   const handleEndRef = useRef<(() => void) | null>(null);
 
    // Fetch dynamic persona from Backend V2
    useEffect(() => {
@@ -107,6 +110,8 @@ export const InterviewRoom = () => {
                   company: state.branding.companyName || 'Prsna'
                };
             }
+
+            interviewTimeLimitRef.current = persona?.interviewTimeLimit || 30;
 
             startInterviewSession(candidate, jobDetails as any, persona, orgId, assessmentId).then(data => {
                setSystemInstruction(data.systemInstruction);
@@ -221,14 +226,14 @@ export const InterviewRoom = () => {
             }
             setMediaStream(stream);
 
-            // Start Recording
-            const recorder = new MediaRecorder(stream);
+            // Start Recording — use 1s timeslice to ensure chunks are captured incrementally
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
             mediaRecorderRef.current = recorder;
             chunksRef.current = [];
             recorder.ondataavailable = (e) => {
                if (e.data.size > 0) chunksRef.current.push(e.data);
             };
-            recorder.start();
+            recorder.start(1000);
             setIsRecording(true);
 
          } catch (e) {
@@ -285,6 +290,30 @@ export const InterviewRoom = () => {
 
    // Transcript is collected silently for backend analysis (no live UI panel)
 
+   // Auto-stop timer: end interview when time limit is reached
+   useEffect(() => {
+      handleEndRef.current = handleEnd;
+   });
+
+   useEffect(() => {
+      if (!isConnected) {
+         if (autoStopTimerRef.current) {
+            clearTimeout(autoStopTimerRef.current);
+            autoStopTimerRef.current = null;
+         }
+         return;
+      }
+      const limitMs = interviewTimeLimitRef.current * 60 * 1000;
+      console.log(`[InterviewRoom] Auto-stop timer set for ${interviewTimeLimitRef.current} minutes`);
+      autoStopTimerRef.current = setTimeout(() => {
+         console.log('[InterviewRoom] Time limit reached — auto-ending interview');
+         handleEndRef.current?.();
+      }, limitMs);
+      return () => {
+         if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
+      };
+   }, [isConnected]);
+
    const handleStart = () => {
       interviewStartTime.current = Date.now();
       connect();
@@ -309,10 +338,12 @@ export const InterviewRoom = () => {
                mediaRecorderRef.current.stop();
             });
 
+            console.log(`[InterviewRoom] Recording blob size: ${videoBlob.size} bytes, chunks: ${chunksRef.current.length}`);
             if (videoBlob.size > 0) {
-               const videoRef = ref(storage, `${orgId}/candidates/${candidateId}/interviews/${sessionId}/recording.webm`);
-               await uploadBytes(videoRef, videoBlob);
-               videoUrl = await getDownloadURL(videoRef);
+               const storageVideoRef = ref(storage, `${orgId}/candidates/${candidateId}/interviews/${sessionId}/recording.webm`);
+               await uploadBytes(storageVideoRef, videoBlob);
+               videoUrl = await getDownloadURL(storageVideoRef);
+               console.log(`[InterviewRoom] Video uploaded: ${videoUrl}`);
             }
          } catch (e) {
             console.error("Failed to upload recording", e);
@@ -350,7 +381,8 @@ export const InterviewRoom = () => {
             transcript: transcriptEntries,
             videoHighlights: analysisData.highlights || [],
             videoUrl: videoUrl,
-            identityVerification: verificationResult ? { score: verificationResult.score, match: verificationResult.match } : undefined
+            identityVerification: verificationResult ? { score: verificationResult.score, match: verificationResult.match } : undefined,
+            proctoring: analysisData.proctoring || { integrity: 'Clean', observations: [] }
          };
 
          try {
