@@ -183,7 +183,13 @@ export const Candidates = () => {
                                                 <Clock className="w-3.5 h-3.5" /> {candidate.lastActive}
                                             </div>
                                             <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                                                Applied {candidate.appliedDate}
+                                                {candidate.stage === 'Hired' ? 'Hired' :
+                                                 candidate.stage === 'Rejected' ? 'Rejected' :
+                                                 candidate.offer ? 'Offer sent' :
+                                                 (candidate as any).interviews?.some((i: any) => i.status === 'Completed') ? 'Interview completed' :
+                                                 (candidate as any).interviews?.some((i: any) => i.status === 'Upcoming') ? 'Interview scheduled' :
+                                                 candidate.stage === 'Screening' ? 'Screening in progress' :
+                                                 'Applied'} · {candidate.appliedDate}
                                             </div>
                                         </div>
                                     </td>
