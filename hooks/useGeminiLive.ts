@@ -66,8 +66,6 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
           systemInstruction: systemInstruction || "You are a helpful assistant.",
-          inputAudioTranscription: {}, // Enable user transcription
-          outputAudioTranscription: {}, // Enable model transcription
         },
         callbacks: {
           onopen: () => {
@@ -124,12 +122,18 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
             processor.connect(inputContextRef.current.destination);
           },
           onmessage: async (msg: LiveServerMessage) => {
-            // Handle Transcriptions
+            // Handle Transcriptions (if server supports them)
             if (msg.serverContent?.outputTranscription?.text && onTranscript) {
               onTranscript(msg.serverContent.outputTranscription.text, false);
             }
             if (msg.serverContent?.inputTranscription?.text && onTranscript) {
               onTranscript(msg.serverContent.inputTranscription.text, true);
+            }
+
+            // Fallback: capture any text parts from model turn
+            const textPart = msg.serverContent?.modelTurn?.parts?.find(p => p.text);
+            if (textPart?.text && onTranscript) {
+              onTranscript(textPart.text, false);
             }
 
             // Handle Audio Output
