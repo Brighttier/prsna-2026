@@ -51,6 +51,7 @@ export interface InterviewSession {
     transcript?: TranscriptEntry[];
     videoHighlights?: VideoHighlight[];
     videoUrl?: string;
+    identityVerification?: { score: number; match: boolean };
 }
 
 export interface Experience {

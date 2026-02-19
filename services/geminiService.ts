@@ -80,6 +80,32 @@ export const decodeAudioData = async (
   }
   return buffer;
 };
+export const compareFaces = async (selfieBase64: string, liveFrameBase64: string): Promise<{ score: number; match: boolean }> => {
+  try {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: 'Compare these two face images and determine if they are the same person. The first image is a selfie taken during identity check, the second is a live video frame from an interview. Return a JSON object with "score" (0-100 integer confidence percentage that they are the same person) and "match" (true if score >= 70, false otherwise). Return only raw JSON.' },
+            { inlineData: { mimeType: 'image/jpeg', data: selfieBase64 } },
+            { inlineData: { mimeType: 'image/jpeg', data: liveFrameBase64 } }
+          ]
+        }
+      ],
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const result = JSON.parse(response.text || '{"score":0,"match":false}');
+    return { score: result.score || 0, match: !!result.match };
+  } catch (error) {
+    console.error("Face comparison failed:", error);
+    return { score: 0, match: false };
+  }
+};
+
 export const summarizeInterview = async (transcript: string): Promise<string> => {
   try {
     const ai = getAiClient();

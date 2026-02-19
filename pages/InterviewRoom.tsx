@@ -5,7 +5,7 @@ import { Card } from '../components/Card';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Code, MessageSquare, ShieldCheck, User, ChevronRight, Sparkles, Cpu, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { store, InterviewSession, TranscriptEntry } from '../services/store';
-import { summarizeInterview } from '../services/geminiService';
+import { summarizeInterview, compareFaces } from '../services/geminiService';
 import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase';
 // Removed Monaco editor for simplification
 
@@ -53,6 +53,12 @@ export const InterviewRoom = () => {
    const chunksRef = useRef<Blob[]>([]);
    const [isRecording, setIsRecording] = useState(false);
    const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+
+   // Identity verification state
+   const selfieImage = location.state?.selfieImage as string | null;
+   const [verificationResult, setVerificationResult] = useState<{ score: number; match: boolean } | null>(null);
+   const [verifying, setVerifying] = useState(false);
+   const verificationDoneRef = useRef(false);
 
    const candidateId = location.state?.candidateId;
    const assessmentId = location.state?.assessmentId;
@@ -244,6 +250,34 @@ export const InterviewRoom = () => {
       }
    }, []);
 
+   // Identity verification: capture frame 10s after connection and compare with lobby selfie
+   useEffect(() => {
+      if (!isConnected || !selfieImage || verificationDoneRef.current) return;
+
+      const timer = setTimeout(() => {
+         if (!videoRef.current || verificationDoneRef.current) return;
+         verificationDoneRef.current = true;
+
+         // Capture live frame from candidate video
+         const canvas = document.createElement('canvas');
+         canvas.width = videoRef.current.videoWidth;
+         canvas.height = videoRef.current.videoHeight;
+         canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
+         const liveFrame = canvas.toDataURL('image/jpeg').split(',')[1];
+         const selfieData = selfieImage.split(',')[1];
+
+         if (!liveFrame || !selfieData) return;
+
+         setVerifying(true);
+         compareFaces(selfieData, liveFrame).then(result => {
+            setVerificationResult(result);
+            setVerifying(false);
+         });
+      }, 10000);
+
+      return () => clearTimeout(timer);
+   }, [isConnected, selfieImage]);
+
    useEffect(() => {
       if (isConnected && camOn && videoRef.current) {
          const interval = setInterval(() => {
@@ -322,7 +356,8 @@ export const InterviewRoom = () => {
             summary: analysisData.summary || 'Interview session completed.',
             transcript: transcriptEntries,
             videoHighlights: analysisData.highlights || [],
-            videoUrl: videoUrl
+            videoUrl: videoUrl,
+            identityVerification: verificationResult ? { score: verificationResult.score, match: verificationResult.match } : undefined
          };
 
          try {
@@ -434,6 +469,20 @@ export const InterviewRoom = () => {
                      {!camOn && (
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
                            <User className="w-20 h-20 text-slate-300" />
+                        </div>
+                     )}
+
+                     {/* Identity Verification Badge */}
+                     {(verifying || verificationResult) && (
+                        <div className={`absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm shadow-md z-10 ${
+                           verifying ? 'bg-white/80 text-slate-600 border border-slate-200' :
+                           verificationResult?.match ? 'bg-emerald-500/90 text-white' : 'bg-red-500/90 text-white'
+                        }`}>
+                           {verifying ? (
+                              <><Loader2 className="w-3 h-3 animate-spin" /> Verifying...</>
+                           ) : (
+                              <><ShieldCheck className="w-3 h-3" /> ID: {verificationResult?.score}% Match</>
+                           )}
                         </div>
                      )}
 
