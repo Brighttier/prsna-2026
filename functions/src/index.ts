@@ -620,7 +620,7 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
  * Moves the "Prompt Engineering" to the backend for security and updates.
  */
 export const startInterviewSession = onCall(functionConfig as any, async (request) => {
-    const { candidate, job, orgId } = request.data;
+    const { candidate, job, orgId, assessmentId } = request.data;
 
     if (!candidate || !job) {
         throw new HttpsError('invalid-argument', 'Missing "candidate" or "job".');
@@ -633,9 +633,14 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
         let knowledgeBaseContent = "";
         let manualQuestions: any[] = [];
 
-        // 1. Fetch Assessment Context if available
-        if (orgId && (job.screening || job.technical)) {
-            const assessmentIds = [job.screening, job.technical].filter(Boolean);
+        // 1. Fetch Assessment Context
+        if (orgId) {
+            // If a specific assessmentId is provided, use ONLY that assessment
+            // Otherwise fall back to job-linked screening/technical assessments
+            const assessmentIds = assessmentId
+                ? [assessmentId]
+                : [job.screening, job.technical].filter(Boolean);
+
             for (const id of assessmentIds) {
                 const assessSnap = await db.collection('organizations').doc(orgId).collection('assessments').doc(id).get();
                 if (assessSnap.exists) {
@@ -650,37 +655,61 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
             }
         }
 
-        // 2. Generate Questions dynamically with Context
-        const questionsPrompt = `
-        JOB: ${job.title}
-        DESCRIPTION: ${job.description}
-        CANDIDATE: ${candidate.name} (${candidate.role})
-        CANDIDATE SUMMARY: ${candidate.summary}
+        // 2. Build questions — use manual questions as-is, or generate from context
+        let questions: string[] = [];
 
-        ${knowledgeBaseContent ? `KNOWLEDGE BASE CONTEXT:\n${knowledgeBaseContent}\n` : ''}
-        ${manualQuestions.length > 0 ? `PRE-DEFINED QUESTIONS:\n${manualQuestions.map(q => `- ${q.text} (Eval: ${q.criteria || q.aiEvaluationCriteria})`).join('\n')}\n` : ''}
+        if (manualQuestions.length > 0) {
+            // Use the admin's questions verbatim — they defined them for a reason
+            questions = manualQuestions.map(q => q.text);
+        } else if (knowledgeBaseContent) {
+            // Generate questions from knowledge base content
+            const questionsPrompt = `
+            JOB: ${job.title}
+            DESCRIPTION: ${job.description || ''}
+            CANDIDATE: ${candidate.name} (${candidate.role})
 
-        INSTRUCTIONS:
-        Generate exactly 4 distinct, high-signal interview questions for this session.
-        1. If manual questions are provided, use or adapt them.
-        2. If knowledge base content is provided, generate questions specifically testing understanding of that material.
-        3. If no specific context is present, focus on general Technical Depth, Problem Solving, and Communication.
-        
-        Return ONLY the questions as a JSON array of strings.
-        `;
+            KNOWLEDGE BASE CONTEXT:
+            ${knowledgeBaseContent}
 
-        const qResponse = await genAI.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: questionsPrompt,
-            config: { responseMimeType: 'application/json' }
-        });
+            Generate exactly 4 interview questions that specifically test the candidate's understanding of the knowledge base material above, appropriate for the ${job.title} role.
+            Return ONLY the questions as a JSON array of strings.
+            `;
 
-        const text = qResponse.text || "[]";
-        let questions = [];
-        try {
-            questions = JSON.parse(text);
-        } catch (e) {
-            questions = ["Describe your background.", "What is your greatest technical challenge?", "Why this role?"];
+            const qResponse = await genAI.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: questionsPrompt,
+                config: { responseMimeType: 'application/json' }
+            });
+
+            try {
+                questions = JSON.parse(qResponse.text || "[]");
+            } catch (e) {
+                questions = ["Describe your background.", "What interests you about this role?", "Walk me through a relevant project."];
+            }
+        } else {
+            // No assessment context — generate general questions for the role
+            const questionsPrompt = `
+            JOB: ${job.title}
+            DESCRIPTION: ${job.description || ''}
+            CANDIDATE: ${candidate.name} (${candidate.role})
+            CANDIDATE SUMMARY: ${candidate.summary || ''}
+
+            Generate exactly 4 interview questions focused on assessing this candidate for the ${job.title} role.
+            Focus on: relevant experience, problem solving, and communication.
+            Return ONLY the questions as a JSON array of strings.
+            `;
+
+            const qResponse = await genAI.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: questionsPrompt,
+                config: { responseMimeType: 'application/json' }
+            });
+
+            try {
+                questions = JSON.parse(qResponse.text || "[]");
+            } catch (e) {
+                questions = ["Describe your background.", "What is your greatest technical challenge?", "Why this role?"];
+            }
         }
 
         // 3. Construct the System Instruction (Persona)
@@ -690,27 +719,29 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
         const outro = persona?.outro || "Thank you for your time today. Our team will review the session and get back to you soon!";
         const timeLimit = persona?.interviewTimeLimit || 30;
 
+        const hasManualQuestions = manualQuestions.length > 0;
         const systemInstruction = `
-        You are Lumina, a professional recruiter for ${job.department} at ${job.company || 'the company'}.
-        
+        You are Lumina, a professional recruiter for ${job.department || 'the team'} at ${job.company || 'the company'}.
+
         STRESS LEVEL: ${intensity}/100 (0=Casual, 100=Technical Grill). Adjust your tone and follow-up strictness accordingly.
-        TIME LIMIT: ${timeLimit} minutes. Start wrapping up politey 3 minutes before the end.
-        
+        TIME LIMIT: ${timeLimit} minutes. Start wrapping up politely 3 minutes before the end.
+
         YOUR OBJECTIVE:
         Assess the candidate for the ${job.title} role using the questions below.
-        
-        INTERVIEW GUIDE:
+
+        INTERVIEW QUESTIONS:
         ${questions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n')}
-        
+
         RULES:
         1. START the interview with exactly this introduction: "${introduction}"
-        2. Move naturally to the questions above.
-        3. If they struggle, offer small hints if intensity is low, but be more rigorous if intensity is high.
-        4. Keep your responses concise (under 30s).
-        5. Be conversational. Listen 80% of the time.
-        6. END the interview with exactly this outro: "${outro}"
-        
-        Wait for the user to speak first after your introduction.
+        2. Ask each question above ${hasManualQuestions ? 'EXACTLY as written — do NOT rephrase or substitute them' : 'naturally, adapting your phrasing to keep the conversation flowing'}.
+        3. After each answer, you may ask ONE brief follow-up before moving to the next question.
+        4. If they struggle, offer small hints if intensity is low, but be more rigorous if intensity is high.
+        5. Keep your responses concise (under 30s of speaking).
+        6. Be conversational. Listen 80% of the time.
+        7. END the interview with exactly this outro: "${outro}"
+
+        Begin the interview IMMEDIATELY with your introduction. Do NOT wait for the candidate to speak first.
         `;
 
         return {

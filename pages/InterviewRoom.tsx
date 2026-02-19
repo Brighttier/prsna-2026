@@ -41,11 +41,12 @@ export const InterviewRoom = () => {
    const videoRef = useRef<HTMLVideoElement>(null);
    const [micOn, setMicOn] = useState(true);
    const [camOn, setCamOn] = useState(true);
-   const [transcript, setTranscript] = useState<{ user: boolean, text: string }[]>([]);
+   const [transcript, setTranscript] = useState<{ user: boolean, text: string, time: string }[]>([]);
    // Removed codeMode for simplification
    const scrollRef = useRef<HTMLDivElement>(null);
    const [isAiSpeaking, setIsAiSpeaking] = useState(false);
    const aiSpeakingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+   const interviewStartTime = useRef<number>(0);
 
    // Recording State
    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -116,27 +117,98 @@ export const InterviewRoom = () => {
 
    // Removed editorValue for simplification
 
+   // Helper: get elapsed time string
+   const getTimeStr = () => {
+      const elapsed = interviewStartTime.current
+         ? Math.floor((Date.now() - interviewStartTime.current) / 1000)
+         : 0;
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+   };
+
+   // Helper: add or append transcript entry
+   const addTranscriptEntry = (text: string, isUser: boolean) => {
+      const timeStr = getTimeStr();
+      setTranscript(prev => {
+         const lastMsg = prev[prev.length - 1];
+         if (lastMsg && lastMsg.user === isUser) {
+            return [...prev.slice(0, -1), { ...lastMsg, text: lastMsg.text + text }];
+         }
+         return [...prev, { user: isUser, text, time: timeStr }];
+      });
+   };
+
    const { isConnected, isConnecting, error, connect, disconnect, sendVideoFrame, sendContent } = useGeminiLive({
       systemInstruction: systemInstruction || "You are a helpful assistant.",
       existingStream: mediaStream,
       onTranscript: (text, isUser) => {
-         setTranscript(prev => {
-            const lastMsg = prev[prev.length - 1];
-            if (lastMsg && lastMsg.user === isUser) {
-               return [...prev.slice(0, -1), { ...lastMsg, text: lastMsg.text + text }];
-            }
-            return [...prev, { user: isUser, text }];
-         });
-
+         addTranscriptEntry(text, isUser);
          if (!isUser) {
             setIsAiSpeaking(true);
             if (aiSpeakingTimeout.current) clearTimeout(aiSpeakingTimeout.current);
             aiSpeakingTimeout.current = setTimeout(() => setIsAiSpeaking(false), 2000);
          }
+      },
+      onTurnComplete: () => {
+         setIsAiSpeaking(false);
+         if (aiSpeakingTimeout.current) clearTimeout(aiSpeakingTimeout.current);
       }
    });
 
-   // Removed code state sync
+   // Browser Speech Recognition for candidate transcript (Web Speech API)
+   const recognitionRef = useRef<any>(null);
+
+   useEffect(() => {
+      if (!isConnected) {
+         if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
+         }
+         return;
+      }
+
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+         console.warn("Web Speech API not supported — candidate transcript will be limited");
+         return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false; // Only final results for clean sentences
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: any) => {
+         for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+               const text = event.results[i][0].transcript.trim();
+               if (text) addTranscriptEntry(text + ' ', true);
+            }
+         }
+      };
+
+      recognition.onerror = (e: any) => {
+         if (e.error !== 'no-speech' && e.error !== 'aborted') {
+            console.error("Speech recognition error:", e.error);
+         }
+      };
+
+      // Auto-restart on end (browser stops after silence)
+      recognition.onend = () => {
+         if (recognitionRef.current) {
+            try { recognition.start(); } catch (e) { /* already running */ }
+         }
+      };
+
+      recognition.start();
+      recognitionRef.current = recognition;
+
+      return () => {
+         recognitionRef.current = null;
+         try { recognition.stop(); } catch (e) { /* ignore */ }
+      };
+   }, [isConnected]);
 
    useEffect(() => {
       const startCam = async () => {
@@ -188,6 +260,7 @@ export const InterviewRoom = () => {
    }, [transcript]);
 
    const handleStart = () => {
+      interviewStartTime.current = Date.now();
       connect();
    };
 
@@ -219,40 +292,49 @@ export const InterviewRoom = () => {
          }
       }
 
-      if (candidateId && transcript.length > 0) {
+      if (candidateId) {
+         // Build transcript entries with real timestamps
+         const transcriptEntries: TranscriptEntry[] = transcript.map(t => ({
+            speaker: t.user ? 'Candidate' : 'Lumina',
+            text: t.text,
+            timestamp: t.time || '0:00'
+         }));
+
+         // Attempt AI analysis, but save session regardless
+         let analysisData: any = {};
          try {
-            // Use V2 Backend Function for analysis
-            const { analyzeInterview } = await import('../services/ai');
-            const data = await analyzeInterview(transcript, candidate?.role || 'Engineer');
+            if (transcript.length > 0) {
+               const { analyzeInterview } = await import('../services/ai');
+               analysisData = await analyzeInterview(transcript, candidate?.role || 'Engineer');
+            }
+         } catch (e) {
+            console.error("Interview analysis failed (session will still be saved):", e);
+         }
 
-            const session: InterviewSession = {
-               id: sessionId,
-               date: new Date().toLocaleDateString(),
-               mode: 'AI',
-               type: 'Lumina Live Interview',
-               status: 'Completed',
-               score: data.score || 0,
-               sentiment: data.sentiment || 'Neutral',
-               summary: data.summary || 'Session completed.',
-               transcript: transcript.map(t => ({
-                  speaker: t.user ? 'Candidate' : 'Lumina',
-                  text: t.text,
-                  timestamp: new Date().toLocaleTimeString()
-               })),
-               videoHighlights: data.highlights || [],
-               videoUrl: videoUrl // Link video
-            };
+         const session: InterviewSession = {
+            id: sessionId,
+            date: new Date().toLocaleDateString(),
+            mode: 'AI',
+            type: 'Lumina Live Interview',
+            status: 'Completed',
+            score: analysisData.score || 0,
+            sentiment: analysisData.sentiment || 'Neutral',
+            summary: analysisData.summary || 'Interview session completed.',
+            transcript: transcriptEntries,
+            videoHighlights: analysisData.highlights || [],
+            videoUrl: videoUrl
+         };
 
-            // In token mode, save via Cloud Function since store isn't loaded
+         try {
             if (isTokenMode) {
                const { httpsCallable, functions } = await import('../services/firebase');
                const saveFn = httpsCallable(functions, 'saveInterviewSession');
-               await saveFn({ orgId, candidateId, session }).catch(err => console.error("Failed to save via function", err));
+               await saveFn({ orgId, candidateId, session });
             } else {
                store.addInterviewSession(candidateId, session);
             }
          } catch (e) {
-            console.error("Failed to save session", e);
+            console.error("Failed to save session:", e);
          }
       }
 
@@ -421,7 +503,7 @@ export const InterviewRoom = () => {
                                  {t.text}
                               </div>
                               <span className="text-[10px] text-slate-400 mt-1.5 px-1">
-                                 {t.user ? 'You' : 'Lumina AI'}
+                                 {t.user ? 'You' : 'Lumina AI'} · {t.time}
                               </span>
                            </div>
                         </div>

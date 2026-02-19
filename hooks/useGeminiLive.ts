@@ -5,10 +5,11 @@ import { createPcmBlob, convertBlobToBase64, decodeAudioData } from '../services
 interface UseGeminiLiveProps {
   systemInstruction?: string;
   onTranscript?: (text: string, isUser: boolean) => void;
+  onTurnComplete?: () => void;
   existingStream?: MediaStream | null;
 }
 
-export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream }: UseGeminiLiveProps) => {
+export const useGeminiLive = ({ systemInstruction, onTranscript, onTurnComplete, existingStream }: UseGeminiLiveProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +70,14 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
             console.log("Gemini Live Connected");
             setIsConnected(true);
             setIsConnecting(false);
+
+            // Prompt the AI to begin speaking its introduction immediately
+            sessionPromiseRef.current?.then(session => {
+              session.sendClientContent({
+                turns: [{ role: 'user', parts: [{ text: 'Begin the interview now. Start with your introduction.' }] }],
+                turnComplete: true
+              });
+            }).catch(err => console.error("Error sending initial prompt", err));
 
             // Setup Audio Streaming to Model
             if (!inputContextRef.current || !streamRef.current) {
@@ -131,6 +140,11 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
             const textPart = msg.serverContent?.modelTurn?.parts?.find(p => p.text);
             if (textPart?.text && onTranscript) {
               onTranscript(textPart.text, false);
+            }
+
+            // Signal turn completion (AI finished speaking)
+            if (msg.serverContent?.turnComplete && onTurnComplete) {
+              onTurnComplete();
             }
 
             // Handle Audio Output
