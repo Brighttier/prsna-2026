@@ -36,13 +36,17 @@ export const Jobs = () => {
    // Sync with store
    const [jobs, setJobs] = useState(store.getState().jobs);
    const [assessments, setAssessments] = useState(store.getState().assessments);
+   const [candidates, setCandidates] = useState(store.getState().candidates);
 
    useEffect(() => {
       return store.subscribe(() => {
          setJobs(store.getState().jobs);
          setAssessments(store.getState().assessments);
+         setCandidates(store.getState().candidates);
       });
    }, []);
+
+   const getCandidateCount = (jobId: string) => candidates.filter(c => c.jobId === jobId).length;
 
    const handleEdit = (job: Job) => {
       setNewJob({
@@ -236,7 +240,7 @@ export const Jobs = () => {
 
                      <div className="flex items-center gap-6 md:border-l md:border-slate-100 md:pl-6">
                         <div className="text-center min-w-[80px]">
-                           <div className="text-2xl font-bold text-slate-900">{job.applicants}</div>
+                           <div className="text-2xl font-bold text-slate-900">{getCandidateCount(job.id)}</div>
                            <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Applicants</div>
                         </div>
 
