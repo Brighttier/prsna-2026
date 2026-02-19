@@ -62,9 +62,6 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, existingStream 
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-          },
           systemInstruction: systemInstruction || "You are a helpful assistant.",
         },
         callbacks: {
