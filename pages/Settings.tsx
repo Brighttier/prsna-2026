@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2, List, FileText, CheckCircle, AlertCircle, UserCheck, UploadCloud, BookOpen, Sparkles, BrainCircuit, ClipboardList, FileCheck, Video, Settings as SettingsIcon } from 'lucide-react';
+import { Save, Globe, Code, Key, Zap, Users, Check, Copy, RefreshCw, LayoutTemplate, Type, Image as ImageIcon, Palette, Monitor, Smartphone, Briefcase, MapPin, ArrowRight, Shield, X, Mail, ChevronDown, Library, FileQuestion, Terminal, Plus, Trash2, Edit2, List, FileText, CheckCircle, AlertCircle, UserCheck, UploadCloud, Upload, BookOpen, Sparkles, BrainCircuit, ClipboardList, FileCheck, Video, Settings as SettingsIcon } from 'lucide-react';
 import { store, Invitation, EmailType, EmailTemplateOverride, EmailTemplateOverrides } from '../services/store';
 import { auth } from '../services/firebase';
 import { logout } from '../services/auth';

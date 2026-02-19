@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import { Card } from '../components/Card';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Code, MessageSquare, ShieldCheck, User, ChevronRight, Sparkles, Cpu, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Code, ShieldCheck, ChevronRight, Sparkles, User, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { store, InterviewSession, TranscriptEntry } from '../services/store';
 import { summarizeInterview, compareFaces } from '../services/geminiService';
@@ -42,8 +42,6 @@ export const InterviewRoom = () => {
    const [micOn, setMicOn] = useState(true);
    const [camOn, setCamOn] = useState(true);
    const [transcript, setTranscript] = useState<{ user: boolean, text: string, time: string }[]>([]);
-   // Removed codeMode for simplification
-   const scrollRef = useRef<HTMLDivElement>(null);
    const [isAiSpeaking, setIsAiSpeaking] = useState(false);
    const aiSpeakingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
    const interviewStartTime = useRef<number>(0);
@@ -149,13 +147,10 @@ export const InterviewRoom = () => {
    const { isConnected, isConnecting, error, connect, disconnect, sendVideoFrame, sendContent } = useGeminiLive({
       systemInstruction: systemInstruction || "You are a helpful assistant.",
       existingStream: mediaStream,
-      onTranscript: (text, isUser) => {
-         addTranscriptEntry(text, isUser);
-         if (!isUser) {
-            setIsAiSpeaking(true);
-            if (aiSpeakingTimeout.current) clearTimeout(aiSpeakingTimeout.current);
-            aiSpeakingTimeout.current = setTimeout(() => setIsAiSpeaking(false), 2000);
-         }
+      onModelAudio: () => {
+         setIsAiSpeaking(true);
+         if (aiSpeakingTimeout.current) clearTimeout(aiSpeakingTimeout.current);
+         aiSpeakingTimeout.current = setTimeout(() => setIsAiSpeaking(false), 2000);
       },
       onTurnComplete: () => {
          setIsAiSpeaking(false);
@@ -288,11 +283,7 @@ export const InterviewRoom = () => {
       }
    }, [isConnected, camOn, sendVideoFrame]);
 
-   useEffect(() => {
-      if (scrollRef.current) {
-         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-   }, [transcript]);
+   // Transcript is collected silently for backend analysis (no live UI panel)
 
    const handleStart = () => {
       interviewStartTime.current = Date.now();
@@ -525,55 +516,7 @@ export const InterviewRoom = () => {
                )}
             </div>
 
-            <div className="w-full md:w-[400px] transition-all duration-300 bg-white border-l border-slate-200 flex flex-col shadow-xl z-10">
-               <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                     <MessageSquare className="w-5 h-5 text-brand-600" />
-                     Live Transcript
-                  </h3>
-               </div>
-
-               <div className="flex-1 overflow-hidden relative">
-                  <div className="h-full overflow-y-auto p-4 space-y-6 bg-white" ref={scrollRef}>
-                     {transcript.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center p-8 opacity-60">
-                           <MessageSquare className="w-12 h-12 mb-3 text-slate-300" />
-                           <p>Conversation history will appear here.</p>
-                        </div>
-                     )}
-                     {transcript.map((t, i) => (
-                        <div key={i} className={`flex gap-3 ${t.user ? 'flex-row-reverse' : 'flex-row'}`}>
-                           <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${t.user ? 'bg-slate-200' : 'bg-brand-100'}`}>
-                              {t.user ? <User className="w-4 h-4 text-slate-600" /> : <Cpu className="w-4 h-4 text-brand-600" />}
-                           </div>
-                           <div className={`flex flex-col ${t.user ? 'items-end' : 'items-start'} max-w-[80%]`}>
-                              <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${t.user
-                                 ? 'bg-slate-100 text-slate-800 rounded-tr-none'
-                                 : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
-                                 }`}>
-                                 {t.text}
-                              </div>
-                              <span className="text-[10px] text-slate-400 mt-1.5 px-1">
-                                 {t.user ? 'You' : 'Lumina AI'} · {t.time}
-                              </span>
-                           </div>
-                        </div>
-                     ))}
-                     {isAiSpeaking && (
-                        <div className="flex gap-3">
-                           <div className="w-8 h-8 rounded-full bg-brand-100 flex-shrink-0 flex items-center justify-center">
-                              <Cpu className="w-4 h-4 text-brand-600" />
-                           </div>
-                           <div className="flex items-center gap-1 h-8 px-2">
-                              <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce"></div>
-                              <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce delay-75"></div>
-                              <div className="w-1.5 h-1.5 bg-brand-400 rounded-full animate-bounce delay-150"></div>
-                           </div>
-                        </div>
-                     )}
-                  </div>
-               </div>
-            </div>
+            {/* Transcript collected silently via Web Speech API for backend analysis */}
          </div>
       </div>
    );

@@ -4,12 +4,12 @@ import { createPcmBlob, convertBlobToBase64, decodeAudioData } from '../services
 
 interface UseGeminiLiveProps {
   systemInstruction?: string;
-  onTranscript?: (text: string, isUser: boolean) => void;
+  onModelAudio?: () => void;
   onTurnComplete?: () => void;
   existingStream?: MediaStream | null;
 }
 
-export const useGeminiLive = ({ systemInstruction, onTranscript, onTurnComplete, existingStream }: UseGeminiLiveProps) => {
+export const useGeminiLive = ({ systemInstruction, onModelAudio, onTurnComplete, existingStream }: UseGeminiLiveProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +64,6 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, onTurnComplete,
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: systemInstruction || "You are a helpful assistant.",
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
         },
         callbacks: {
           onopen: () => {
@@ -130,18 +128,6 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, onTurnComplete,
             processor.connect(inputContextRef.current.destination);
           },
           onmessage: async (msg: LiveServerMessage) => {
-            // Handle Transcriptions (if server supports them)
-            if (msg.serverContent?.outputTranscription?.text && onTranscript) {
-              onTranscript(msg.serverContent.outputTranscription.text, false);
-            }
-            if (msg.serverContent?.inputTranscription?.text && onTranscript) {
-              onTranscript(msg.serverContent.inputTranscription.text, true);
-            }
-
-            // Note: With outputAudioTranscription enabled, speech text comes via
-            // outputTranscription events above. Do NOT capture modelTurn.parts text
-            // here — those contain internal model text/prompts, not spoken words.
-
             // Signal turn completion (AI finished speaking)
             if (msg.serverContent?.turnComplete && onTurnComplete) {
               onTurnComplete();
@@ -149,6 +135,11 @@ export const useGeminiLive = ({ systemInstruction, onTranscript, onTurnComplete,
 
             // Handle Audio Output
             const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+
+            // Notify caller that model audio is arriving (for speaking indicator)
+            if (audioData && onModelAudio) {
+              onModelAudio();
+            }
             if (audioData && audioContextRef.current && audioContextRef.current.state !== 'closed') {
               const ctx = audioContextRef.current;
               try {
