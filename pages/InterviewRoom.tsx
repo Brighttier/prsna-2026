@@ -49,8 +49,8 @@ export const InterviewRoom = () => {
    // Recording State
    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
    const chunksRef = useRef<Blob[]>([]);
-   const [isRecording, setIsRecording] = useState(false);
    const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+   const isEndingRef = useRef(false);
 
    // Identity verification state
    const selfieImage = location.state?.selfieImage as string | null;
@@ -226,15 +226,29 @@ export const InterviewRoom = () => {
             }
             setMediaStream(stream);
 
-            // Start Recording — use 1s timeslice to ensure chunks are captured incrementally
-            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
-            mediaRecorderRef.current = recorder;
-            chunksRef.current = [];
-            recorder.ondataavailable = (e) => {
-               if (e.data.size > 0) chunksRef.current.push(e.data);
-            };
-            recorder.start(1000);
-            setIsRecording(true);
+            // Start Recording — separate try-catch so camera works even if recorder fails
+            try {
+               const mimeTypes = [
+                  'video/webm;codecs=vp8,opus',
+                  'video/webm;codecs=vp9,opus',
+                  'video/webm',
+                  'video/mp4',
+               ];
+               const supported = mimeTypes.find(m => MediaRecorder.isTypeSupported(m));
+               console.log('[InterviewRoom] Supported recording mimeType:', supported);
+               const opts: MediaRecorderOptions = supported ? { mimeType: supported } : {};
+               const recorder = new MediaRecorder(stream, opts);
+               mediaRecorderRef.current = recorder;
+               chunksRef.current = [];
+               recorder.ondataavailable = (e) => {
+                  if (e.data.size > 0) chunksRef.current.push(e.data);
+               };
+               recorder.onerror = (e) => console.error('[InterviewRoom] MediaRecorder error:', e);
+               recorder.start(1000);
+               console.log('[InterviewRoom] MediaRecorder started, state:', recorder.state);
+            } catch (recErr) {
+               console.error('[InterviewRoom] MediaRecorder setup failed (camera still works):', recErr);
+            }
 
          } catch (e) {
             console.error("Camera/Mic failed", e);
@@ -320,6 +334,10 @@ export const InterviewRoom = () => {
    };
 
    const handleEnd = async () => {
+      // Guard against double-end (auto-stop timer + user click)
+      if (isEndingRef.current) return;
+      isEndingRef.current = true;
+
       disconnect();
 
       let videoUrl = '';
@@ -327,27 +345,42 @@ export const InterviewRoom = () => {
       const sessionId = existingSessionId || Math.random().toString(36).substr(2, 9);
       const orgId = isTokenMode ? location.state?.orgId : store.getState().orgId;
 
-      // Stop Recording and Upload
-      if (mediaRecorderRef.current && isRecording && candidateId && orgId) {
+      // Stop Recording and Upload — use recorder state (not React state) for reliability
+      const recorder = mediaRecorderRef.current;
+      const recorderActive = recorder && (recorder.state === 'recording' || recorder.state === 'paused');
+      console.log(`[InterviewRoom] handleEnd — recorder state: ${recorder?.state}, chunks so far: ${chunksRef.current.length}, candidateId: ${candidateId}, orgId: ${orgId}`);
+
+      if (recorderActive && candidateId && orgId) {
          try {
             const videoBlob = await new Promise<Blob>((resolve) => {
-               if (!mediaRecorderRef.current) return resolve(new Blob([]));
-               mediaRecorderRef.current.onstop = () => {
-                  resolve(new Blob(chunksRef.current, { type: 'video/webm' }));
+               // Timeout fallback: if onstop never fires, use existing chunks after 3s
+               const timeout = setTimeout(() => {
+                  console.warn('[InterviewRoom] recorder.onstop timeout — using existing chunks');
+                  resolve(new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' }));
+               }, 3000);
+
+               recorder.onstop = () => {
+                  clearTimeout(timeout);
+                  resolve(new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' }));
                };
-               mediaRecorderRef.current.stop();
+               recorder.stop();
             });
 
             console.log(`[InterviewRoom] Recording blob size: ${videoBlob.size} bytes, chunks: ${chunksRef.current.length}`);
             if (videoBlob.size > 0) {
-               const storageVideoRef = ref(storage, `${orgId}/candidates/${candidateId}/interviews/${sessionId}/recording.webm`);
+               const ext = recorder.mimeType?.includes('mp4') ? 'mp4' : 'webm';
+               const storageVideoRef = ref(storage, `${orgId}/candidates/${candidateId}/interviews/${sessionId}/recording.${ext}`);
                await uploadBytes(storageVideoRef, videoBlob);
                videoUrl = await getDownloadURL(storageVideoRef);
                console.log(`[InterviewRoom] Video uploaded: ${videoUrl}`);
+            } else {
+               console.warn('[InterviewRoom] Video blob is empty — no recording saved');
             }
          } catch (e) {
-            console.error("Failed to upload recording", e);
+            console.error("[InterviewRoom] Failed to upload recording:", e);
          }
+      } else {
+         console.warn(`[InterviewRoom] Skipped recording upload — recorderActive: ${recorderActive}, candidateId: ${candidateId}, orgId: ${orgId}`);
       }
 
       if (candidateId) {
