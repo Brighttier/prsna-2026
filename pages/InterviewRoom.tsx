@@ -10,27 +10,17 @@ import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase'
 // Removed Monaco editor for simplification
 
 const Orb = ({ active, speaking }: { active: boolean, speaking: boolean }) => {
-   const stateClass = active ? (speaking ? 'orb-speaking' : 'orb-active') : 'orb-idle';
+   const stateClass = active ? (speaking ? 'orb-speaking' : 'orb-listening') : 'orb-idle';
    return (
-      <div className="orb-wrapper">
-         <div className={`orb-container ${stateClass}`}>
-            <div className="orb-canvas">
-               <div className="orb-blob orb-blob-1" />
-               <div className="orb-blob orb-blob-2" />
-               <div className="orb-blob orb-blob-3" />
-               <div className="orb-blob orb-blob-4" />
-            </div>
+      <div className={`orb-wrapper ${stateClass}`}>
+         <div className="orb-glow" />
+         <div className="orb-core">
+            <div className="orb-layer orb-layer-1" />
+            <div className="orb-layer orb-layer-2" />
+            <div className="orb-layer orb-layer-3" />
+            <div className="orb-highlight" />
          </div>
-         <svg xmlns="http://www.w3.org/2000/svg" style={{ display: 'none' }}>
-            <defs>
-               <filter id="goo">
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
-                  <feColorMatrix in="blur" mode="matrix"
-                     values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -10" result="goo" />
-                  <feBlend in="SourceGraphic" in2="goo" />
-               </filter>
-            </defs>
-         </svg>
+         <div className="orb-ring" />
       </div>
    );
 };
@@ -452,84 +442,116 @@ export const InterviewRoom = () => {
       }
    };
 
+   // Elapsed timer
+   const [elapsed, setElapsed] = useState('0:00');
+   useEffect(() => {
+      if (!isConnected || !interviewStartTime.current) return;
+      const timer = setInterval(() => {
+         const s = Math.floor((Date.now() - interviewStartTime.current) / 1000);
+         setElapsed(`${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`);
+      }, 1000);
+      return () => clearInterval(timer);
+   }, [isConnected]);
+
    return (
-      <div className="h-screen bg-[#f8fafc] flex flex-col overflow-hidden font-sans">
-         <header className="px-6 py-4 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-20">
+      <div className="h-screen bg-[#0a0f1a] flex flex-col overflow-hidden font-sans">
+         {/* Header — glass bar */}
+         <header className="px-5 py-3 bg-white/[0.04] border-b border-white/[0.06] flex justify-between items-center z-20 backdrop-blur-xl">
             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center border border-brand-100">
-                  <div className="w-6 h-6 rounded-full bg-brand-600 animate-pulse"></div>
+               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                  <div className={`w-4 h-4 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-600/50'}`}></div>
                </div>
                <div>
-                  <h1 className="font-bold text-lg text-slate-900 leading-tight flex items-center gap-2">
+                  <h1 className="font-semibold text-sm text-white/90 leading-tight flex items-center gap-2">
                      Lumina Interview
-                     <span className="px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-[10px] font-bold uppercase tracking-wide border border-brand-200">Beta</span>
+                     {isConnected && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase tracking-wider border border-emerald-500/20">Live</span>
+                     )}
                   </h1>
-                  <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                     <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></span>
-                     {isConnected ? 'Live Connection Established' : 'Waiting to start...'}
+                  <p className="text-[11px] text-white/40 flex items-center gap-1.5">
+                     {isConnected ? (
+                        <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Connected &middot; {elapsed}</>
+                     ) : 'Waiting to start'}
                   </p>
                </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
                <div className="text-right hidden md:block">
-                  <p className="text-sm font-bold text-slate-900">{candidate?.name || 'Guest Candidate'}</p>
-                  <p className="text-xs text-slate-500 flex items-center justify-end gap-1">
-                     {candidate?.role || 'Senior React Engineer'} <ShieldCheck className="w-3 h-3 text-brand-600" />
-                  </p>
+                  <p className="text-xs font-medium text-white/80">{candidate?.name || 'Candidate'}</p>
+                  <p className="text-[11px] text-white/35">{candidate?.role || 'Position'}</p>
                </div>
-               <div className="h-8 w-px bg-slate-200 hidden md:block"></div>
-               <button
-                  onClick={handleEnd}
-                  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"
-               >
-                  <PhoneOff className="w-4 h-4" /> End
-               </button>
+               {isConnected && (
+                  <>
+                     <div className="h-6 w-px bg-white/10 hidden md:block"></div>
+                     <button
+                        onClick={handleEnd}
+                        className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/20 px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-all"
+                     >
+                        <PhoneOff className="w-3.5 h-3.5" /> End Interview
+                     </button>
+                  </>
+               )}
             </div>
          </header>
 
-         <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 p-6 md:p-8 flex flex-col items-center justify-center relative bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]">
-               <div className="w-full max-w-5xl flex flex-col md:flex-row gap-6 items-center justify-center h-full">
-                  <div className="flex-1 flex flex-col items-center justify-center min-h-[300px]">
-                     <div className="relative mb-8">
+         {/* Main area — dark immersive background */}
+         <div className="flex-1 relative overflow-hidden">
+            {/* Ambient background effects */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f1a] via-[#0d1525] to-[#0a1018]"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/[0.03] rounded-full blur-[120px] pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-emerald-900/[0.04] to-transparent pointer-events-none"></div>
+
+            <div className="relative h-full flex flex-col items-center justify-center p-6 md:p-8">
+               <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8 items-center justify-center">
+
+                  {/* Left: Orb + Status */}
+                  <div className="flex-1 flex flex-col items-center justify-center">
+                     <div className="relative mb-6">
                         <Orb active={isConnected} speaking={isAiSpeaking} />
                      </div>
-                     <div className="text-center space-y-2 max-w-md">
-                        <h2 className="text-2xl font-bold text-slate-900">
+
+                     {/* Status text */}
+                     <div className="text-center space-y-2 max-w-sm">
+                        <h2 className="text-xl md:text-2xl font-semibold text-white/90 tracking-tight">
                            {isConnected ? (isAiSpeaking ? "Lumina is speaking..." : "Lumina is listening")
                               : isConnecting ? "Connecting..."
                               : !sessionReady ? "Preparing Interview..."
-                              : "Ready to Interview"}
+                              : "Ready to begin"}
                         </h2>
-                        <p className="text-slate-500">
+                        <p className="text-sm text-white/35 leading-relaxed">
                            {isConnected
-                              ? "Speak clearly. Lumina analyzes both your audio and visual cues."
+                              ? "Speak naturally. Lumina sees and hears you."
                               : isConnecting
-                              ? "Establishing secure connection to Lumina AI..."
+                              ? "Establishing secure connection..."
                               : !sessionReady
-                              ? "Loading your personalized interview configuration..."
-                              : "Click 'Start Session' to begin your AI-powered technical interview."}
+                              ? "Loading your interview configuration..."
+                              : "Click below to start your AI interview."}
                         </p>
                      </div>
 
+                     {/* Start button — only shown before connection */}
                      {!isConnected && (
                         <button
                            onClick={handleStart}
                            disabled={isConnecting || !sessionReady}
-                           className={`mt-8 bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl shadow-brand-500/20 hover:shadow-brand-500/40 transform hover:-translate-y-1 transition-all flex items-center gap-2 ${(isConnecting || !sessionReady) ? 'opacity-80 cursor-wait' : ''}`}
+                           className={`mt-8 bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3.5 rounded-full font-semibold text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transform hover:-translate-y-0.5 transition-all flex items-center gap-2.5 ${(isConnecting || !sessionReady) ? 'opacity-60 cursor-wait' : ''}`}
                         >
                            {isConnecting ? (
-                              <><Loader2 className="w-5 h-5 animate-spin" /> Connecting to Lumina...</>
+                              <><Loader2 className="w-4 h-4 animate-spin" /> Connecting...</>
                            ) : !sessionReady ? (
-                              <><Loader2 className="w-5 h-5 animate-spin" /> Preparing Interview...</>
+                              <><Loader2 className="w-4 h-4 animate-spin" /> Preparing...</>
                            ) : (
-                              <><Sparkles className="w-5 h-5" /> Start Session</>
+                              <><Sparkles className="w-4 h-4" /> Start Session</>
                            )}
                         </button>
                      )}
                   </div>
 
-                  <div className="relative w-full md:w-[400px] aspect-[4/3] bg-white rounded-2xl overflow-hidden shadow-2xl border-4 border-white ring-1 ring-slate-200">
+                  {/* Right: Video feed */}
+                  <div className="relative w-full md:w-[380px] aspect-[4/3] bg-black/40 rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-black/40">
+                     {/* Subtle glow behind video when connected */}
+                     {isConnected && <div className="absolute -inset-1 bg-emerald-500/[0.06] rounded-2xl blur-xl -z-10"></div>}
+
                      <video
                         ref={videoRef}
                         autoPlay
@@ -538,88 +560,90 @@ export const InterviewRoom = () => {
                         className={`w-full h-full object-cover transform scale-x-[-1] ${!camOn && 'opacity-0'}`}
                      />
                      {!camOn && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
-                           <User className="w-20 h-20 text-slate-300" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-[#0d1525]">
+                           <User className="w-16 h-16 text-white/10" />
                         </div>
                      )}
 
                      {/* Identity Verification Badge */}
                      {(verifying || verificationResult) && (
-                        <div className={`absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm shadow-md z-10 ${
-                           verifying ? 'bg-white/80 text-slate-600 border border-slate-200' :
-                           verificationResult?.match ? 'bg-emerald-500/90 text-white' : 'bg-red-500/90 text-white'
+                        <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold backdrop-blur-md shadow-lg z-10 ${
+                           verifying ? 'bg-white/10 text-white/70 border border-white/10' :
+                           verificationResult?.match ? 'bg-emerald-500/80 text-white' : 'bg-red-500/80 text-white'
                         }`}>
                            {verifying ? (
                               <><Loader2 className="w-3 h-3 animate-spin" /> Verifying...</>
                            ) : (
-                              <><ShieldCheck className="w-3 h-3" /> ID: {verificationResult?.score}% Match</>
+                              <><ShieldCheck className="w-3 h-3" /> {verificationResult?.score}%</>
                            )}
                         </div>
                      )}
 
-                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-slate-200 shadow-lg">
+                     {/* Mic/Cam controls */}
+                     <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/[0.08]">
                         {isConnected ? (
                            <>
-                              <div className="flex items-center gap-1.5 px-2 py-1 text-emerald-600">
-                                 <Mic className="w-3.5 h-3.5" /><span className="text-xs font-medium">Mic On</span>
+                              <div className="flex items-center gap-1.5 px-1.5 py-0.5 text-emerald-400">
+                                 <Mic className="w-3 h-3" /><span className="text-[10px] font-medium">On</span>
                               </div>
-                              <div className="w-px h-4 bg-slate-200"></div>
-                              <div className="flex items-center gap-1.5 px-2 py-1 text-emerald-600">
-                                 <Video className="w-3.5 h-3.5" /><span className="text-xs font-medium">Camera On</span>
+                              <div className="w-px h-3 bg-white/10"></div>
+                              <div className="flex items-center gap-1.5 px-1.5 py-0.5 text-emerald-400">
+                                 <Video className="w-3 h-3" /><span className="text-[10px] font-medium">On</span>
                               </div>
                            </>
                         ) : (
                            <>
                               <button
                                  onClick={() => setMicOn(!micOn)}
-                                 className={`p-2.5 rounded-full transition-colors ${micOn ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-red-50 text-red-500 border border-red-100'}`}
+                                 className={`p-2 rounded-full transition-colors ${micOn ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-red-500/20 text-red-400'}`}
                               >
-                                 {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                                 {micOn ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
                               </button>
                               <button
                                  onClick={() => setCamOn(!camOn)}
-                                 className={`p-2.5 rounded-full transition-colors ${camOn ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-red-50 text-red-500 border border-red-100'}`}
+                                 className={`p-2 rounded-full transition-colors ${camOn ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-red-500/20 text-red-400'}`}
                               >
-                                 {camOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                                 {camOn ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
                               </button>
                            </>
                         )}
                      </div>
                   </div>
                </div>
-
-               {error && (
-                  <div className="absolute top-6 left-1/2 -translate-x-1/2 animate-fade-in-down bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 z-30 max-w-lg">
-                     <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
-                     <div>
-                        <p className="font-semibold text-sm">{error}</p>
-                        <p className="text-xs text-red-400 mt-1">Check your internet connection and try again.</p>
-                     </div>
-                  </div>
-               )}
-               {sessionError && !error && (
-                  <div className="absolute top-6 left-1/2 -translate-x-1/2 animate-fade-in-down bg-amber-50 border border-amber-200 text-amber-700 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 z-30 max-w-lg">
-                     <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0"></div>
-                     <div>
-                        <p className="font-semibold text-sm">{sessionError}</p>
-                        <p className="text-xs text-amber-500 mt-1">The interview will proceed with a generic assistant persona.</p>
-                     </div>
-                  </div>
-               )}
             </div>
 
-            {/* Transcript collected silently via Web Speech API for backend analysis */}
+            {/* Error toasts */}
+            {error && (
+               <div className="absolute top-6 left-1/2 -translate-x-1/2 animate-fade-in bg-red-500/10 border border-red-500/20 text-red-400 backdrop-blur-xl px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 z-30 max-w-lg">
+                  <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
+                  <div>
+                     <p className="font-medium text-sm">{error}</p>
+                     <p className="text-xs text-red-400/60 mt-0.5">Check your connection and try again.</p>
+                  </div>
+               </div>
+            )}
+            {sessionError && !error && (
+               <div className="absolute top-6 left-1/2 -translate-x-1/2 animate-fade-in bg-amber-500/10 border border-amber-500/20 text-amber-400 backdrop-blur-xl px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 z-30 max-w-lg">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></div>
+                  <div>
+                     <p className="font-medium text-sm">{sessionError}</p>
+                     <p className="text-xs text-amber-400/60 mt-0.5">A generic assistant will be used.</p>
+                  </div>
+               </div>
+            )}
          </div>
 
-         {/* Processing overlay — shown after End until save completes */}
+         {/* Processing overlay */}
          {isProcessing && (
-            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center text-center">
-               <div className="bg-white rounded-2xl p-10 shadow-2xl max-w-md mx-4">
-                  <Loader2 className="w-12 h-12 text-brand-600 animate-spin mx-auto mb-4" />
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">Processing Your Interview</h2>
-                  <p className="text-slate-500 text-sm mb-4">Please wait while we save your recording and analyze your interview. This may take a moment.</p>
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                     <p className="text-amber-700 text-xs font-medium">Do not close this browser until you see the completion message.</p>
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center text-center">
+               <div className="bg-[#111827] border border-white/[0.08] rounded-2xl p-10 shadow-2xl max-w-md mx-4">
+                  <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                     <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white mb-2">Processing Your Interview</h2>
+                  <p className="text-white/40 text-sm mb-5">Saving recording and analyzing your responses...</p>
+                  <div className="bg-amber-500/10 border border-amber-500/15 rounded-lg px-4 py-2.5">
+                     <p className="text-amber-400/80 text-xs font-medium">Do not close this browser.</p>
                   </div>
                </div>
             </div>
