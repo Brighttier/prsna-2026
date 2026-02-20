@@ -7,8 +7,9 @@ import { Job, JobStatus } from '../types';
 import { Briefcase, MapPin, ArrowRight, Globe, Building2 } from 'lucide-react';
 import { JobApplicationModal } from '../components/JobApplicationModal';
 
-export const PublicCareerPage = () => {
-    const { orgId } = useParams();
+export const PublicCareerPage = ({ subdomainOrgId }: { subdomainOrgId?: string }) => {
+    const params = useParams();
+    const orgId = subdomainOrgId || params.orgId;
     const [branding, setBranding] = useState<BrandingSettings | null>(null);
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);

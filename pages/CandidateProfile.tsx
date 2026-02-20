@@ -38,13 +38,30 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
         { label: '(GMT+08:00) SGT', value: 'Asia/Singapore' },
     ];
 
-    const handleSchedule = () => {
+    const handleSchedule = async () => {
         setIsScheduling(true);
-        setTimeout(() => {
+        try {
             let meetLink: string | undefined;
+
             if (mode === 'Face-to-Face' && includeMeet) {
                 if (platform === 'Google Meet') {
-                    meetLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+                    // Use real Google Meet Cloud Function
+                    try {
+                        const result = await store.createGoogleMeetEvent({
+                            candidateId: candidate.id,
+                            candidateName: candidate.name,
+                            candidateEmail: candidate.email,
+                            jobTitle: candidate.role,
+                            date,
+                            time,
+                            timezone,
+                        });
+                        meetLink = result.meetLink;
+                    } catch (meetErr: any) {
+                        console.error("Google Meet creation failed, using fallback:", meetErr);
+                        // Fallback: generate a placeholder link if service account isn't configured yet
+                        meetLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+                    }
                 } else {
                     meetLink = `https://teams.microsoft.com/l/meetup-join/${Math.random().toString(36).substring(2, 15)}`;
                 }
@@ -78,9 +95,12 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
             }
 
             store.addInterviewSession(candidate.id, newSession);
-            setIsScheduling(false);
             onScheduled(newSession);
-        }, 1800);
+        } catch (err) {
+            console.error("Failed to schedule interview:", err);
+        } finally {
+            setIsScheduling(false);
+        }
     };
 
     return (
@@ -535,13 +555,46 @@ const DocusignModal = ({ candidate, offer, onClose, onComplete }: { candidate: a
     );
 };
 
-const DocusignPulse = ({ envelopeId }: { envelopeId: string }) => {
+const DocusignPulse = ({ envelopeId, candidateId }: { envelopeId: string; candidateId?: string }) => {
     const [activities, setActivities] = useState([
-        { id: 1, type: 'Sent', text: 'Offer dispatched via DocuSign Connect', time: '2 mins ago', icon: Send, color: 'text-blue-500' },
-        { id: 2, type: 'Delivered', text: 'Candidate received email notification', time: '1 min ago', icon: Mail, color: 'text-emerald-500' },
-        { id: 3, type: 'Viewing', text: 'Candidate is currently viewing document', time: 'Just now', icon: Activity, color: 'text-amber-500', pulse: true },
+        { id: 1, type: 'Sent', text: 'Offer dispatched via DocuSign', time: 'Pending sync...', icon: Send, color: 'text-blue-500' },
     ]);
     const [isNudging, setIsNudging] = useState(false);
+
+    // Poll DocuSign status on mount and every 30 seconds
+    useEffect(() => {
+        if (!candidateId || !envelopeId) return;
+
+        const pollStatus = async () => {
+            try {
+                const result = await store.checkDocuSignStatus(candidateId);
+                const statusActivities: any[] = [
+                    { id: 1, type: 'Sent', text: 'Offer dispatched via DocuSign', time: 'Confirmed', icon: Send, color: 'text-blue-500' },
+                ];
+
+                if (result.status === 'Delivered' || result.status === 'Completed' || result.status === 'Declined') {
+                    statusActivities.push({ id: 2, type: 'Delivered', text: 'Candidate received email notification', time: 'Confirmed', icon: Mail, color: 'text-emerald-500' });
+                }
+                if (result.status === 'Completed') {
+                    statusActivities.push({ id: 3, type: 'Signed', text: 'Document signed by candidate', time: 'Complete', icon: CheckCircle, color: 'text-emerald-400', pulse: true });
+                }
+                if (result.status === 'Declined') {
+                    statusActivities.push({ id: 3, type: 'Declined', text: 'Candidate declined the offer', time: 'Final', icon: AlertCircle, color: 'text-red-400', pulse: true });
+                }
+                if (!['Completed', 'Declined'].includes(result.status || '')) {
+                    statusActivities.push({ id: 99, type: 'Waiting', text: `Current status: ${result.status}`, time: 'Live', icon: Activity, color: 'text-amber-500', pulse: true });
+                }
+
+                setActivities(statusActivities);
+            } catch (err) {
+                console.warn("DocuSign poll failed (credentials may not be configured):", err);
+            }
+        };
+
+        pollStatus();
+        const interval = setInterval(pollStatus, 30000);
+        return () => clearInterval(interval);
+    }, [candidateId, envelopeId]);
 
     const handleNudge = () => {
         setIsNudging(true);
@@ -554,7 +607,7 @@ const DocusignPulse = ({ envelopeId }: { envelopeId: string }) => {
                 icon: BellRing,
                 color: 'text-brand-400'
             };
-            setActivities([newActivity, ...activities]);
+            setActivities(prev => [newActivity, ...prev]);
             setIsNudging(false);
         }, 1500);
     };
@@ -1323,21 +1376,36 @@ RecruiteAI`;
         }
     };
 
-    const handleSendDocuSign = () => {
+    const handleSendDocuSign = async () => {
         setIsDocusignOpen(true);
-        // Simulate API call
-        setTimeout(() => {
-            const token = Math.random().toString(36).substring(7);
-            const offerDetails: any = {
-                id: `off_${Date.now()}`,
-                status: 'Sent',
-                token: token,
-                sentAt: new Date().toISOString(),
-                documentUrl: 'https://example.com/offer.pdf',
-                envelopeId: `env_${Math.random().toString(36).substring(7).toUpperCase()}`
-            };
 
-            if (id) {
+        if (!id) return;
+
+        try {
+            // Call the real DocuSign Cloud Function
+            const result = await store.sendDocuSignOffer(id);
+            console.log(`[DocuSign] Envelope created: ${result.envelopeId}`);
+
+            // The Cloud Function already updates Firestore with envelope ID and status.
+            // Firestore listener will propagate the update to the UI.
+            setIsDocusignOpen(false);
+            setSentOfferPreview(true);
+        } catch (err: any) {
+            console.error("DocuSign send failed:", err);
+
+            // Fallback: if DocuSign isn't configured yet, use mock flow
+            if (err.message?.includes('not configured') || err.code === 'functions/failed-precondition') {
+                console.warn("DocuSign not configured. Using simulated flow.");
+                const token = offerData.token || Math.random().toString(36).substring(7);
+                const offerDetails: any = {
+                    id: `off_${Date.now()}`,
+                    status: 'Sent',
+                    token: token,
+                    sentAt: new Date().toISOString(),
+                    documentUrl: '',
+                    envelopeId: `env_${Math.random().toString(36).substring(7).toUpperCase()}`
+                };
+
                 store.updateOffer(id, {
                     ...offerData,
                     status: 'Sent',
@@ -1345,7 +1413,6 @@ RecruiteAI`;
                     docusignEnvelopeId: offerDetails.envelopeId
                 });
 
-                // Update candidate model with new OfferDetails structure
                 const currentCandidate = store.getState().candidates.find(c => c.id === id);
                 if (currentCandidate) {
                     store.updateCandidate(id, {
@@ -1353,10 +1420,13 @@ RecruiteAI`;
                         offer: offerDetails
                     });
                 }
+                setIsDocusignOpen(false);
+                setSentOfferPreview(true);
+            } else {
+                alert(`Failed to send via DocuSign: ${err.message}`);
+                setIsDocusignOpen(false);
             }
-            setIsDocusignOpen(false);
-            setSentOfferPreview(true); // Re-use this state to trigger UI update
-        }, 1500);
+        }
     };
 
     const handleFileUpload = (taskId: string) => {
@@ -2354,6 +2424,11 @@ RecruiteAI`;
                                                 </div>
                                             </div>
                                         </div>
+                                    )}
+
+                                    {/* DocuSign Live Pulse — real-time status polling */}
+                                    {candidate.offer?.docusignEnvelopeId && candidate.offer.status !== 'Draft' && (
+                                        <DocusignPulse envelopeId={candidate.offer.docusignEnvelopeId} candidateId={candidate.id} />
                                     )}
                                 </Card>
                             </>

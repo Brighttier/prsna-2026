@@ -568,18 +568,26 @@ export const Settings = () => {
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Subdomain</label>
                                     <div className="flex">
-                                        <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-sm">
-                                            careers.
-                                        </span>
                                         <input
                                             value={domain}
-                                            onChange={(e) => setDomain(e.target.value)}
-                                            className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-r-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                            onChange={(e) => setDomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                            placeholder="acme"
+                                            className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-l-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-medium"
                                         />
+                                        <span className="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-slate-200 bg-slate-100 text-slate-500 text-sm font-medium">
+                                            .personarecruit.ai
+                                        </span>
                                     </div>
-                                    <div className="mt-3 p-3 bg-slate-100 rounded-lg flex justify-between items-center text-xs">
-                                        <div className="truncate text-slate-500">
-                                            <span className="font-bold text-slate-700">Public Link:</span> {window.location.origin}/#/career/{orgId || auth.currentUser?.uid}
+                                    <div className="mt-3 p-3 bg-slate-100 rounded-lg space-y-2 text-xs">
+                                        <div className="flex justify-between items-center">
+                                            <div className="truncate text-slate-500">
+                                                <span className="font-bold text-slate-700">Subdomain:</span> {domain ? `https://${domain}.personarecruit.ai` : 'Not configured'}
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <div className="truncate text-slate-500">
+                                                <span className="font-bold text-slate-700">Direct Link:</span> {window.location.origin}/#/career/{orgId || auth.currentUser?.uid}
+                                            </div>
                                         </div>
                                         <button
                                             onClick={() => navigator.clipboard.writeText(`${window.location.origin}/#/career/${orgId || auth.currentUser?.uid}`)}
@@ -727,7 +735,7 @@ export const Settings = () => {
                                     </div>
                                     <div className="flex-1 bg-white border border-slate-200 rounded-md px-3 py-1 text-xs text-slate-400 flex items-center justify-center font-mono">
                                         <Shield className="w-3 h-3 mr-1.5" />
-                                        https://careers.{domain}
+                                        https://{domain || 'yourcompany'}.personarecruit.ai
                                     </div>
                                 </div>
 

@@ -927,6 +927,69 @@ class Store {
     }
 
 
+    // --- GOOGLE MEET INTEGRATION ---
+    async createGoogleMeetEvent(params: {
+        candidateId: string;
+        candidateName: string;
+        candidateEmail: string;
+        jobTitle: string;
+        date: string;
+        time: string;
+        timezone: string;
+        durationMinutes?: number;
+        interviewerEmail?: string;
+    }): Promise<{ meetLink: string; eventId: string }> {
+        if (!this.orgId) throw new Error("Organization not loaded.");
+
+        const createMeetFn = httpsCallable(functions, 'createGoogleMeetEvent');
+        const result = await createMeetFn({
+            ...params,
+            orgId: this.orgId,
+        });
+
+        return result.data as { meetLink: string; eventId: string };
+    }
+
+    // --- DOCUSIGN INTEGRATION ---
+    async sendDocuSignOffer(candidateId: string): Promise<{ envelopeId: string; signingUrl?: string }> {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (!candidate || !this.orgId) throw new Error("Candidate or organization not loaded.");
+
+        const offer = candidate.offer;
+        if (!offer) throw new Error("No offer details found for this candidate.");
+
+        const createEnvelopeFn = httpsCallable(functions, 'createDocuSignEnvelope');
+        const result = await createEnvelopeFn({
+            candidateId,
+            candidateName: candidate.name,
+            candidateEmail: candidate.email,
+            jobTitle: candidate.role,
+            companyName: this.state.branding.companyName,
+            salary: offer.salary ? `${offer.currency || 'USD'} ${offer.salary.toLocaleString()}` : undefined,
+            startDate: offer.startDate,
+            orgId: this.orgId,
+            returnUrl: `${window.location.origin}/#/offer/${offer.token}`,
+        });
+
+        return result.data as { envelopeId: string; signingUrl?: string };
+    }
+
+    async checkDocuSignStatus(candidateId: string): Promise<{ status: string }> {
+        const candidate = this.state.candidates.find(c => c.id === candidateId);
+        if (!candidate?.offer?.docusignEnvelopeId || !this.orgId) {
+            throw new Error("No DocuSign envelope found.");
+        }
+
+        const checkStatusFn = httpsCallable(functions, 'checkDocuSignStatus');
+        const result = await checkStatusFn({
+            envelopeId: candidate.offer.docusignEnvelopeId,
+            orgId: this.orgId,
+            candidateId,
+        });
+
+        return result.data as { status: string };
+    }
+
     // Check if AI is allowed
     isAiAllowed(feature: 'resume' | 'interview'): boolean {
         if (this.state.settings.killSwitches.global) return false;

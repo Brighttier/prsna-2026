@@ -54,28 +54,45 @@ export const OfferPortal = () => {
         }, 800);
     }, [token]);
 
-    const handleSign = () => {
+    const handleSign = async () => {
         setIsSigning(true);
-        // Simulate DocuSign process
-        setTimeout(() => {
-            if (candidate && candidate.offer) {
-                const updatedOffer: OfferDetails = {
-                    ...candidate.offer,
-                    status: 'Signed',
-                    signedAt: new Date().toISOString(),
-                    signedDocumentUrl: 'https://example.com/signed-offer.pdf' // Mock URL
-                };
 
-                store.updateCandidate(candidate.id, {
-                    ...candidate,
-                    offer: updatedOffer
-                });
+        if (!candidate || !candidate.offer) return;
 
-                setCandidate(prev => prev ? { ...prev, offer: updatedOffer } : null);
-                setIsSigning(false);
-                setViewMode('success');
+        // If there's a DocuSign envelope, check its status or redirect to DocuSign
+        if (candidate.offer.docusignEnvelopeId) {
+            try {
+                const result = await store.checkDocuSignStatus(candidate.id);
+                if (result.status === 'Completed') {
+                    // Already signed via DocuSign
+                    setCandidate(prev => prev ? {
+                        ...prev,
+                        offer: { ...prev.offer!, status: 'Signed', signedAt: new Date().toISOString() }
+                    } : null);
+                    setIsSigning(false);
+                    setViewMode('success');
+                    return;
+                }
+            } catch (err) {
+                console.error("DocuSign status check failed, falling back to local signing:", err);
             }
-        }, 2500);
+        }
+
+        // Local signing flow (used when DocuSign isn't configured or as fallback)
+        const updatedOffer: OfferDetails = {
+            ...candidate.offer,
+            status: 'Signed',
+            signedAt: new Date().toISOString(),
+        };
+
+        store.updateCandidate(candidate.id, {
+            ...candidate,
+            offer: updatedOffer
+        });
+
+        setCandidate(prev => prev ? { ...prev, offer: updatedOffer } : null);
+        setIsSigning(false);
+        setViewMode('success');
     };
 
     const handleReject = () => {

@@ -15,6 +15,15 @@ initializeApp();
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const resendApiKey = defineSecret("RESEND_API_KEY");
 
+// Google Meet — Service Account JSON (base64 encoded) for Calendar API
+const googleServiceAccountKey = defineSecret("GOOGLE_SERVICE_ACCOUNT_KEY");
+
+// DocuSign — ISV Connector / JWT Grant secrets
+const docusignIntegrationKey = defineSecret("DOCUSIGN_INTEGRATION_KEY");
+const docusignUserId = defineSecret("DOCUSIGN_USER_ID");
+const docusignAccountId = defineSecret("DOCUSIGN_ACCOUNT_ID");
+const docusignPrivateKey = defineSecret("DOCUSIGN_RSA_PRIVATE_KEY"); // PEM, base64 encoded
+
 import { sendSecureLinkEmail } from './utils/email';
 import { generateEmbedding, calculateCosineSimilarity } from './utils/embeddings';
 
@@ -1278,4 +1287,628 @@ export const saveInterviewSession = onCall(functionConfig as any, async (request
         throw new HttpsError('internal', 'Failed to save interview session.');
     }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GOOGLE MEET INTEGRATION — Create real Google Calendar events with Meet links
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const meetFunctionConfig = {
+    cors: true,
+    region: "us-central1",
+    maxInstances: 10,
+    concurrency: 80,
+    memory: "256MiB" as const,
+    timeoutSeconds: 30,
+    secrets: [googleServiceAccountKey, resendApiKey]
+};
+
+/**
+ * 17. CREATE GOOGLE MEET EVENT (Callable)
+ *
+ * Creates a real Google Calendar event with an auto-generated Google Meet link
+ * using a Google Workspace service account.
+ *
+ * Setup requirements:
+ * 1. Create a GCP service account with "Google Calendar API" enabled
+ * 2. Grant the service account domain-wide delegation in Google Workspace Admin
+ * 3. Store the JSON key as base64 in Firebase Secret Manager: GOOGLE_SERVICE_ACCOUNT_KEY
+ */
+export const createGoogleMeetEvent = onCall(meetFunctionConfig as any, async (request) => {
+    const {
+        candidateName,
+        candidateEmail,
+        jobTitle,
+        date,          // ISO date: "2026-03-01"
+        time,          // HH:mm: "10:00"
+        timezone,      // e.g. "Asia/Kolkata"
+        durationMinutes = 60,
+        orgId,
+        interviewerEmail  // Optional: org user who will host
+    } = request.data;
+
+    if (!candidateName || !candidateEmail || !date || !time) {
+        throw new HttpsError('invalid-argument', 'Missing required fields: candidateName, candidateEmail, date, time.');
+    }
+
+    try {
+        // 1. Parse the service account key from base64-encoded secret
+        const keyBase64 = googleServiceAccountKey.value();
+        if (!keyBase64) {
+            throw new HttpsError('failed-precondition', 'Google service account key is not configured. Add GOOGLE_SERVICE_ACCOUNT_KEY secret.');
+        }
+
+        const keyJson = JSON.parse(Buffer.from(keyBase64, 'base64').toString('utf-8'));
+
+        // 2. Authenticate with Google Calendar API using JWT
+        const { calendar, auth: googleAuth } = await import('@googleapis/calendar');
+        const jwtClient = new googleAuth.JWT({
+            email: keyJson.client_email,
+            key: keyJson.private_key,
+            scopes: ['https://www.googleapis.com/auth/calendar'],
+            // If domain-wide delegation is configured, impersonate the interviewer
+            subject: interviewerEmail || keyJson.client_email,
+        });
+
+        const calendarClient = calendar({ version: 'v3', auth: jwtClient });
+
+        // 3. Build the event
+        const startDateTime = `${date}T${time}:00`;
+        const startMoment = new Date(`${startDateTime}`);
+        const endMoment = new Date(startMoment.getTime() + durationMinutes * 60 * 1000);
+
+        const event = {
+            summary: `Interview: ${candidateName} — ${jobTitle || 'Position'}`,
+            description: `Scheduled interview with ${candidateName} for the ${jobTitle || 'open'} role.\n\nPowered by RecruiteAI`,
+            start: {
+                dateTime: startMoment.toISOString(),
+                timeZone: timezone || 'UTC',
+            },
+            end: {
+                dateTime: endMoment.toISOString(),
+                timeZone: timezone || 'UTC',
+            },
+            attendees: [
+                { email: candidateEmail, displayName: candidateName },
+                ...(interviewerEmail ? [{ email: interviewerEmail }] : []),
+            ],
+            conferenceData: {
+                createRequest: {
+                    requestId: `recruiteai-${Date.now()}`,
+                    conferenceSolutionKey: { type: 'hangoutsMeet' },
+                },
+            },
+            reminders: {
+                useDefault: false,
+                overrides: [
+                    { method: 'email', minutes: 60 },
+                    { method: 'popup', minutes: 15 },
+                ],
+            },
+        };
+
+        // 4. Insert the event (conferenceDataVersion=1 ensures Meet link is created)
+        const response = await calendarClient.events.insert({
+            calendarId: 'primary',
+            requestBody: event,
+            conferenceDataVersion: 1,
+            sendUpdates: 'all', // Send email invites to attendees
+        });
+
+        const meetLink = response.data.hangoutLink || response.data.conferenceData?.entryPoints?.[0]?.uri || '';
+        const eventId = response.data.id || '';
+
+        logger.info(`Google Meet event created: ${eventId}, link: ${meetLink}`);
+
+        // 5. Send interview invite email to the candidate via Resend
+        if (resendApiKey.value() && orgId) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'INTERVIEW_INVITE');
+            await sendSecureLinkEmail({
+                to: candidateEmail,
+                link: meetLink,
+                type: 'INTERVIEW_INVITE',
+                name: candidateName,
+                jobTitle,
+                apiKey: resendApiKey.value(),
+                templateOverride,
+            });
+            logger.info(`Interview invite email sent to ${candidateEmail}`);
+        }
+
+        return {
+            success: true,
+            meetLink,
+            eventId,
+            startTime: startMoment.toISOString(),
+            endTime: endMoment.toISOString(),
+        };
+
+    } catch (error: any) {
+        logger.error("Error creating Google Meet event", error);
+        // Provide helpful error messages for common setup issues
+        if (error.message?.includes('invalid_grant') || error.message?.includes('JWT')) {
+            throw new HttpsError('failed-precondition',
+                'Google service account authentication failed. Ensure the service account has Calendar API access and domain-wide delegation is configured.');
+        }
+        throw new HttpsError('internal', error.message || 'Failed to create Google Meet event.');
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOCUSIGN INTEGRATION — ISV Connector with JWT Grant for offer signing
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const docusignFunctionConfig = {
+    cors: true,
+    region: "us-central1",
+    maxInstances: 10,
+    concurrency: 80,
+    memory: "512MiB" as const,
+    timeoutSeconds: 60,
+    secrets: [docusignIntegrationKey, docusignUserId, docusignAccountId, docusignPrivateKey, resendApiKey]
+};
+
+/**
+ * Helper: Get a DocuSign access token via JWT Grant
+ *
+ * Setup requirements:
+ * 1. Create a DocuSign developer account at developers.docusign.com
+ * 2. Create an "Integration Key" (App) with RSA keypair
+ * 3. Grant consent: https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation&client_id={INTEGRATION_KEY}&redirect_uri=https://localhost
+ * 4. Store secrets in Firebase Secret Manager:
+ *    - DOCUSIGN_INTEGRATION_KEY: The integration key (client ID)
+ *    - DOCUSIGN_USER_ID: The User ID GUID of the account to impersonate
+ *    - DOCUSIGN_ACCOUNT_ID: The DocuSign Account ID
+ *    - DOCUSIGN_RSA_PRIVATE_KEY: Base64-encoded PEM private key
+ */
+async function getDocuSignAccessToken(): Promise<{ accessToken: string; basePath: string }> {
+    const docusign = await import('docusign-esign');
+
+    const integrationKey = docusignIntegrationKey.value();
+    const userId = docusignUserId.value();
+    const privateKeyB64 = docusignPrivateKey.value();
+
+    if (!integrationKey || !userId || !privateKeyB64) {
+        throw new Error('DocuSign credentials not configured. Set DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_USER_ID, and DOCUSIGN_RSA_PRIVATE_KEY secrets.');
+    }
+
+    const privateKey = Buffer.from(privateKeyB64, 'base64').toString('utf-8');
+
+    const apiClient = new docusign.ApiClient();
+    // Use demo/sandbox for development; switch to production when ready
+    apiClient.setOAuthBasePath('account-d.docusign.com');
+
+    const results = await apiClient.requestJWTUserToken(
+        integrationKey,
+        userId,
+        ['signature', 'impersonation'],
+        Buffer.from(privateKey),
+        3600 // Token valid for 1 hour
+    );
+
+    const accessToken = results.body.access_token;
+
+    // Get the user's base URI for API calls
+    const userInfo = await apiClient.getUserInfo(accessToken);
+    const account = userInfo.accounts?.find((a: any) => a.isDefault === 'true') || userInfo.accounts?.[0];
+    const basePath = `${account?.baseUri}/restapi`;
+
+    return { accessToken, basePath };
+}
+
+/**
+ * 18. CREATE DOCUSIGN ENVELOPE (Callable)
+ *
+ * Creates a DocuSign envelope with the offer letter and sends it to the candidate for signing.
+ * Uses JWT Grant authentication (ISV connector pattern).
+ */
+export const createDocuSignEnvelope = onCall(docusignFunctionConfig as any, async (request) => {
+    const {
+        candidateId,
+        candidateName,
+        candidateEmail,
+        jobTitle,
+        offerContent,   // HTML or plain text content of the offer letter
+        orgId,
+        companyName,
+        salary,
+        startDate,
+        returnUrl       // URL to redirect after signing (optional, for embedded signing)
+    } = request.data;
+
+    if (!candidateEmail || !candidateName || !candidateId) {
+        throw new HttpsError('invalid-argument', 'Missing required fields: candidateEmail, candidateName, candidateId.');
+    }
+
+    try {
+        const accountId = docusignAccountId.value();
+        if (!accountId) {
+            throw new HttpsError('failed-precondition', 'DocuSign Account ID not configured. Set DOCUSIGN_ACCOUNT_ID secret.');
+        }
+
+        const { accessToken, basePath } = await getDocuSignAccessToken();
+        const docusign = await import('docusign-esign');
+
+        const apiClient = new docusign.ApiClient();
+        apiClient.setBasePath(basePath);
+        apiClient.addDefaultHeader('Authorization', `Bearer ${accessToken}`);
+
+        const envelopesApi = new docusign.EnvelopesApi(apiClient);
+
+        // Build the offer letter document
+        const offerHtml = offerContent || buildDefaultOfferHtml({
+            candidateName,
+            jobTitle: jobTitle || 'Team Member',
+            companyName: companyName || 'Our Company',
+            salary: salary || 'As discussed',
+            startDate: startDate || 'TBD',
+        });
+
+        // Create the document (HTML → DocuSign renders it as PDF)
+        const document = new docusign.Document();
+        document.documentBase64 = Buffer.from(offerHtml).toString('base64');
+        document.name = `Offer Letter - ${candidateName}`;
+        document.fileExtension = 'html';
+        document.documentId = '1';
+
+        // Create the signer with tabs (signature fields)
+        const signer = new docusign.Signer();
+        signer.email = candidateEmail;
+        signer.name = candidateName;
+        signer.recipientId = '1';
+        signer.routingOrder = '1';
+
+        // Anchor-based signature tab — looks for the text "Candidate Signature:" in the document
+        const signHere = new docusign.SignHere();
+        signHere.anchorString = '/sig1/';
+        signHere.anchorUnits = 'pixels';
+        signHere.anchorXOffset = '20';
+        signHere.anchorYOffset = '10';
+
+        const dateSignedTab = new docusign.DateSigned();
+        dateSignedTab.anchorString = '/date1/';
+        dateSignedTab.anchorUnits = 'pixels';
+        dateSignedTab.anchorXOffset = '20';
+        dateSignedTab.anchorYOffset = '10';
+
+        const tabs = new docusign.Tabs();
+        tabs.signHereTabs = [signHere];
+        tabs.dateSignedTabs = [dateSignedTab];
+        signer.tabs = tabs;
+
+        // Carbon copy to the org (notification when signed)
+        const recipients = new docusign.Recipients();
+        recipients.signers = [signer];
+
+        // Build the envelope
+        const envelopeDefinition = new docusign.EnvelopeDefinition();
+        envelopeDefinition.emailSubject = `Offer Letter — ${jobTitle || 'Position'} at ${companyName || 'Our Company'}`;
+        envelopeDefinition.emailBlurb = `Hi ${candidateName}, please review and sign your offer letter for the ${jobTitle || ''} position.`;
+        envelopeDefinition.documents = [document];
+        envelopeDefinition.recipients = recipients;
+        envelopeDefinition.status = 'sent'; // Send immediately
+
+        // Create the envelope
+        const envelopeResult = await envelopesApi.createEnvelope(accountId, {
+            envelopeDefinition,
+        });
+
+        const envelopeId = envelopeResult.envelopeId;
+        logger.info(`DocuSign envelope created: ${envelopeId}`);
+
+        // Update candidate offer in Firestore with DocuSign envelope ID
+        if (orgId && candidateId && envelopeId) {
+            const db = getFirestore();
+            const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+            const candidateDoc = await candidateRef.get();
+
+            if (candidateDoc.exists) {
+                const data = candidateDoc.data()!;
+                const offer = data.offer || {};
+                await candidateRef.update({
+                    offer: {
+                        ...offer,
+                        status: 'Sent',
+                        docusignEnvelopeId: envelopeId,
+                        docusignStatus: 'Sent',
+                        sentAt: new Date().toISOString(),
+                    }
+                });
+            }
+        }
+
+        // Optionally create an embedded signing URL (for in-app signing)
+        let signingUrl = null;
+        if (returnUrl) {
+            const viewRequest = new docusign.RecipientViewRequest();
+            viewRequest.returnUrl = returnUrl;
+            viewRequest.authenticationMethod = 'none';
+            viewRequest.email = candidateEmail;
+            viewRequest.userName = candidateName;
+            viewRequest.recipientId = '1';
+
+            const viewResult = await envelopesApi.createRecipientView(accountId, envelopeId!, {
+                recipientViewRequest: viewRequest,
+            });
+            signingUrl = viewResult.url;
+        }
+
+        return {
+            success: true,
+            envelopeId,
+            signingUrl,
+        };
+
+    } catch (error: any) {
+        logger.error("Error creating DocuSign envelope", error);
+        if (error.message?.includes('consent_required')) {
+            throw new HttpsError('failed-precondition',
+                'DocuSign consent not granted. The admin must grant consent at: https://account-d.docusign.com/oauth/auth?response_type=code&scope=signature%20impersonation&client_id={INTEGRATION_KEY}&redirect_uri=https://localhost');
+        }
+        throw new HttpsError('internal', error.message || 'Failed to create DocuSign envelope.');
+    }
+});
+
+/**
+ * 19. CHECK DOCUSIGN ENVELOPE STATUS (Callable)
+ *
+ * Checks the current status of a DocuSign envelope (e.g., sent, delivered, completed, declined).
+ */
+export const checkDocuSignStatus = onCall(docusignFunctionConfig as any, async (request) => {
+    const { envelopeId, orgId, candidateId } = request.data;
+
+    if (!envelopeId) {
+        throw new HttpsError('invalid-argument', 'Missing "envelopeId".');
+    }
+
+    try {
+        const accountId = docusignAccountId.value();
+        if (!accountId) {
+            throw new HttpsError('failed-precondition', 'DocuSign Account ID not configured.');
+        }
+
+        const { accessToken, basePath } = await getDocuSignAccessToken();
+        const docusign = await import('docusign-esign');
+
+        const apiClient = new docusign.ApiClient();
+        apiClient.setBasePath(basePath);
+        apiClient.addDefaultHeader('Authorization', `Bearer ${accessToken}`);
+
+        const envelopesApi = new docusign.EnvelopesApi(apiClient);
+        const envelope = await envelopesApi.getEnvelope(accountId, envelopeId);
+
+        const status = envelope.status; // 'sent' | 'delivered' | 'completed' | 'declined' | 'voided'
+        const completedAt = envelope.completedDateTime;
+
+        // Map DocuSign status to our internal status
+        const statusMap: Record<string, string> = {
+            'created': 'Draft',
+            'sent': 'Sent',
+            'delivered': 'Delivered',
+            'completed': 'Completed',
+            'declined': 'Declined',
+            'voided': 'Voided',
+        };
+
+        const mappedStatus = statusMap[status || ''] || status;
+
+        // Update Firestore if orgId and candidateId provided
+        if (orgId && candidateId) {
+            const db = getFirestore();
+            const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+            const candidateDoc = await candidateRef.get();
+
+            if (candidateDoc.exists) {
+                const data = candidateDoc.data()!;
+                const offer = data.offer || {};
+                const updates: any = {
+                    offer: {
+                        ...offer,
+                        docusignStatus: mappedStatus,
+                    }
+                };
+
+                // If completed (signed), update the offer status
+                if (status === 'completed') {
+                    updates.offer.status = 'Signed';
+                    updates.offer.signedAt = completedAt || new Date().toISOString();
+
+                    // Attempt to get the signed document URL
+                    try {
+                        const docList = await envelopesApi.listDocuments(accountId, envelopeId);
+                        if (docList.envelopeDocuments && docList.envelopeDocuments.length > 0) {
+                            // Download the combined (signed) PDF
+                            const pdfBytes = await envelopesApi.getDocument(accountId, envelopeId, 'combined');
+                            // Upload to Firebase Storage
+                            const storage = getStorage();
+                            const bucket = storage.bucket();
+                            const filePath = `${orgId}/candidates/${candidateId}/signed_offer_${envelopeId}.pdf`;
+                            const file = bucket.file(filePath);
+                            await file.save(Buffer.from(pdfBytes as any), { contentType: 'application/pdf' });
+                            const [signedUrl] = await file.getSignedUrl({ action: 'read', expires: '01-01-2030' });
+                            updates.offer.signedDocumentUrl = signedUrl;
+                        }
+                    } catch (docErr) {
+                        logger.warn("Could not retrieve signed document", docErr);
+                    }
+                }
+
+                if (status === 'declined') {
+                    updates.offer.status = 'Declined';
+                    updates.offer.rejectedAt = new Date().toISOString();
+                }
+
+                await candidateRef.update(updates);
+            }
+        }
+
+        return {
+            success: true,
+            status: mappedStatus,
+            completedAt,
+        };
+
+    } catch (error: any) {
+        logger.error("Error checking DocuSign status", error);
+        throw new HttpsError('internal', error.message || 'Failed to check DocuSign status.');
+    }
+});
+
+/**
+ * 20. DOCUSIGN WEBHOOK (Connect) — HTTP endpoint
+ *
+ * DocuSign Connect sends real-time status updates to this endpoint.
+ * Configure in DocuSign Admin > Connect > Add Configuration:
+ *   URL: https://us-central1-{PROJECT_ID}.cloudfunctions.net/docuSignWebhook
+ *   Events: Envelope Sent, Delivered, Completed, Declined, Voided
+ */
+import { onRequest } from "firebase-functions/v2/https";
+
+export const docuSignWebhook = onRequest({
+    cors: true,
+    region: "us-central1",
+    maxInstances: 10,
+    memory: "256MiB" as const,
+    timeoutSeconds: 30,
+}, async (req, res) => {
+    if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+    }
+
+    try {
+        const payload = req.body;
+        const envelopeId = payload?.envelopeId || payload?.EnvelopeStatus?.EnvelopeID;
+        const status = payload?.status || payload?.EnvelopeStatus?.Status;
+
+        if (!envelopeId) {
+            logger.warn("DocuSign webhook: missing envelopeId", payload);
+            res.status(400).send('Missing envelopeId');
+            return;
+        }
+
+        logger.info(`DocuSign webhook received: envelope=${envelopeId}, status=${status}`);
+
+        // Look up which candidate has this envelope
+        const db = getFirestore();
+        const orgsSnapshot = await db.collectionGroup('candidates')
+            .where('offer.docusignEnvelopeId', '==', envelopeId)
+            .limit(1)
+            .get();
+
+        if (orgsSnapshot.empty) {
+            logger.warn(`DocuSign webhook: no candidate found for envelope ${envelopeId}`);
+            res.status(200).send('OK — no matching candidate');
+            return;
+        }
+
+        const candidateDoc = orgsSnapshot.docs[0];
+        const candidateData = candidateDoc.data();
+        const offer = candidateData.offer || {};
+
+        const statusMap: Record<string, string> = {
+            'sent': 'Sent',
+            'delivered': 'Delivered',
+            'completed': 'Completed',
+            'declined': 'Declined',
+            'voided': 'Voided',
+        };
+
+        const normalizedStatus = (status || '').toLowerCase();
+        const mappedStatus = statusMap[normalizedStatus] || status;
+
+        const updates: any = {
+            offer: {
+                ...offer,
+                docusignStatus: mappedStatus,
+            }
+        };
+
+        if (normalizedStatus === 'completed') {
+            updates.offer.status = 'Signed';
+            updates.offer.signedAt = new Date().toISOString();
+        }
+
+        if (normalizedStatus === 'declined') {
+            updates.offer.status = 'Declined';
+            updates.offer.rejectedAt = new Date().toISOString();
+        }
+
+        await candidateDoc.ref.update(updates);
+        logger.info(`DocuSign webhook: updated candidate ${candidateDoc.id} → ${mappedStatus}`);
+
+        res.status(200).send('OK');
+    } catch (error: any) {
+        logger.error("DocuSign webhook error", error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER: Default offer letter HTML template for DocuSign
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function buildDefaultOfferHtml(params: {
+    candidateName: string;
+    jobTitle: string;
+    companyName: string;
+    salary: string;
+    startDate: string;
+}): string {
+    const { candidateName, jobTitle, companyName, salary, startDate } = params;
+    return `<!DOCTYPE html>
+<html>
+<head><style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; line-height: 1.8; padding: 60px; max-width: 800px; margin: 0 auto; }
+    h1 { color: #0f172a; font-size: 28px; border-bottom: 3px solid #059669; padding-bottom: 12px; }
+    .section { margin: 24px 0; padding: 20px; background: #f8fafc; border-left: 4px solid #059669; border-radius: 4px; }
+    .signature-block { margin-top: 60px; display: flex; justify-content: space-between; }
+    .sig-area { width: 45%; }
+    .sig-line { border-top: 2px solid #334155; margin-top: 60px; padding-top: 8px; }
+</style></head>
+<body>
+    <h1>Employment Offer Letter</h1>
+    <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    <p>Dear <strong>${candidateName}</strong>,</p>
+    <p>We are pleased to offer you the position of <strong>${jobTitle}</strong> at <strong>${companyName}</strong>. We believe your skills and experience will be a valuable asset to our team.</p>
+
+    <div class="section">
+        <h3>1. Position &amp; Compensation</h3>
+        <p><strong>Title:</strong> ${jobTitle}<br>
+        <strong>Annual Salary:</strong> ${salary}<br>
+        <strong>Start Date:</strong> ${startDate}</p>
+    </div>
+
+    <div class="section">
+        <h3>2. Benefits</h3>
+        <p>You will be eligible for our comprehensive benefits package, including health, dental, and vision insurance, retirement plan matching, and paid time off.</p>
+    </div>
+
+    <div class="section">
+        <h3>3. At-Will Employment</h3>
+        <p>Your employment with ${companyName} is for no specific period of time and constitutes "at-will" employment. Either you or ${companyName} may terminate the employment relationship at any time.</p>
+    </div>
+
+    <p>Please indicate your acceptance of this offer by signing below.</p>
+
+    <div class="signature-block">
+        <div class="sig-area">
+            <p><strong>${companyName}</strong></p>
+            <div class="sig-line">
+                <p>Authorized Representative</p>
+            </div>
+        </div>
+        <div class="sig-area">
+            <p><strong>Candidate Signature:</strong></p>
+            <p>/sig1/</p>
+            <div class="sig-line">
+                <p>${candidateName}</p>
+                <p>Date: /date1/</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+}
 

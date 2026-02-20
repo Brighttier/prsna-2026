@@ -19,10 +19,57 @@ import { OnboardingPortal } from './pages/OnboardingPortal';
 import { PublicCareerPage } from './pages/PublicCareerPage';
 import { DynamicBranding } from './components/DynamicBranding';
 import { LockdownOverlay } from './components/LockdownOverlay';
+import { detectSubdomain, resolveSubdomainToOrgId } from './services/subdomain';
 
 import { store } from './services/store';
 import { auth } from './services/firebase';
 import { Loader2 } from 'lucide-react';
+
+/**
+ * SubdomainCareerPage — rendered when the app is accessed via a tenant subdomain
+ * (e.g. acme.personarecruit.ai). Resolves the subdomain to an orgId and shows
+ * the PublicCareerPage for that org.
+ */
+const SubdomainCareerPage = ({ subdomain }: { subdomain: string }) => {
+  const [orgId, setOrgId] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [notFound, setNotFound] = React.useState(false);
+
+  React.useEffect(() => {
+    resolveSubdomainToOrgId(subdomain).then((id) => {
+      if (id) {
+        setOrgId(id);
+      } else {
+        setNotFound(true);
+      }
+      setLoading(false);
+    });
+  }, [subdomain]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 text-slate-400 animate-spin mb-4" />
+        <p className="text-slate-500 font-medium">Loading career page...</p>
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center">
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">Organization Not Found</h1>
+        <p className="text-slate-500 max-w-md">
+          No organization is registered at <strong>{subdomain}.personarecruit.ai</strong>.
+          Please check the URL and try again.
+        </p>
+      </div>
+    );
+  }
+
+  // Render the public career page with the resolved orgId
+  return <PublicCareerPage subdomainOrgId={orgId!} />;
+};
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
@@ -103,6 +150,14 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 };
 
 export default function App() {
+  // Check for subdomain-based tenant access (e.g. acme.personarecruit.ai)
+  const subdomain = detectSubdomain();
+
+  // If accessed via a tenant subdomain, show only the career page — skip the full app router
+  if (subdomain) {
+    return <SubdomainCareerPage subdomain={subdomain} />;
+  }
+
   return (
     <Router>
       <DynamicBranding />
