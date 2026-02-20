@@ -1,57 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { store, ExtendedCandidate } from '../services/store';
+import { store } from '../services/store';
 import { OfferDetails } from '../types';
 import { Card } from '../components/Card';
-import { Check, X, Download, FileText, Globe, Lock, ShieldCheck, PenTool, AlertCircle } from 'lucide-react';
+import { Check, Download, FileText, Globe, Lock, ShieldCheck, PenTool, AlertCircle } from 'lucide-react';
 
 export const OfferPortal = () => {
     const { token } = useParams<{ token: string }>();
     const navigate = useNavigate();
-    const [candidate, setCandidate] = useState<ExtendedCandidate | null>(null);
+    const [candidate, setCandidate] = useState<{ id: string; name: string; email: string; role: string; offer: OfferDetails } | null>(null);
+    const [branding, setBranding] = useState<{ companyName: string; primaryColor: string; logoUrl: string }>({ companyName: '', primaryColor: '#16a34a', logoUrl: '' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [viewMode, setViewMode] = useState<'document' | 'signing' | 'success' | 'reject'>('document');
     const [rejectionReason, setRejectionReason] = useState('');
     const [isSigning, setIsSigning] = useState(false);
 
-    // Mock PDF Content for specific sections
-    const OFFER_SECTIONS = [
-        { title: '1. Position & Compensation', content: 'We are pleased to offer you the position of Senior React Engineer at TechFlow Inc. Your starting annual salary will be $165,000, paid semi-monthly.' },
-        { title: '2. Benefits', content: 'You will be eligible for our comprehensive benefits package, including health, dental, and vision insurance, 401(k) with 5% match, and unlimited PTO.' },
-        { title: '3. Equity', content: 'Subject to board approval, you will be granted 5,000 RSUs, vesting over 4 years with a 1-year cliff.' },
-        { title: '4. At-Will Employment', content: 'Your employment with the Company is for no specific period of time. Your employment with the Company will be "at will," meaning that either you or the Company may terminate your employment at any time.' }
-    ];
-
     useEffect(() => {
-        // Simulate API verification of token
-        setTimeout(() => {
-            const foundCandidate = store.getState().candidates.find(c => c.offer?.token === token);
-            if (foundCandidate && foundCandidate.offer) {
-                setCandidate(foundCandidate);
+        if (!token) {
+            setError('No offer token provided.');
+            setLoading(false);
+            return;
+        }
+
+        store.resolvePortalToken(token)
+            .then((data) => {
+                if (!data.offer) {
+                    setError('No offer found for this link.');
+                    setLoading(false);
+                    return;
+                }
+
+                const resolved = {
+                    id: data.candidateId,
+                    name: data.name,
+                    email: data.email,
+                    role: data.role,
+                    offer: data.offer as OfferDetails,
+                };
+                setCandidate(resolved);
+                setBranding(data.branding);
+
                 // Mark as Viewed if not already
-                if (foundCandidate.offer.status === 'Sent') {
-                    store.updateCandidate(foundCandidate.id, {
-                        ...foundCandidate,
-                        offer: {
-                            ...foundCandidate.offer,
-                            status: 'Viewed',
-                            viewedAt: new Date().toISOString()
-                        }
-                    });
+                if (resolved.offer.status === 'Sent') {
+                    store.updateCandidate(resolved.id, {
+                        offer: { ...resolved.offer, status: 'Viewed', viewedAt: new Date().toISOString() }
+                    } as any).catch(() => {});
                 }
 
                 // Restore state if already signed/rejected
-                if (foundCandidate.offer.status === 'Signed') {
+                if (resolved.offer.status === 'Signed') {
                     setViewMode('success');
-                } else if (foundCandidate.offer.status === 'Rejected') {
+                } else if (resolved.offer.status === 'Rejected') {
                     setError('This offer has been rejected.');
                 }
-            } else {
+
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error('Token resolution failed:', err);
                 setError('Invalid or expired offer link.');
-            }
-            setLoading(false);
-        }, 800);
+                setLoading(false);
+            });
     }, [token]);
 
     const handleSign = async () => {
@@ -59,12 +69,11 @@ export const OfferPortal = () => {
 
         if (!candidate || !candidate.offer) return;
 
-        // If there's a DocuSign envelope, check its status or redirect to DocuSign
+        // If there's a DocuSign envelope, check its status
         if (candidate.offer.docusignEnvelopeId) {
             try {
                 const result = await store.checkDocuSignStatus(candidate.id);
                 if (result.status === 'Completed') {
-                    // Already signed via DocuSign
                     setCandidate(prev => prev ? {
                         ...prev,
                         offer: { ...prev.offer!, status: 'Signed', signedAt: new Date().toISOString() }
@@ -86,9 +95,8 @@ export const OfferPortal = () => {
         };
 
         store.updateCandidate(candidate.id, {
-            ...candidate,
             offer: updatedOffer
-        });
+        } as any).catch(() => {});
 
         setCandidate(prev => prev ? { ...prev, offer: updatedOffer } : null);
         setIsSigning(false);
@@ -107,14 +115,19 @@ export const OfferPortal = () => {
             };
 
             store.updateCandidate(candidate.id, {
-                ...candidate,
                 offer: updatedOffer
-            });
+            } as any).catch(() => {});
 
             setCandidate(prev => prev ? { ...prev, offer: updatedOffer } : null);
             alert('Offer rejected. The hiring team has been notified.');
-            navigate('/'); // Redirect or show rejected state
+            navigate('/');
         }
+    };
+
+    const formatSalary = () => {
+        if (!candidate?.offer) return '';
+        const { currency, salary } = candidate.offer;
+        return `${currency || 'USD'} ${salary?.toLocaleString() || ''}`;
     };
 
     if (loading) {
@@ -148,13 +161,17 @@ export const OfferPortal = () => {
             <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                            <Globe className="w-5 h-5 text-white" />
-                        </div>
-                        <span className="font-bold text-slate-900 tracking-tight">TechFlow Inc.</span>
+                        {branding.logoUrl ? (
+                            <img src={branding.logoUrl} alt={branding.companyName} className="h-8" />
+                        ) : (
+                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                                <Globe className="w-5 h-5 text-white" />
+                            </div>
+                        )}
+                        <span className="font-bold text-slate-900 tracking-tight">{branding.companyName}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
-                        <Lock className="w-3 h-3" /> Secure DocuSign Envelope
+                        <Lock className="w-3 h-3" /> Secure Offer Portal
                     </div>
                 </div>
             </header>
@@ -173,29 +190,55 @@ export const OfferPortal = () => {
                                 <div className="space-y-8 text-slate-800 leading-relaxed font-serif">
                                     <div className="border-b border-slate-100 pb-8 mb-8">
                                         <h1 className="text-3xl font-bold text-slate-900 mb-2">Employment Offer Letter</h1>
-                                        <p className="text-slate-500 font-sans">October 26, 2023</p>
+                                        <p className="text-slate-500 font-sans">{candidate?.offer?.sentAt ? new Date(candidate.offer.sentAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date pending'}</p>
                                     </div>
 
                                     <p>Dear <strong>{candidate?.name}</strong>,</p>
-                                    <p>We are delighted to offer you the position of <strong>{candidate?.role}</strong> joining our team at TechFlow Inc.</p>
+                                    <p>We are delighted to offer you the position of <strong>{candidate?.role}</strong> at {branding.companyName}.</p>
 
-                                    {OFFER_SECTIONS.map((section, idx) => (
-                                        <div key={idx} className="bg-slate-50 p-6 rounded-lg border border-slate-100">
-                                            <h3 className="font-bold text-slate-900 mb-2 font-sans">{section.title}</h3>
-                                            <p className="text-sm">{section.content}</p>
+                                    {/* Dynamic offer sections from real data */}
+                                    <div className="bg-slate-50 p-6 rounded-lg border border-slate-100">
+                                        <h3 className="font-bold text-slate-900 mb-2 font-sans">1. Position & Compensation</h3>
+                                        <p className="text-sm">Your starting annual salary will be <strong>{formatSalary()}</strong>{candidate?.offer?.signOnBonus ? `, with a sign-on bonus of ${candidate.offer.signOnBonus}` : ''}{candidate?.offer?.performanceBonus ? ` and performance bonus of ${candidate.offer.performanceBonus}` : ''}.</p>
+                                    </div>
+
+                                    {candidate?.offer?.equity && (
+                                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-100">
+                                            <h3 className="font-bold text-slate-900 mb-2 font-sans">2. Equity</h3>
+                                            <p className="text-sm">{candidate.offer.equity}</p>
                                         </div>
-                                    ))}
+                                    )}
+
+                                    {candidate?.offer?.benefits && (
+                                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-100">
+                                            <h3 className="font-bold text-slate-900 mb-2 font-sans">{candidate?.offer?.equity ? '3' : '2'}. Benefits</h3>
+                                            <p className="text-sm">{candidate.offer.benefits}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="bg-slate-50 p-6 rounded-lg border border-slate-100">
+                                        <h3 className="font-bold text-slate-900 mb-2 font-sans">Start Date & Location</h3>
+                                        <p className="text-sm">
+                                            Your anticipated start date is <strong>{candidate?.offer?.startDate || 'TBD'}</strong>
+                                            {candidate?.offer?.location ? `, based in ${candidate.offer.location}` : ''}.
+                                            {candidate?.offer?.expirationDate ? ` This offer expires on ${candidate.offer.expirationDate}.` : ''}
+                                        </p>
+                                    </div>
+
+                                    {/* Offer letter content if provided */}
+                                    {candidate?.offer?.offerLetterContent && (
+                                        <div className="bg-white p-6 rounded-lg border border-slate-200">
+                                            <div className="prose prose-sm max-w-none text-slate-700 whitespace-pre-wrap">{candidate.offer.offerLetterContent}</div>
+                                        </div>
+                                    )}
 
                                     <div className="pt-12 mt-12 border-t border-slate-200">
                                         <div className="flex justify-between items-end">
                                             <div>
-                                                <div className="h-16 flex items-end font-dancing-script text-3xl text-indigo-800 mb-2">
-                                                    Sarah Jenkins
-                                                </div>
                                                 <div className="border-t border-slate-300 w-48 pt-1">
-                                                    <p className="text-xs font-bold uppercase text-slate-400 font-sans">Signed by</p>
-                                                    <p className="font-bold text-slate-900 font-sans">Sarah Jenkins</p>
-                                                    <p className="text-xs text-slate-500 font-sans">VP of Engineering</p>
+                                                    <p className="text-xs font-bold uppercase text-slate-400 font-sans">From</p>
+                                                    <p className="font-bold text-slate-900 font-sans">{branding.companyName}</p>
+                                                    <p className="text-xs text-slate-500 font-sans">People Operations</p>
                                                 </div>
                                             </div>
 
@@ -233,7 +276,7 @@ export const OfferPortal = () => {
                                     </button>
                                 </div>
                                 <p className="text-xs text-slate-400 mt-4 text-center">
-                                    By clicking "Review & Sign", you agree to be legally bound by this document via DocuSign.
+                                    By clicking "Review & Sign", you agree to be legally bound by this document.
                                 </p>
                             </Card>
                         </div>
@@ -252,7 +295,7 @@ export const OfferPortal = () => {
                                         </div>
                                     </div>
                                     <h2 className="text-xl font-bold text-slate-900">Finalizing Document...</h2>
-                                    <p className="text-slate-500">Securing digital signature with DocuSign Technology</p>
+                                    <p className="text-slate-500">Securing digital signature</p>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
@@ -271,7 +314,7 @@ export const OfferPortal = () => {
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Initials</label>
-                                            <input type="text" value={candidate?.name.split(' ').map(n => n[0]).join('')} disabled className="w-24 p-3 bg-white border border-slate-200 rounded-lg text-slate-900 font-bold" />
+                                            <input type="text" value={candidate?.name?.split(' ').map((n: string) => n[0]).join('')} disabled className="w-24 p-3 bg-white border border-slate-200 rounded-lg text-slate-900 font-bold" />
                                         </div>
                                     </div>
 
@@ -296,7 +339,7 @@ export const OfferPortal = () => {
                     <div className="fixed inset-0 z-50 bg-slate-900/90 flex items-center justify-center p-4 animate-fade-in">
                         <Card className="max-w-lg w-full p-8">
                             <div className="mb-6">
-                                <h2 className="text-xl font-bold text-slate-900 text-red-600 flex items-center gap-2">
+                                <h2 className="text-xl font-bold text-red-600 flex items-center gap-2">
                                     <AlertCircle className="w-6 h-6" /> Decline Offer
                                 </h2>
                                 <p className="text-slate-500 text-sm mt-1">We're sorry to see you decline. Please provide a reason to formalize this decision.</p>
@@ -331,22 +374,37 @@ export const OfferPortal = () => {
                                 <Check className="w-12 h-12 text-emerald-600" />
                             </div>
                             <h1 className="text-3xl font-black text-slate-900 mb-2">You're Hired!</h1>
-                            <p className="text-slate-500 text-lg mb-8">Congratulations, {candidate?.name.split(' ')[0]}! We're thrilled to have you on board.</p>
+                            <p className="text-slate-500 text-lg mb-8">Congratulations, {candidate?.name?.split(' ')[0]}! We're thrilled to have you on board at {branding.companyName}.</p>
 
                             <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100 mb-8">
                                 <h3 className="font-bold text-slate-900 mb-4 block">Your Signed Documents</h3>
-                                <button className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-emerald-400 hover:shadow-md transition-all group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                                            <FileText className="w-5 h-5 text-red-500" />
+                                {candidate?.offer?.signedDocumentUrl ? (
+                                    <a href={candidate.offer.signedDocumentUrl} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-emerald-400 hover:shadow-md transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                                                <FileText className="w-5 h-5 text-red-500" />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="font-bold text-slate-900">Signed Offer Letter.pdf</div>
+                                                <div className="text-xs text-slate-400">Digitally signed</div>
+                                            </div>
                                         </div>
-                                        <div className="text-left">
-                                            <div className="font-bold text-slate-900">Signed Offer Letter.pdf</div>
-                                            <div className="text-xs text-slate-400">Digitally signed via DocuSign • 2.4 MB</div>
+                                        <Download className="w-5 h-5 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                                    </a>
+                                ) : (
+                                    <div className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                                                <FileText className="w-5 h-5 text-red-500" />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="font-bold text-slate-900">Signed Offer Letter</div>
+                                                <div className="text-xs text-slate-400">Digitally signed • A copy has been sent to your email</div>
+                                            </div>
                                         </div>
+                                        <Check className="w-5 h-5 text-emerald-500" />
                                     </div>
-                                    <Download className="w-5 h-5 text-slate-400 group-hover:text-emerald-500 transition-colors" />
-                                </button>
+                                )}
                             </div>
 
                             <p className="text-sm text-slate-400">A copy has also been sent to your email.</p>

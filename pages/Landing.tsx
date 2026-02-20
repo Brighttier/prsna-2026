@@ -214,7 +214,10 @@ export const Landing = () => {
                         >
                             Start Free Trial <ArrowRight className="w-5 h-5" />
                         </button>
-                        <button className="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-full font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-full font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                        >
                             <Cpu className="w-5 h-5" /> View Demo
                         </button>
                     </div>

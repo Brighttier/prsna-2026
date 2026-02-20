@@ -60,9 +60,9 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                         });
                         meetLink = result.meetLink;
                     } catch (meetErr: any) {
-                        console.error("Google Meet creation failed, using fallback:", meetErr);
-                        // Fallback: generate a placeholder link if service account isn't configured yet
-                        meetLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+                        console.error("Google Meet creation failed:", meetErr);
+                        alert('Failed to create Google Meet link. Please check your Google Calendar integration in Settings.');
+                        return;
                     }
                 } else {
                     // Use real Microsoft Teams Cloud Function
@@ -78,8 +78,9 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                         });
                         meetLink = result.meetLink;
                     } catch (teamsErr: any) {
-                        console.error("Teams meeting creation failed, using fallback:", teamsErr);
-                        meetLink = `https://teams.microsoft.com/l/meetup-join/${Math.random().toString(36).substring(2, 15)}`;
+                        console.error("Teams meeting creation failed:", teamsErr);
+                        alert('Failed to create Teams meeting. Please check your Microsoft Teams integration.');
+                        return;
                     }
                 }
             }
@@ -90,7 +91,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
             const interviewToken = mode === 'AI' ? crypto.randomUUID() : undefined;
 
             const newSession: InterviewSession = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: crypto.randomUUID().substring(0, 9),
                 date: mode === 'AI' ? 'Immediate' : new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 time: mode === 'AI' ? 'Anytime' : time,
                 timezone: mode === 'Face-to-Face' ? timezone : undefined,
@@ -482,12 +483,17 @@ const DocusignModal = ({ candidate, offer, onClose, onComplete }: { candidate: a
         }, 2000);
     };
 
-    const handleSend = () => {
+    const handleSend = async () => {
         setIsProcessing(true);
-        setTimeout(() => {
-            onComplete(`DS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`);
+        try {
+            const result = await store.sendDocuSignOffer(candidate.id);
+            onComplete(result.envelopeId);
+        } catch (err: any) {
+            console.error('DocuSign send failed:', err);
+            alert('Failed to send via DocuSign. Check your DocuSign configuration.');
+        } finally {
             setIsProcessing(false);
-        }, 1500);
+        }
     };
 
     return (

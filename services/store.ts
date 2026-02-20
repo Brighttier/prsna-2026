@@ -814,7 +814,7 @@ class Store {
     async syncToHris(candidateId: string) {
         const candidate = this.state.candidates.find(c => c.id === candidateId);
         if (candidate && candidate.onboarding) {
-            const hrisId = `SGE-${Math.floor(Math.random() * 10000)}`;
+            const hrisId = `SGE-${candidateId.substring(0, 8).toUpperCase()}`;
             const updatedOnboarding = {
                 ...candidate.onboarding,
                 hrisSyncStatus: 'Synced' as const,
@@ -1059,6 +1059,22 @@ class Store {
         } catch (e) {
             console.error("Error updating onboarding template: ", e);
         }
+    }
+
+    // --- PUBLIC PORTAL TOKEN RESOLVER ---
+    async resolvePortalToken(token: string): Promise<{
+        candidateId: string;
+        name: string;
+        email: string;
+        role: string;
+        offer: any;
+        onboarding: any;
+        branding: { companyName: string; primaryColor: string; logoUrl: string };
+        orgId: string;
+    }> {
+        const fn = httpsCallable(functions, 'resolvePortalToken');
+        const result = await fn({ token });
+        return result.data as any;
     }
 }
 

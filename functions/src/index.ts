@@ -2238,3 +2238,56 @@ exports.getTeamsMeetingArtifacts = onCall({
     }
 });
 
+// ======================== PORTAL TOKEN RESOLVER ========================
+// Resolves an offer/onboarding token to candidate + org data for public portals
+export const resolvePortalToken = onCall({ region: 'us-central1' }, async (request) => {
+    const { token } = request.data;
+    if (!token || typeof token !== 'string') {
+        throw new HttpsError('invalid-argument', 'Token is required.');
+    }
+
+    const db = getFirestore();
+
+    // Search across all orgs for a candidate with this offer token
+    const snapshot = await db.collectionGroup('candidates')
+        .where('offer.token', '==', token)
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) {
+        throw new HttpsError('not-found', 'Invalid or expired token.');
+    }
+
+    const candidateDoc = snapshot.docs[0];
+    const candidateData = candidateDoc.data();
+    const candidateId = candidateDoc.id;
+
+    // Extract orgId from the document path: organizations/{orgId}/candidates/{candidateId}
+    const orgId = candidateDoc.ref.parent.parent?.id;
+
+    // Fetch org branding
+    let branding: any = {};
+    if (orgId) {
+        const orgDoc = await db.collection('organizations').doc(orgId).get();
+        if (orgDoc.exists) {
+            const orgData = orgDoc.data();
+            branding = orgData?.branding || {};
+        }
+    }
+
+    return {
+        candidateId,
+        name: candidateData.name || '',
+        email: candidateData.email || '',
+        role: candidateData.role || '',
+        offer: candidateData.offer || null,
+        onboarding: candidateData.onboarding || null,
+        branding: {
+            companyName: branding.companyName || 'RecruiteAI',
+            primaryColor: branding.primaryColor || '#16a34a',
+            logoUrl: branding.logoUrl || '',
+        },
+        orgId,
+    };
+});
+

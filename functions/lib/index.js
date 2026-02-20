@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.docuSignWebhook = exports.checkDocuSignStatus = exports.createDocuSignEnvelope = exports.createGoogleMeetEvent = exports.saveInterviewSession = exports.resolveInterviewToken = exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
+exports.resolvePortalToken = exports.docuSignWebhook = exports.checkDocuSignStatus = exports.createDocuSignEnvelope = exports.createGoogleMeetEvent = exports.saveInterviewSession = exports.resolveInterviewToken = exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
@@ -2002,5 +2002,50 @@ exports.getTeamsMeetingArtifacts = (0, https_1.onCall)({
         logger.error('Error fetching Teams artifacts:', error);
         throw new https_1.HttpsError('internal', error.message || 'Failed to fetch Teams meeting artifacts.');
     }
+});
+// ======================== PORTAL TOKEN RESOLVER ========================
+// Resolves an offer/onboarding token to candidate + org data for public portals
+exports.resolvePortalToken = (0, https_1.onCall)({ region: 'us-central1' }, async (request) => {
+    const { token } = request.data;
+    if (!token || typeof token !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'Token is required.');
+    }
+    const db = (0, firestore_1.getFirestore)();
+    // Search across all orgs for a candidate with this offer token
+    const snapshot = await db.collectionGroup('candidates')
+        .where('offer.token', '==', token)
+        .limit(1)
+        .get();
+    if (snapshot.empty) {
+        throw new https_1.HttpsError('not-found', 'Invalid or expired token.');
+    }
+    const candidateDoc = snapshot.docs[0];
+    const candidateData = candidateDoc.data();
+    const candidateId = candidateDoc.id;
+    // Extract orgId from the document path: organizations/{orgId}/candidates/{candidateId}
+    const orgId = candidateDoc.ref.parent.parent?.id;
+    // Fetch org branding
+    let branding = {};
+    if (orgId) {
+        const orgDoc = await db.collection('organizations').doc(orgId).get();
+        if (orgDoc.exists) {
+            const orgData = orgDoc.data();
+            branding = orgData?.branding || {};
+        }
+    }
+    return {
+        candidateId,
+        name: candidateData.name || '',
+        email: candidateData.email || '',
+        role: candidateData.role || '',
+        offer: candidateData.offer || null,
+        onboarding: candidateData.onboarding || null,
+        branding: {
+            companyName: branding.companyName || 'RecruiteAI',
+            primaryColor: branding.primaryColor || '#16a34a',
+            logoUrl: branding.logoUrl || '',
+        },
+        orgId,
+    };
 });
 //# sourceMappingURL=index.js.map

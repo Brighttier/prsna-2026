@@ -4,7 +4,6 @@ import {
     signInWithEmailAndPassword,
     signOut,
     updateProfile,
-    updateProfile,
     User
 } from 'firebase/auth';
 

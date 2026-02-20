@@ -115,7 +115,6 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname.includes('/offer') ||
     location.pathname === '/login' ||
     location.pathname === '/' ||
-    location.pathname === '/' ||
     location.pathname === '/onboarding' ||
     location.pathname.startsWith('/onboarding-portal/') ||
     location.pathname.startsWith('/career/');

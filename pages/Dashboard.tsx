@@ -214,7 +214,7 @@ export const Dashboard = () => {
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
                   <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Live Webhook Feed</span>
                 </div>
-                <button className="text-[10px] font-black text-brand-400 uppercase tracking-widest hover:text-brand-300 transition-colors">View All Envelopes</button>
+                <span className="text-[10px] font-black text-brand-400 uppercase tracking-widest">DocuSign</span>
               </div>
 
               <div className="space-y-4">
