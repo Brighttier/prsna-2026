@@ -1,12 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Job } from '../types';
-import { X, Upload, Video, Mic, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Upload, Video, Mic, Check, AlertCircle, Loader2, Briefcase, MapPin, Globe, Clock, DollarSign } from 'lucide-react';
 import { storage, db, ref, uploadBytes, getDownloadURL, collection, setDoc, updateDoc, doc, auth } from '../services/firebase';
 import { store } from '../services/store';
 import { signInAnonymously } from 'firebase/auth';
 import { query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { uploadBytesResumable } from 'firebase/storage';
 import { screenResume } from '../services/ai';
+
+// Render markdown job descriptions as formatted HTML
+function renderJobMarkdown(md: string): string {
+    if (!md) return '';
+    return md
+        .split('\n')
+        .map(line => {
+            if (line.startsWith('### ')) return `<h4 class="text-base font-bold text-slate-900 mt-6 mb-2">${line.slice(4)}</h4>`;
+            if (line.startsWith('## ')) return `<h3 class="text-lg font-bold text-slate-900 mt-7 mb-3">${line.slice(3)}</h3>`;
+            if (line.startsWith('# ')) return `<h2 class="text-xl font-bold text-slate-900 mt-8 mb-3">${line.slice(2)}</h2>`;
+            if (/^[\-\*]\s/.test(line)) {
+                const content = line.replace(/^[\-\*]\s/, '');
+                return `<li class="flex items-start gap-2.5 py-1.5 text-slate-600"><span class="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0"></span><span>${inlineFormat(content)}</span></li>`;
+            }
+            if (line.trim() === '') return '<div class="h-2"></div>';
+            return `<p class="text-slate-600 leading-relaxed mb-2">${inlineFormat(line)}</p>`;
+        })
+        .join('\n');
+}
+
+function inlineFormat(text: string): string {
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-slate-800">$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code class="bg-slate-100 px-1.5 py-0.5 rounded text-sm font-mono text-slate-700">$1</code>');
+}
 
 interface JobApplicationModalProps {
     job: Job;
@@ -379,33 +405,62 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 <div className="flex-1 overflow-y-auto">
                     {step === 0 ? (
                         <div className="p-8">
-                            <div className="prose prose-slate max-w-none">
-                                <div className="flex flex-wrap gap-4 mb-8">
-                                    <div className="bg-slate-100 px-4 py-2 rounded-lg">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Location</p>
-                                        <p className="text-sm font-bold text-slate-900">{job.location}</p>
+                            {/* Job metadata cards */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+                                <div className="bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                                        <MapPin className="w-4 h-4 text-blue-600" />
                                     </div>
-                                    <div className="bg-slate-100 px-4 py-2 rounded-lg">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Type</p>
-                                        <p className="text-sm font-bold text-slate-900">{job.type}</p>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Location</p>
+                                        <p className="text-sm font-bold text-slate-900 truncate">{job.location}</p>
                                     </div>
-                                    <div className="bg-slate-100 px-4 py-2 rounded-lg">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Department</p>
-                                        <p className="text-sm font-bold text-slate-900">{job.department}</p>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                                        <Clock className="w-4 h-4 text-purple-600" />
                                     </div>
-                                    {job.salaryMin !== undefined && job.salaryMax !== undefined && (job.salaryMin > 0 || job.salaryMax > 0) && (
-                                        <div className="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100">
-                                            <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-0.5">Salary Range</p>
-                                            <p className="text-sm font-bold text-emerald-700">{job.currency} {job.salaryMin.toLocaleString()} - {job.salaryMax.toLocaleString()}</p>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</p>
+                                        <p className="text-sm font-bold text-slate-900 truncate">{job.type}</p>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                                        <Briefcase className="w-4 h-4 text-amber-600" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Department</p>
+                                        <p className="text-sm font-bold text-slate-900 truncate">{job.department}</p>
+                                    </div>
+                                </div>
+                                {job.salaryMin !== undefined && job.salaryMax !== undefined && (job.salaryMin > 0 || job.salaryMax > 0) ? (
+                                    <div className="bg-emerald-50 border border-emerald-100 px-4 py-3 rounded-xl flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                            <DollarSign className="w-4 h-4 text-emerald-600" />
                                         </div>
-                                    )}
-                                </div>
-
-                                <h3 className="text-lg font-bold text-slate-900 mb-4 tracking-tight">About the Role</h3>
-                                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
-                                    {job.description || "No description provided for this role."}
-                                </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Salary</p>
+                                            <p className="text-sm font-bold text-emerald-700 truncate">{job.currency} {job.salaryMin.toLocaleString()} - {job.salaryMax.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                                            <Globe className="w-4 h-4 text-indigo-600" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Work</p>
+                                            <p className="text-sm font-bold text-slate-900 truncate">Remote OK</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Rendered job description */}
+                            <div className="text-sm md:text-base"
+                                dangerouslySetInnerHTML={{ __html: renderJobMarkdown(job.description || 'No description provided for this role.') }}
+                            />
                         </div>
                     ) : (
                         <form id="apply-form" onSubmit={handleSubmit} className="p-8 space-y-8">

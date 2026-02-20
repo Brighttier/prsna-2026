@@ -4,8 +4,38 @@ import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { BrandingSettings } from '../services/store';
 import { Job, JobStatus } from '../types';
-import { Briefcase, MapPin, ArrowRight, Globe, Building2 } from 'lucide-react';
+import { Briefcase, MapPin, ArrowRight, Globe, Building2, Clock, DollarSign, Users } from 'lucide-react';
 import { JobApplicationModal } from '../components/JobApplicationModal';
+
+// Simple markdown to HTML renderer for AI-generated job descriptions
+function renderMarkdown(md: string): string {
+    if (!md) return '';
+    return md
+        .split('\n')
+        .map(line => {
+            // Headers
+            if (line.startsWith('### ')) return `<h4 class="text-base font-bold text-slate-900 mt-6 mb-2">${line.slice(4)}</h4>`;
+            if (line.startsWith('## ')) return `<h3 class="text-lg font-bold text-slate-900 mt-7 mb-3">${line.slice(3)}</h3>`;
+            if (line.startsWith('# ')) return `<h2 class="text-xl font-bold text-slate-900 mt-8 mb-3">${line.slice(2)}</h2>`;
+            // Bullet points
+            if (/^[\-\*]\s/.test(line)) {
+                const content = line.replace(/^[\-\*]\s/, '');
+                return `<li class="flex items-start gap-2 py-1 text-slate-600"><span class="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0"></span><span>${inlineMd(content)}</span></li>`;
+            }
+            // Empty lines
+            if (line.trim() === '') return '<div class="h-2"></div>';
+            // Regular paragraph
+            return `<p class="text-slate-600 leading-relaxed mb-2">${inlineMd(line)}</p>`;
+        })
+        .join('\n');
+}
+
+function inlineMd(text: string): string {
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-slate-800">$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code class="bg-slate-100 px-1.5 py-0.5 rounded text-sm font-mono text-slate-700">$1</code>');
+}
 
 export const PublicCareerPage = ({ subdomainOrgId }: { subdomainOrgId?: string }) => {
     const params = useParams();
@@ -156,7 +186,7 @@ export const PublicCareerPage = ({ subdomainOrgId }: { subdomainOrgId?: string }
                                 </h3>
                                 {job.description && (
                                     <p className="text-sm text-slate-500 line-clamp-2 mt-1 mb-2 max-w-2xl">
-                                        {job.description.replace(/[#*`]/g, '').slice(0, 160)}...
+                                        {job.description.replace(/[#*`\-]/g, '').replace(/\n+/g, ' ').trim().slice(0, 160)}...
                                     </p>
                                 )}
                                 <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
