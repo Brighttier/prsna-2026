@@ -57,6 +57,7 @@ const docusignPrivateKey = (0, params_1.defineSecret)("DOCUSIGN_RSA_PRIVATE_KEY"
 const msTeamsTenantId = (0, params_1.defineSecret)("MS_TEAMS_TENANT_ID");
 const msTeamsClientId = (0, params_1.defineSecret)("MS_TEAMS_CLIENT_ID");
 const msTeamsClientSecret = (0, params_1.defineSecret)("MS_TEAMS_CLIENT_SECRET");
+const msTeamsOrganizerId = (0, params_1.defineSecret)("MS_TEAMS_ORGANIZER_ID");
 const email_1 = require("./utils/email");
 const embeddings_1 = require("./utils/embeddings");
 // Helper: Fetch org-specific email template override from Firestore
@@ -1814,13 +1815,14 @@ async function getMsTeamsAccessToken() {
     return data.access_token;
 }
 exports.createTeamsMeeting = (0, https_1.onCall)({
-    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret, resendApiKey],
+    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret, msTeamsOrganizerId, resendApiKey],
     memory: '256MiB',
     timeoutSeconds: 30,
     maxInstances: 10,
 }, async (request) => {
-    const { candidateName, candidateEmail, date, time, durationMinutes = 30, jobTitle, orgId, interviewerEmail, organizerUserId, // Azure AD Object ID of the meeting organizer
-     } = request.data;
+    const { candidateName, candidateEmail, date, time, durationMinutes = 30, jobTitle, orgId, interviewerEmail, } = request.data;
+    // Use the organizer user from server-side secret (not client-provided)
+    const organizerUserId = msTeamsOrganizerId.value();
     if (!candidateName || !candidateEmail || !date || !time) {
         throw new https_1.HttpsError('invalid-argument', 'Missing required fields: candidateName, candidateEmail, date, time.');
     }
@@ -1925,18 +1927,19 @@ exports.createTeamsMeeting = (0, https_1.onCall)({
 // Fetches recording URLs and transcript content after interview
 // ============================================================
 exports.getTeamsMeetingArtifacts = (0, https_1.onCall)({
-    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret],
+    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret, msTeamsOrganizerId],
     memory: '512MiB',
     timeoutSeconds: 60,
     maxInstances: 10,
 }, async (request) => {
-    const { meetingId, organizerUserId, orgId, candidateId } = request.data;
+    const { meetingId, orgId, candidateId } = request.data;
+    const organizerUserId = msTeamsOrganizerId.value();
     if (!meetingId) {
         throw new https_1.HttpsError('invalid-argument', 'Missing meetingId.');
     }
     try {
         const accessToken = await getMsTeamsAccessToken();
-        const userPath = organizerUserId ? `users/${organizerUserId}` : 'communications';
+        const userPath = `users/${organizerUserId}`;
         // 1. Fetch recordings
         const recordingsRes = await fetch(`https://graph.microsoft.com/v1.0/${userPath}/onlineMeetings/${meetingId}/recordings`, { headers: { 'Authorization': `Bearer ${accessToken}` } });
         let recordings = [];

@@ -27,6 +27,7 @@ const docusignPrivateKey = defineSecret("DOCUSIGN_RSA_PRIVATE_KEY"); // PEM, bas
 const msTeamsTenantId = defineSecret("MS_TEAMS_TENANT_ID");
 const msTeamsClientId = defineSecret("MS_TEAMS_CLIENT_ID");
 const msTeamsClientSecret = defineSecret("MS_TEAMS_CLIENT_SECRET");
+const msTeamsOrganizerId = defineSecret("MS_TEAMS_ORGANIZER_ID");
 
 import { sendSecureLinkEmail } from './utils/email';
 import { generateEmbedding, calculateCosineSimilarity } from './utils/embeddings';
@@ -2008,7 +2009,7 @@ async function getMsTeamsAccessToken(): Promise<string> {
 }
 
 exports.createTeamsMeeting = onCall({
-    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret, resendApiKey],
+    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret, msTeamsOrganizerId, resendApiKey],
     memory: '256MiB',
     timeoutSeconds: 30,
     maxInstances: 10,
@@ -2022,8 +2023,10 @@ exports.createTeamsMeeting = onCall({
         jobTitle,
         orgId,
         interviewerEmail,
-        organizerUserId, // Azure AD Object ID of the meeting organizer
     } = request.data;
+
+    // Use the organizer user from server-side secret (not client-provided)
+    const organizerUserId = msTeamsOrganizerId.value();
 
     if (!candidateName || !candidateEmail || !date || !time) {
         throw new HttpsError('invalid-argument', 'Missing required fields: candidateName, candidateEmail, date, time.');
@@ -2141,12 +2144,13 @@ exports.createTeamsMeeting = onCall({
 // Fetches recording URLs and transcript content after interview
 // ============================================================
 exports.getTeamsMeetingArtifacts = onCall({
-    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret],
+    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret, msTeamsOrganizerId],
     memory: '512MiB',
     timeoutSeconds: 60,
     maxInstances: 10,
 }, async (request) => {
-    const { meetingId, organizerUserId, orgId, candidateId } = request.data;
+    const { meetingId, orgId, candidateId } = request.data;
+    const organizerUserId = msTeamsOrganizerId.value();
 
     if (!meetingId) {
         throw new HttpsError('invalid-argument', 'Missing meetingId.');
@@ -2154,7 +2158,7 @@ exports.getTeamsMeetingArtifacts = onCall({
 
     try {
         const accessToken = await getMsTeamsAccessToken();
-        const userPath = organizerUserId ? `users/${organizerUserId}` : 'communications';
+        const userPath = `users/${organizerUserId}`;
 
         // 1. Fetch recordings
         const recordingsRes = await fetch(
