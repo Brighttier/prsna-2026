@@ -75,6 +75,7 @@ export const InterviewRoom = () => {
    const [systemInstruction, setSystemInstruction] = useState<string>('');
    const [sessionReady, setSessionReady] = useState(false);
    const [sessionError, setSessionError] = useState<string | null>(null);
+   const [isProcessing, setIsProcessing] = useState(false);
    const interviewTimeLimitRef = useRef<number>(30); // minutes
    const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
    const handleEndRef = useRef<(() => void) | null>(null);
@@ -328,6 +329,17 @@ export const InterviewRoom = () => {
       };
    }, [isConnected]);
 
+   // Warn candidate before closing browser during active interview
+   useEffect(() => {
+      if (!isConnected && !isProcessing) return;
+      const handler = (e: BeforeUnloadEvent) => {
+         e.preventDefault();
+         e.returnValue = 'Your interview is still in progress. Please do not close until you see the completion message.';
+      };
+      window.addEventListener('beforeunload', handler);
+      return () => window.removeEventListener('beforeunload', handler);
+   }, [isConnected, isProcessing]);
+
    const handleStart = () => {
       interviewStartTime.current = Date.now();
       connect();
@@ -337,6 +349,7 @@ export const InterviewRoom = () => {
       // Guard against double-end (auto-stop timer + user click)
       if (isEndingRef.current) return;
       isEndingRef.current = true;
+      setIsProcessing(true);
 
       disconnect();
 
@@ -545,18 +558,32 @@ export const InterviewRoom = () => {
                      )}
 
                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3 bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-slate-200 shadow-lg">
-                        <button
-                           onClick={() => setMicOn(!micOn)}
-                           className={`p-2.5 rounded-full transition-colors ${micOn ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-red-50 text-red-500 border border-red-100'}`}
-                        >
-                           {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                        </button>
-                        <button
-                           onClick={() => setCamOn(!camOn)}
-                           className={`p-2.5 rounded-full transition-colors ${camOn ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-red-50 text-red-500 border border-red-100'}`}
-                        >
-                           {camOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                        </button>
+                        {isConnected ? (
+                           <>
+                              <div className="flex items-center gap-1.5 px-2 py-1 text-emerald-600">
+                                 <Mic className="w-3.5 h-3.5" /><span className="text-xs font-medium">Mic On</span>
+                              </div>
+                              <div className="w-px h-4 bg-slate-200"></div>
+                              <div className="flex items-center gap-1.5 px-2 py-1 text-emerald-600">
+                                 <Video className="w-3.5 h-3.5" /><span className="text-xs font-medium">Camera On</span>
+                              </div>
+                           </>
+                        ) : (
+                           <>
+                              <button
+                                 onClick={() => setMicOn(!micOn)}
+                                 className={`p-2.5 rounded-full transition-colors ${micOn ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-red-50 text-red-500 border border-red-100'}`}
+                              >
+                                 {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                              </button>
+                              <button
+                                 onClick={() => setCamOn(!camOn)}
+                                 className={`p-2.5 rounded-full transition-colors ${camOn ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-red-50 text-red-500 border border-red-100'}`}
+                              >
+                                 {camOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                              </button>
+                           </>
+                        )}
                      </div>
                   </div>
                </div>
@@ -583,6 +610,20 @@ export const InterviewRoom = () => {
 
             {/* Transcript collected silently via Web Speech API for backend analysis */}
          </div>
+
+         {/* Processing overlay — shown after End until save completes */}
+         {isProcessing && (
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center text-center">
+               <div className="bg-white rounded-2xl p-10 shadow-2xl max-w-md mx-4">
+                  <Loader2 className="w-12 h-12 text-brand-600 animate-spin mx-auto mb-4" />
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Processing Your Interview</h2>
+                  <p className="text-slate-500 text-sm mb-4">Please wait while we save your recording and analyze your interview. This may take a moment.</p>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                     <p className="text-amber-700 text-xs font-medium">Do not close this browser until you see the completion message.</p>
+                  </div>
+               </div>
+            </div>
+         )}
       </div>
    );
 };

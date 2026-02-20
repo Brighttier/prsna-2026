@@ -171,6 +171,14 @@ export const Settings = () => {
         { key: 'REJECTION', label: 'Rejection Notice', description: 'Sent when declining a candidate', icon: '💬' },
         { key: 'ONBOARDING_INVITE', label: 'Onboarding Welcome', description: 'Sent when a candidate is hired', icon: '🌟' },
     ];
+    const DEFAULT_EMAIL_CONTENT: Record<string, { subject: string; headline: string; message: string; buttonText: string; footerNote: string }> = {
+        INVITATION: { subject: "You've been invited to join {{company}} on RecruiteAI", headline: "You're Invited", message: "Hi {{name}}, You've been invited to join the {{role}} workspace on RecruiteAI. Set up your account in just a few clicks.", buttonText: "Accept Invitation", footerNote: "" },
+        OFFER: { subject: "Congratulations! Offer from {{company}} — {{jobTitle}}", headline: "You've Got an Offer!", message: "Hi {{name}}, We are delighted to extend an offer for the position of {{jobTitle}} at {{company}}. Your skills and experience stood out.", buttonText: "Review Your Offer", footerNote: "" },
+        INTERVIEW_INVITE: { subject: "Interview Invitation — {{jobTitle}} at {{company}}", headline: "Your Interview Awaits", message: "Hi {{name}}, Congratulations on moving forward! You've been selected for an AI-powered interview for the {{jobTitle}} role.", buttonText: "Start Your Interview", footerNote: "" },
+        APPLICATION_RECEIPT: { subject: "Application Received — {{jobTitle}}", headline: "Application Received", message: "Hi {{name}}, Thank you for your interest in the {{jobTitle}} position. We've received your application and our team will review it carefully.", buttonText: "View Career Page", footerNote: "You will receive updates on your application status via email." },
+        REJECTION: { subject: "Update on Your Application — {{jobTitle}}", headline: "Application Update", message: "Hi {{name}}, Thank you for applying for the {{jobTitle}} position. After careful review, we've decided to move forward with other candidates.", buttonText: "View Open Positions", footerNote: "We appreciate your time and wish you the very best in your career." },
+        ONBOARDING_INVITE: { subject: "Welcome to {{company}}! Start Your Onboarding — {{jobTitle}}", headline: "Welcome Aboard!", message: "Hi {{name}}, We're thrilled to officially welcome you to {{company}} as our new {{jobTitle}}! Please complete your onboarding through your secure portal.", buttonText: "Start Onboarding", footerNote: "" },
+    };
     const [emailTemplates, setEmailTemplates] = useState<EmailTemplateOverrides>(store.getState().settings.emailTemplates || {});
     const [editingTemplate, setEditingTemplate] = useState<EmailType | null>(null);
     const [templateDraft, setTemplateDraft] = useState<EmailTemplateOverride>({});
@@ -1203,7 +1211,7 @@ export const Settings = () => {
                                                         <input
                                                             value={templateDraft.subject || ''}
                                                             onChange={(e) => setTemplateDraft({ ...templateDraft, subject: e.target.value })}
-                                                            placeholder="Leave empty for default"
+                                                            placeholder={DEFAULT_EMAIL_CONTENT[et.key]?.subject || 'Leave empty for default'}
                                                             className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                                                         />
                                                     </div>
@@ -1212,7 +1220,7 @@ export const Settings = () => {
                                                         <input
                                                             value={templateDraft.headline || ''}
                                                             onChange={(e) => setTemplateDraft({ ...templateDraft, headline: e.target.value })}
-                                                            placeholder="Leave empty for default"
+                                                            placeholder={DEFAULT_EMAIL_CONTENT[et.key]?.headline || 'Leave empty for default'}
                                                             className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                                                         />
                                                     </div>
@@ -1221,7 +1229,7 @@ export const Settings = () => {
                                                         <textarea
                                                             value={templateDraft.message || ''}
                                                             onChange={(e) => setTemplateDraft({ ...templateDraft, message: e.target.value })}
-                                                            placeholder="Leave empty for default. Use {{name}}, {{jobTitle}}, {{company}} for dynamic values."
+                                                            placeholder={DEFAULT_EMAIL_CONTENT[et.key]?.message || 'Leave empty for default'}
                                                             rows={5}
                                                             className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none font-mono"
                                                         />
@@ -1232,7 +1240,7 @@ export const Settings = () => {
                                                             <input
                                                                 value={templateDraft.buttonText || ''}
                                                                 onChange={(e) => setTemplateDraft({ ...templateDraft, buttonText: e.target.value })}
-                                                                placeholder="Leave empty for default"
+                                                                placeholder={DEFAULT_EMAIL_CONTENT[et.key]?.buttonText || 'Leave empty for default'}
                                                                 className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                                                             />
                                                         </div>
@@ -1241,7 +1249,7 @@ export const Settings = () => {
                                                             <input
                                                                 value={templateDraft.footerNote || ''}
                                                                 onChange={(e) => setTemplateDraft({ ...templateDraft, footerNote: e.target.value })}
-                                                                placeholder="Leave empty for default"
+                                                                placeholder={DEFAULT_EMAIL_CONTENT[et.key]?.footerNote || 'Optional footer note'}
                                                                 className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                                                             />
                                                         </div>
