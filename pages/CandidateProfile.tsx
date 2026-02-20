@@ -1557,6 +1557,51 @@ RecruiteAI`;
                 </div>
             </div>
 
+            {/* PIPELINE STAGE TRACKER */}
+            {candidate.stage !== 'Rejected' && (() => {
+                const pipelineStages: { key: Candidate['stage']; label: string; icon: any }[] = [
+                    { key: 'Applied', label: 'Applied', icon: FileText },
+                    { key: 'Screening', label: 'Screening', icon: Search },
+                    { key: 'Interview', label: 'Interview', icon: MessageSquare },
+                    { key: 'Offer', label: 'Offer', icon: DollarSign },
+                    { key: 'Hired', label: 'Hired', icon: CheckCircle },
+                ];
+                const currentIdx = pipelineStages.findIndex(s => s.key === candidate.stage);
+                return (
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-0">
+                        <div className="flex items-center justify-between relative">
+                            {/* Connector line */}
+                            <div className="absolute top-5 left-0 right-0 h-0.5 bg-slate-200 mx-12" />
+                            <div className="absolute top-5 left-0 h-0.5 bg-brand-500 mx-12 transition-all duration-500" style={{ width: currentIdx > 0 ? `${(currentIdx / (pipelineStages.length - 1)) * 100}%` : '0%' }} />
+                            {pipelineStages.map((s, i) => {
+                                const isPast = i < currentIdx;
+                                const isCurrent = i === currentIdx;
+                                const isFuture = i > currentIdx;
+                                return (
+                                    <div key={s.key} className="flex flex-col items-center relative z-10 flex-1">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                            isPast ? 'bg-brand-100 text-brand-600 ring-2 ring-brand-200' :
+                                            isCurrent ? 'bg-brand-600 text-white ring-4 ring-brand-100 shadow-lg shadow-brand-500/30 scale-110' :
+                                            'bg-slate-100 text-slate-400 ring-2 ring-slate-200'
+                                        }`}>
+                                            {isPast ? <CheckCircle className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
+                                        </div>
+                                        <span className={`text-xs font-bold mt-2 transition-colors ${
+                                            isPast ? 'text-brand-600' :
+                                            isCurrent ? 'text-brand-700' :
+                                            'text-slate-400'
+                                        }`}>{s.label}</span>
+                                        {isCurrent && (
+                                            <span className="text-[9px] font-bold text-brand-500 uppercase tracking-widest mt-0.5">Current</span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* TABS */}
             <div className="flex overflow-x-auto border-b border-slate-200 bg-white rounded-t-xl px-2 shadow-sm">
                 {[
