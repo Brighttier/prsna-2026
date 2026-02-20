@@ -2186,19 +2186,19 @@ RecruiteAI`;
                                                                     <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                                                         <Eye className="w-3 h-3" /> Proctoring Report
                                                                     </h5>
-                                                                    <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+                                                                    <div className={`p-4 rounded-xl border ${
                                                                         interview.proctoring.integrity === 'Clean' ? 'bg-emerald-50 border-emerald-200' :
                                                                         interview.proctoring.integrity === 'Flagged' ? 'bg-red-50 border-red-200' :
                                                                         'bg-amber-50 border-amber-200'
                                                                     }`}>
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                                                            interview.proctoring.integrity === 'Clean' ? 'bg-emerald-200 text-emerald-700' :
-                                                                            interview.proctoring.integrity === 'Flagged' ? 'bg-red-200 text-red-700' :
-                                                                            'bg-amber-200 text-amber-700'
-                                                                        }`}>
-                                                                            <ShieldCheck className="w-4 h-4" />
-                                                                        </div>
-                                                                        <div className="flex-1">
+                                                                        <div className="flex items-center gap-3 mb-3">
+                                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                                                                interview.proctoring.integrity === 'Clean' ? 'bg-emerald-200 text-emerald-700' :
+                                                                                interview.proctoring.integrity === 'Flagged' ? 'bg-red-200 text-red-700' :
+                                                                                'bg-amber-200 text-amber-700'
+                                                                            }`}>
+                                                                                <ShieldCheck className="w-4 h-4" />
+                                                                            </div>
                                                                             <div className={`text-sm font-bold ${
                                                                                 interview.proctoring.integrity === 'Clean' ? 'text-emerald-800' :
                                                                                 interview.proctoring.integrity === 'Flagged' ? 'text-red-800' :
@@ -2206,19 +2206,57 @@ RecruiteAI`;
                                                                             }`}>
                                                                                 Integrity: {interview.proctoring.integrity}
                                                                             </div>
-                                                                            {interview.proctoring.observations.length > 0 ? (
-                                                                                <ul className="mt-2 space-y-1">
-                                                                                    {interview.proctoring.observations.map((obs, idx) => (
-                                                                                        <li key={idx} className="text-xs text-slate-600 flex items-start gap-1.5">
-                                                                                            <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-amber-500" />
-                                                                                            {obs}
-                                                                                        </li>
-                                                                                    ))}
-                                                                                </ul>
-                                                                            ) : (
-                                                                                <p className="text-xs text-slate-500 mt-1">No integrity concerns detected during this session.</p>
-                                                                            )}
                                                                         </div>
+                                                                        {interview.proctoring.observations.length > 0 ? (
+                                                                            <div className="space-y-2">
+                                                                                {interview.proctoring.observations.map((obs, idx) => {
+                                                                                    const isStructured = typeof obs === 'object' && obs !== null && 'category' in obs;
+                                                                                    const category = isStructured ? (obs as any).category : 'other';
+                                                                                    const severity = isStructured ? (obs as any).severity : 'medium';
+                                                                                    const timestamp = isStructured ? (obs as any).timestamp : null;
+                                                                                    const description = isStructured ? (obs as any).description : String(obs);
+
+                                                                                    const categoryLabels: Record<string, string> = {
+                                                                                        eye_gaze: 'Eye Gaze',
+                                                                                        language: 'Language',
+                                                                                        environment: 'Environment',
+                                                                                        behavior: 'Behavior',
+                                                                                        third_party: 'Third Party',
+                                                                                        other: 'Other'
+                                                                                    };
+                                                                                    const categoryIcons: Record<string, React.ReactNode> = {
+                                                                                        eye_gaze: <Eye className="w-3 h-3" />,
+                                                                                        language: <Globe className="w-3 h-3" />,
+                                                                                        environment: <Laptop className="w-3 h-3" />,
+                                                                                        behavior: <Activity className="w-3 h-3" />,
+                                                                                        third_party: <Users className="w-3 h-3" />,
+                                                                                        other: <AlertCircle className="w-3 h-3" />
+                                                                                    };
+                                                                                    const severityColors: Record<string, string> = {
+                                                                                        low: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                                                                                        medium: 'bg-orange-100 text-orange-700 border-orange-200',
+                                                                                        high: 'bg-red-100 text-red-700 border-red-200'
+                                                                                    };
+
+                                                                                    return (
+                                                                                        <div key={idx} className="flex items-start gap-2 p-2.5 bg-white/70 rounded-lg border border-slate-100">
+                                                                                            <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                                                                                                {timestamp && (
+                                                                                                    <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{timestamp}</span>
+                                                                                                )}
+                                                                                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${severityColors[severity] || severityColors.medium}`}>
+                                                                                                    {categoryIcons[category] || categoryIcons.other}
+                                                                                                    {categoryLabels[category] || 'Other'}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <p className="text-xs text-slate-700 leading-relaxed">{description}</p>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-xs text-slate-500">No integrity concerns detected during this session.</p>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             )}

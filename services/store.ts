@@ -32,6 +32,13 @@ export interface UserProfile {
     orgId: string;
 }
 
+export interface ProctoringObservation {
+    timestamp: string;
+    category: 'eye_gaze' | 'language' | 'environment' | 'behavior' | 'third_party' | 'other';
+    severity: 'low' | 'medium' | 'high';
+    description: string;
+}
+
 export interface InterviewSession {
     id: string;
     date: string;
@@ -52,7 +59,10 @@ export interface InterviewSession {
     videoHighlights?: VideoHighlight[];
     videoUrl?: string;
     identityVerification?: { score: number; match: boolean };
-    proctoring?: { integrity: 'Clean' | 'Minor Concerns' | 'Flagged'; observations: string[] };
+    proctoring?: {
+        integrity: 'Clean' | 'Minor Concerns' | 'Flagged';
+        observations: (string | ProctoringObservation)[];
+    };
 }
 
 export interface Experience {

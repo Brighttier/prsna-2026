@@ -567,15 +567,20 @@ export const generateInterviewQuestions = onCall(functionConfig as any, async (r
         JOB TITLE: ${job.title}
         DESCRIPTION: ${job.description}
         CANDIDATE SUMMARY: ${candidate.summary}
+        CANDIDATE WEAKNESSES/GAPS: ${candidate.missingSkills || candidate.weaknesses || 'Not specified'}
         INTERVIEW TYPE: ${type}
+        RANDOMIZATION SEED: ${Date.now()}
 
-        Generate 5 high-impact interview questions.
+        Generate 5 UNIQUE, high-impact interview questions. Each time this prompt runs, produce DIFFERENT questions — avoid generic/boilerplate questions like "tell me about yourself" or "what are your strengths."
+
         Structure:
-        1. Icebreaker
-        2. Technical Deep Dive (based on resume gaps or strengths)
-        3. System Design / Problem Solving
-        4. Cultural Fit / Soft Skills
-        5. Closing / Candidate Questions
+        1. Icebreaker — creative, role-specific opener (NOT "tell me about yourself")
+        2. Technical Deep Dive — target the candidate's SPECIFIC resume gaps or weak areas listed above. Ask scenario-based questions that probe whether they truly have the skills they claim.
+        3. System Design / Problem Solving — give a concrete, realistic problem relevant to this role
+        4. Risk Probing — directly challenge an area where the candidate is weakest. Ask something they might struggle with based on their gaps.
+        5. Cultural Fit / Motivational — explore decision-making, conflict handling, or values alignment
+
+        IMPORTANT: Focus questions on the candidate's SPECIFIC weaknesses and gaps. If they claim a skill, probe it deeply. If they're missing a required skill, ask how they'd handle that gap. Make each question unique and tailored — never generic.
 
         OUTPUT JSON:
         {
@@ -590,7 +595,7 @@ export const generateInterviewQuestions = onCall(functionConfig as any, async (r
         const response = await genAI.models.generateContent({
             model: 'gemini-2.0-flash',
             contents: prompt,
-            config: { responseMimeType: 'application/json' }
+            config: { responseMimeType: 'application/json', temperature: 1.2 }
         });
 
         return JSON.parse(response.text || "{}");
@@ -614,35 +619,90 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
 
     try {
         const genAI = await getGenAIClient();
+
+        // Extract PROCTOR_LOG from transcript if present (Lumina emits this at end)
+        let proctorLogRaw = '';
+        const transcriptStr = JSON.stringify(transcript);
+        const proctorMatch = transcriptStr.match(/\[PROCTOR_LOG\](.*?)\[\/PROCTOR_LOG\]/);
+        if (proctorMatch) {
+            proctorLogRaw = proctorMatch[1];
+        }
+
         const prompt = `
         ROLE: ${jobTitle}
         TRANSCRIPT:
-        ${JSON.stringify(transcript)}
+        ${transcriptStr}
+
+        ${proctorLogRaw ? `PROCTOR_LOG (structured observations from the AI interviewer's video monitoring):
+        ${proctorLogRaw}` : ''}
 
         Analyze this interview thoroughly.
-        1. Calculate an overall score (0-10) based on quality of answers.
-        2. Determine sentiment.
-        3. Extract key highlights (positive signals, red flags, insights).
-        4. Proctoring analysis: Look for any signs in the transcript that suggest potential integrity concerns during the interview, such as:
-           - The interviewer mentioning the candidate appeared distracted or was looking elsewhere
-           - Signs of someone else providing answers (unnaturally perfect responses after pauses, sudden change in vocabulary/sophistication)
-           - The interviewer noting background activity or other people present
-           - Inconsistent response quality suggesting external help
-           Rate integrity as "Clean", "Minor Concerns", or "Flagged" with specific observations.
 
-        OUTPUT JSON:
+        PART 1 — PERFORMANCE ANALYSIS:
+        1. Calculate an overall score (0-10) based on quality of answers, depth, relevance, and communication.
+        2. Determine sentiment (Positive/Neutral/Negative).
+        3. Write a concise executive summary.
+        4. Extract key highlights (positive signals, red flags, insights) with approximate timestamps.
+
+        PART 2 — PROCTORING ANALYSIS (CRITICAL):
+        Combine evidence from ALL sources to build a comprehensive integrity report:
+
+        SOURCE A — PROCTOR_LOG: If a [PROCTOR_LOG] block exists above, incorporate ALL observations from it. These are direct visual observations from the AI interviewer who had live video access.
+
+        SOURCE B — TRANSCRIPT ANALYSIS: Independently analyze the transcript for:
+        - eye_gaze: Interviewer mentioning candidate looking away, seeming distracted, not making eye contact
+        - language: Any non-English text in candidate responses (Hindi, Spanish, etc.), language switching, code-mixing
+        - environment: Any mention of background issues, other people, noise, unprofessional setting
+        - behavior: Suspicious pauses followed by unusually polished answers, sudden vocabulary shifts, signs of reading/typing
+        - third_party: Other voices, whispering, someone coaching the candidate
+
+        SOURCE C — RESPONSE QUALITY PATTERNS:
+        - Inconsistent quality between answers (some weak, some suspiciously perfect)
+        - Unnaturally long pauses before detailed technical answers
+        - Vocabulary or style shifts suggesting external help
+
+        MERGE all observations from Source A + B + C. Remove duplicates. Keep timestamps.
+
+        Rate overall integrity:
+        - "Clean" = zero concerns
+        - "Minor Concerns" = 1-2 low-severity issues
+        - "Flagged" = any high-severity issue, or 3+ medium issues
+
+        OUTPUT JSON (strict schema):
         {
-            "score": number, // 0-10 float
-            "sentiment": "Positive" | "Neutral" | "Negative",
-            "summary": "Executive summary of performance...",
+            "score": 7.5,
+            "sentiment": "Positive",
+            "summary": "Executive summary...",
             "highlights": [
-                { "timestamp": number, "type": "Positive" | "Flag" | "Insight", "text": "..." }
+                { "timestamp": "2:30", "type": "Positive", "text": "Strong answer about system design" },
+                { "timestamp": "5:00", "type": "Flag", "text": "Candidate seemed to read from notes" }
             ],
             "proctoring": {
                 "integrity": "Clean" | "Minor Concerns" | "Flagged",
-                "observations": ["List of specific proctoring observations, empty if clean"]
+                "observations": [
+                    {
+                        "timestamp": "3:00",
+                        "category": "eye_gaze",
+                        "severity": "high",
+                        "description": "Candidate repeatedly looked to the right of the screen for ~10 seconds, eyes appeared to scan text"
+                    },
+                    {
+                        "timestamp": "5:15",
+                        "category": "language",
+                        "severity": "medium",
+                        "description": "Candidate switched to Hindi mid-sentence for approximately 30 seconds"
+                    },
+                    {
+                        "timestamp": "0:30",
+                        "category": "environment",
+                        "severity": "low",
+                        "description": "Candidate appeared to be sitting on a bed in a bedroom setting"
+                    }
+                ]
             }
         }
+
+        IMPORTANT: The proctoring.observations array must contain objects with timestamp, category, severity, and description — NOT plain strings. If no issues found, return an empty array.
         `;
 
         const response = await genAI.models.generateContent({
@@ -712,18 +772,28 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
             JOB: ${job.title}
             DESCRIPTION: ${job.description || ''}
             CANDIDATE: ${candidate.name} (${candidate.role})
+            CANDIDATE SUMMARY: ${candidate.summary || ''}
+            CANDIDATE WEAKNESSES: ${candidate.missingSkills || candidate.weaknesses || 'Not specified'}
+            RANDOMIZATION SEED: ${Date.now()}
 
             KNOWLEDGE BASE CONTEXT:
             ${knowledgeBaseContent}
 
-            Generate exactly 4 interview questions that specifically test the candidate's understanding of the knowledge base material above, appropriate for the ${job.title} role.
+            Generate exactly 4 UNIQUE interview questions that specifically test the candidate's understanding of the knowledge base material above, appropriate for the ${job.title} role.
+
+            IMPORTANT:
+            - Generate DIFFERENT questions each time — never repeat common/generic questions
+            - At least 1 question must probe the candidate's weak areas or missing skills
+            - Use scenario-based questions, not simple recall questions
+            - Make questions progressively harder
+
             Return ONLY the questions as a JSON array of strings.
             `;
 
             const qResponse = await genAI.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: questionsPrompt,
-                config: { responseMimeType: 'application/json' }
+                config: { responseMimeType: 'application/json', temperature: 1.0 }
             });
 
             try {
@@ -738,16 +808,25 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
             DESCRIPTION: ${job.description || ''}
             CANDIDATE: ${candidate.name} (${candidate.role})
             CANDIDATE SUMMARY: ${candidate.summary || ''}
+            CANDIDATE WEAKNESSES: ${candidate.missingSkills || candidate.weaknesses || 'Not specified'}
+            RANDOMIZATION SEED: ${Date.now()}
 
-            Generate exactly 4 interview questions focused on assessing this candidate for the ${job.title} role.
-            Focus on: relevant experience, problem solving, and communication.
+            Generate exactly 4 UNIQUE interview questions focused on assessing this candidate for the ${job.title} role.
+
+            IMPORTANT:
+            - Generate DIFFERENT questions each time this runs — avoid generic questions like "describe your background" or "why this role"
+            - At least 1 question must directly probe the candidate's weak areas, missing skills, or resume gaps
+            - Include at least 1 scenario-based problem-solving question specific to this role
+            - Make questions specific and challenging, not generic
+
+            Focus on: relevant experience gaps, technical problem solving, and real-world scenarios.
             Return ONLY the questions as a JSON array of strings.
             `;
 
             const qResponse = await genAI.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: questionsPrompt,
-                config: { responseMimeType: 'application/json' }
+                config: { responseMimeType: 'application/json', temperature: 1.0 }
             });
 
             try {
@@ -787,15 +866,53 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
         7. END the interview with exactly this outro: "${outro}"
         8. Once you have finished the outro, do NOT continue the conversation. The interview is complete.
 
-        PROCTORING:
-        You can see the candidate's video feed. While conducting the interview, silently observe for:
-        - Another person visible in the background or whispering answers
-        - Candidate frequently looking away at another screen or device
-        - Someone off-camera dictating or feeding answers
-        - Unusual eye movements suggesting reading from hidden notes
-        - Significant background activity or environment changes
-        Do NOT confront the candidate about suspicious behavior. Simply continue the interview normally.
-        If you notice anything, subtly mention it in your conversation (e.g. "I notice you seem distracted" or "take your time") so it appears in context.
+        PROCTORING — CRITICAL REQUIREMENT:
+        You can see the candidate's video feed. You MUST continuously monitor and track ALL of the following throughout the interview:
+
+        CATEGORY: eye_gaze
+        - Candidate looking away from the camera/screen (looking left, right, up, down)
+        - Eyes darting or shifting frequently (suggesting reading from notes or another screen)
+        - Candidate looking at their phone or a secondary device
+        - Prolonged gaze away from camera
+
+        CATEGORY: language
+        - Candidate switching to a language other than English (e.g. Hindi, Spanish, etc.)
+        - Candidate using mixed languages (code-switching)
+        - Note the non-English language used
+
+        CATEGORY: environment
+        - Unprofessional background (bedroom, bed, messy room, public place)
+        - Other people visible in frame at any point
+        - Significant noise or distractions in background
+        - Environment changes during the interview
+
+        CATEGORY: behavior
+        - Long suspicious pauses before answering (suggesting looking up answers)
+        - Candidate appears to be reading from a hidden source
+        - Sudden change in response quality or vocabulary (suggesting external help)
+        - Candidate typing or using keyboard during answers
+        - Candidate wearing earbuds/earpiece that might relay answers
+
+        CATEGORY: third_party
+        - Another person whispering or speaking in the background
+        - Someone off-camera appearing to dictate answers
+        - Voices other than the candidate heard
+
+        RULES FOR PROCTORING:
+        1. Do NOT confront the candidate about any observations. Continue the interview naturally.
+        2. You may make brief natural remarks like "take your time" but do NOT accuse or alert them.
+        3. IMMEDIATELY AFTER your outro message, you MUST send one final message that is EXACTLY a JSON block wrapped in [PROCTOR_LOG] tags. This is MANDATORY even if everything was clean.
+
+        Format:
+        [PROCTOR_LOG]{"observations":[{"minute":3,"category":"eye_gaze","severity":"high","description":"Candidate looked away from screen to the right for ~10 seconds, eyes appeared to be reading something"},{"minute":5,"category":"language","severity":"medium","description":"Candidate switched to Hindi for approximately 30 seconds before returning to English"}]}[/PROCTOR_LOG]
+
+        - "minute" = approximate minute mark in the interview when it happened
+        - "category" = one of: eye_gaze, language, environment, behavior, third_party
+        - "severity" = "low" (minor/brief), "medium" (notable), "high" (serious concern)
+        - "description" = specific factual description of what you observed
+
+        If everything was perfectly clean, return: [PROCTOR_LOG]{"observations":[]}[/PROCTOR_LOG]
+        You MUST always include this log. It is the most critical part of your job.
 
         Begin the interview IMMEDIATELY with your introduction. Do NOT wait for the candidate to speak first.
         `;
