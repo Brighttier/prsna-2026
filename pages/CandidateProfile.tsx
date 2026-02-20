@@ -26,6 +26,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
     const [type, setType] = useState('Lumina Screening (AI)');
     const [platform, setPlatform] = useState<'Google Meet' | 'Microsoft Teams'>('Google Meet');
     const [includeMeet, setIncludeMeet] = useState(true);
+    const [interviewerEmail, setInterviewerEmail] = useState('');
     const [selectedAssessmentId, setSelectedAssessmentId] = useState('');
     const [isScheduling, setIsScheduling] = useState(false);
     const [assessments] = useState(store.getState().assessments);
@@ -55,6 +56,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                             date,
                             time,
                             timezone,
+                            interviewerEmail: interviewerEmail || undefined,
                         });
                         meetLink = result.meetLink;
                     } catch (meetErr: any) {
@@ -224,6 +226,18 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                                         <option key={tz.value} value={tz.value}>{tz.label}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Interviewer Email</label>
+                                <input
+                                    type="email"
+                                    value={interviewerEmail}
+                                    onChange={(e) => setInterviewerEmail(e.target.value)}
+                                    placeholder="interviewer@company.com"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium text-sm"
+                                />
+                                <p className="text-[10px] text-slate-400 mt-1.5 ml-1 italic">Invite link will be sent to both candidate and interviewer.</p>
                             </div>
 
                             <div className="flex gap-3 mt-4">

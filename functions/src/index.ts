@@ -1435,19 +1435,35 @@ export const createGoogleMeetEvent = onCall(meetFunctionConfig as any, async (re
 
         logger.info(`Google Calendar event created: ${eventId}, meetLink: ${meetLink || 'none (no Workspace)'}, calendarLink: ${calendarLink}`);
 
-        // 5. Send interview invite email to the candidate via Resend
+        // 5. Send interview invite emails to candidate and interviewer via Resend
+        const inviteLink = meetLink || calendarLink || '';
         if (resendApiKey.value() && orgId) {
             const templateOverride = await getEmailTemplateOverride(orgId, 'INTERVIEW_INVITE');
+            // Send to candidate
             await sendSecureLinkEmail({
                 to: candidateEmail,
-                link: meetLink,
+                link: inviteLink,
                 type: 'INTERVIEW_INVITE',
                 name: candidateName,
                 jobTitle,
                 apiKey: resendApiKey.value(),
                 templateOverride,
             });
-            logger.info(`Interview invite email sent to ${candidateEmail}`);
+            logger.info(`Interview invite email sent to candidate: ${candidateEmail}`);
+
+            // Send to interviewer if provided
+            if (interviewerEmail) {
+                await sendSecureLinkEmail({
+                    to: interviewerEmail,
+                    link: inviteLink,
+                    type: 'INTERVIEW_INVITE',
+                    name: `Interviewer (re: ${candidateName})`,
+                    jobTitle,
+                    apiKey: resendApiKey.value(),
+                    templateOverride,
+                });
+                logger.info(`Interview invite email sent to interviewer: ${interviewerEmail}`);
+            }
         }
 
         return {

@@ -1338,19 +1338,34 @@ exports.createGoogleMeetEvent = (0, https_1.onCall)(meetFunctionConfig, async (r
         const eventId = response.data.id || '';
         const calendarLink = response.data.htmlLink || '';
         logger.info(`Google Calendar event created: ${eventId}, meetLink: ${meetLink || 'none (no Workspace)'}, calendarLink: ${calendarLink}`);
-        // 5. Send interview invite email to the candidate via Resend
+        // 5. Send interview invite emails to candidate and interviewer via Resend
+        const inviteLink = meetLink || calendarLink || '';
         if (resendApiKey.value() && orgId) {
             const templateOverride = await getEmailTemplateOverride(orgId, 'INTERVIEW_INVITE');
+            // Send to candidate
             await (0, email_1.sendSecureLinkEmail)({
                 to: candidateEmail,
-                link: meetLink,
+                link: inviteLink,
                 type: 'INTERVIEW_INVITE',
                 name: candidateName,
                 jobTitle,
                 apiKey: resendApiKey.value(),
                 templateOverride,
             });
-            logger.info(`Interview invite email sent to ${candidateEmail}`);
+            logger.info(`Interview invite email sent to candidate: ${candidateEmail}`);
+            // Send to interviewer if provided
+            if (interviewerEmail) {
+                await (0, email_1.sendSecureLinkEmail)({
+                    to: interviewerEmail,
+                    link: inviteLink,
+                    type: 'INTERVIEW_INVITE',
+                    name: `Interviewer (re: ${candidateName})`,
+                    jobTitle,
+                    apiKey: resendApiKey.value(),
+                    templateOverride,
+                });
+                logger.info(`Interview invite email sent to interviewer: ${interviewerEmail}`);
+            }
         }
         return {
             success: true,
