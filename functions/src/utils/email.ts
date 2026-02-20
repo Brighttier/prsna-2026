@@ -1,5 +1,6 @@
 
-import { Resend } from 'resend';
+// Lazy-imported to avoid 5s+ module load time at startup
+// import { Resend } from 'resend';
 
 
 type EmailType = 'INVITATION' | 'RESET_PASSWORD' | 'OFFER' | 'INTERVIEW_INVITE' | 'APPLICATION_RECEIPT' | 'REJECTION' | 'ONBOARDING_INVITE';
@@ -327,6 +328,7 @@ function applyTemplateVariables(text: string, vars: Record<string, string>): str
 }
 
 export const sendSecureLinkEmail = async ({ to, link, type, role, name, apiKey, jobTitle, companyName, templateOverride }: EmailParams) => {
+    const { Resend } = await import('resend');
     const resend = new Resend(apiKey);
 
     const content = getEmailContent(type, { name, role, jobTitle, companyName });

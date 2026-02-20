@@ -38,7 +38,6 @@ const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
 const params_1 = require("firebase-functions/params");
-const genai_1 = require("@google/genai");
 const app_1 = require("firebase-admin/app");
 const firestore_1 = require("firebase-admin/firestore");
 const storage_2 = require("firebase-admin/storage");
@@ -83,12 +82,13 @@ const functionConfig = {
 };
 // Lazy initialization pattern for the GenAI client
 // We initialize it inside the function to ensure secrets are available
-const getGenAIClient = () => {
+const getGenAIClient = async () => {
     const apiKey = geminiApiKey.value();
     if (!apiKey) {
         throw new Error("GEMINI_API_KEY secret is not set.");
     }
-    return new genai_1.GoogleGenAI({ apiKey });
+    const { GoogleGenAI } = await Promise.resolve().then(() => __importStar(require("@google/genai")));
+    return new GoogleGenAI({ apiKey });
 };
 // --- HELPER: Extract text from any document using Gemini multimodal ---
 const MIME_MAP = {
@@ -101,7 +101,7 @@ async function extractTextFromFile(fileBuffer, filePath) {
     const mimeType = MIME_MAP[ext];
     if (!mimeType)
         return '';
-    const genAI = getGenAIClient();
+    const genAI = await getGenAIClient();
     const base64 = fileBuffer.toString('base64');
     const response = await genAI.models.generateContent({
         model: 'gemini-2.0-flash',
@@ -119,7 +119,7 @@ async function extractTextFromFile(fileBuffer, filePath) {
 }
 // --- HELPER: Analyze Resume Logic (Shared) ---
 async function analyzeResumeContent(resumeText, jobDescription) {
-    const genAI = getGenAIClient();
+    const genAI = await getGenAIClient();
     logger.info(`Analyzing resume with text length: ${resumeText?.length || 0}`);
     const prompt = `
       You are an expert technical recruiter and AI analyst. 
@@ -528,7 +528,7 @@ exports.generateInterviewQuestions = (0, https_1.onCall)(functionConfig, async (
         throw new https_1.HttpsError('invalid-argument', 'Missing "candidate" or "job" data.');
     }
     try {
-        const genAI = getGenAIClient();
+        const genAI = await getGenAIClient();
         const prompt = `
         JOB TITLE: ${job.title}
         DESCRIPTION: ${job.description}
@@ -575,7 +575,7 @@ exports.analyzeInterview = (0, https_1.onCall)(functionConfig, async (request) =
         throw new https_1.HttpsError('invalid-argument', 'Missing "transcript".');
     }
     try {
-        const genAI = getGenAIClient();
+        const genAI = await getGenAIClient();
         const prompt = `
         ROLE: ${jobTitle}
         TRANSCRIPT:
@@ -631,7 +631,7 @@ exports.startInterviewSession = (0, https_1.onCall)(functionConfig, async (reque
     }
     try {
         const db = (0, firestore_1.getFirestore)();
-        const genAI = getGenAIClient();
+        const genAI = await getGenAIClient();
         let knowledgeBaseContent = "";
         let manualQuestions = [];
         // 1. Fetch Assessment Context
@@ -772,7 +772,7 @@ exports.generateJobDescription = (0, https_1.onCall)(functionConfig, async (requ
         throw new https_1.HttpsError('invalid-argument', 'The function must be called with "title".');
     }
     try {
-        const genAI = getGenAIClient();
+        const genAI = await getGenAIClient();
         const prompt = `
         You are an expert Executive Recruiter and Job Description Writer.
         Your task is to create a comprehensive, professional, and compelling job description for the following role:
@@ -1251,14 +1251,33 @@ exports.createGoogleMeetEvent = (0, https_1.onCall)(meetFunctionConfig, async (r
         const keyJson = JSON.parse(Buffer.from(keyBase64, 'base64').toString('utf-8'));
         // 2. Authenticate with Google Calendar API using JWT
         const { calendar, auth: googleAuth } = await Promise.resolve().then(() => __importStar(require('@googleapis/calendar')));
-        const jwtClient = new googleAuth.JWT({
-            email: keyJson.client_email,
-            key: keyJson.private_key,
-            scopes: ['https://www.googleapis.com/auth/calendar'],
-            // If domain-wide delegation is configured, impersonate the interviewer
-            subject: interviewerEmail || keyJson.client_email,
-        });
-        const calendarClient = calendar({ version: 'v3', auth: jwtClient });
+        // Try with domain-wide delegation first, fall back to service account's own calendar
+        let calendarClient;
+        let hasDelegation = false;
+        if (interviewerEmail) {
+            try {
+                const delegatedJwt = new googleAuth.JWT({
+                    email: keyJson.client_email,
+                    key: keyJson.private_key,
+                    scopes: ['https://www.googleapis.com/auth/calendar'],
+                    subject: interviewerEmail,
+                });
+                await delegatedJwt.authorize();
+                calendarClient = calendar({ version: 'v3', auth: delegatedJwt });
+                hasDelegation = true;
+            }
+            catch {
+                logger.info('Domain-wide delegation not available, using service account calendar directly');
+            }
+        }
+        if (!calendarClient) {
+            const jwtClient = new googleAuth.JWT({
+                email: keyJson.client_email,
+                key: keyJson.private_key,
+                scopes: ['https://www.googleapis.com/auth/calendar'],
+            });
+            calendarClient = calendar({ version: 'v3', auth: jwtClient });
+        }
         // 3. Build the event
         const startDateTime = `${date}T${time}:00`;
         const startMoment = new Date(`${startDateTime}`);
@@ -1274,34 +1293,51 @@ exports.createGoogleMeetEvent = (0, https_1.onCall)(meetFunctionConfig, async (r
                 dateTime: endMoment.toISOString(),
                 timeZone: timezone || 'UTC',
             },
-            attendees: [
-                { email: candidateEmail, displayName: candidateName },
-                ...(interviewerEmail ? [{ email: interviewerEmail }] : []),
-            ],
             conferenceData: {
                 createRequest: {
                     requestId: `recruiteai-${Date.now()}`,
                     conferenceSolutionKey: { type: 'hangoutsMeet' },
                 },
             },
-            reminders: {
+        };
+        // Only add attendees if we have domain-wide delegation
+        if (hasDelegation) {
+            event.attendees = [
+                { email: candidateEmail, displayName: candidateName },
+                ...(interviewerEmail ? [{ email: interviewerEmail }] : []),
+            ];
+            event.reminders = {
                 useDefault: false,
                 overrides: [
                     { method: 'email', minutes: 60 },
                     { method: 'popup', minutes: 15 },
                 ],
-            },
-        };
-        // 4. Insert the event (conferenceDataVersion=1 ensures Meet link is created)
-        const response = await calendarClient.events.insert({
-            calendarId: 'primary',
-            requestBody: event,
-            conferenceDataVersion: 1,
-            sendUpdates: 'all', // Send email invites to attendees
-        });
+            };
+        }
+        // 4. Insert the event — try with Meet link first, fall back without
+        let response;
+        try {
+            response = await calendarClient.events.insert({
+                calendarId: 'primary',
+                requestBody: event,
+                conferenceDataVersion: 1,
+                sendUpdates: hasDelegation ? 'all' : 'none',
+            });
+        }
+        catch (meetErr) {
+            // Meet conference creation may fail without Workspace — create event without it
+            logger.warn('Meet conference creation failed, creating event without conference:', meetErr);
+            delete event.conferenceData;
+            response = await calendarClient.events.insert({
+                calendarId: 'primary',
+                requestBody: event,
+                sendUpdates: hasDelegation ? 'all' : 'none',
+            });
+        }
         const meetLink = response.data.hangoutLink || response.data.conferenceData?.entryPoints?.[0]?.uri || '';
         const eventId = response.data.id || '';
-        logger.info(`Google Meet event created: ${eventId}, link: ${meetLink}`);
+        const calendarLink = response.data.htmlLink || '';
+        logger.info(`Google Calendar event created: ${eventId}, meetLink: ${meetLink || 'none (no Workspace)'}, calendarLink: ${calendarLink}`);
         // 5. Send interview invite email to the candidate via Resend
         if (resendApiKey.value() && orgId) {
             const templateOverride = await getEmailTemplateOverride(orgId, 'INTERVIEW_INVITE');
@@ -1319,9 +1355,11 @@ exports.createGoogleMeetEvent = (0, https_1.onCall)(meetFunctionConfig, async (r
         return {
             success: true,
             meetLink,
+            calendarLink,
             eventId,
             startTime: startMoment.toISOString(),
             endTime: endMoment.toISOString(),
+            hasMeetLink: !!meetLink,
         };
     }
     catch (error) {
