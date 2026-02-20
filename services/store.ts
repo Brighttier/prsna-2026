@@ -950,6 +950,41 @@ class Store {
         return result.data as { meetLink: string; eventId: string };
     }
 
+    // --- MICROSOFT TEAMS INTEGRATION ---
+    async createTeamsMeeting(params: {
+        candidateId: string;
+        candidateName: string;
+        candidateEmail: string;
+        jobTitle: string;
+        date: string;
+        time: string;
+        durationMinutes?: number;
+        interviewerEmail?: string;
+    }): Promise<{ meetLink: string; meetingId: string }> {
+        if (!this.orgId) throw new Error("Organization not loaded.");
+
+        const createTeamsFn = httpsCallable(functions, 'createTeamsMeeting');
+        const result = await createTeamsFn({
+            ...params,
+            orgId: this.orgId,
+        });
+
+        return result.data as { meetLink: string; meetingId: string };
+    }
+
+    async getTeamsMeetingArtifacts(meetingId: string, candidateId: string): Promise<{ recordings: any[]; transcripts: any[] }> {
+        if (!this.orgId) throw new Error("Organization not loaded.");
+
+        const getArtifactsFn = httpsCallable(functions, 'getTeamsMeetingArtifacts');
+        const result = await getArtifactsFn({
+            meetingId,
+            candidateId,
+            orgId: this.orgId,
+        });
+
+        return result.data as { recordings: any[]; transcripts: any[] };
+    }
+
     // --- DOCUSIGN INTEGRATION ---
     async sendDocuSignOffer(candidateId: string): Promise<{ envelopeId: string; signingUrl?: string }> {
         const candidate = this.state.candidates.find(c => c.id === candidateId);

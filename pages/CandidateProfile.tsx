@@ -65,7 +65,22 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                         meetLink = `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
                     }
                 } else {
-                    meetLink = `https://teams.microsoft.com/l/meetup-join/${Math.random().toString(36).substring(2, 15)}`;
+                    // Use real Microsoft Teams Cloud Function
+                    try {
+                        const result = await store.createTeamsMeeting({
+                            candidateId: candidate.id,
+                            candidateName: candidate.name,
+                            candidateEmail: candidate.email,
+                            jobTitle: candidate.role,
+                            date,
+                            time,
+                            interviewerEmail: interviewerEmail || undefined,
+                        });
+                        meetLink = result.meetLink;
+                    } catch (teamsErr: any) {
+                        console.error("Teams meeting creation failed, using fallback:", teamsErr);
+                        meetLink = `https://teams.microsoft.com/l/meetup-join/${Math.random().toString(36).substring(2, 15)}`;
+                    }
                 }
             }
 

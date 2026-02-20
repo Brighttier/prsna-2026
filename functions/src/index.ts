@@ -23,6 +23,11 @@ const docusignUserId = defineSecret("DOCUSIGN_USER_ID");
 const docusignAccountId = defineSecret("DOCUSIGN_ACCOUNT_ID");
 const docusignPrivateKey = defineSecret("DOCUSIGN_RSA_PRIVATE_KEY"); // PEM, base64 encoded
 
+// Microsoft Teams — Azure AD / Entra ID app registration
+const msTeamsTenantId = defineSecret("MS_TEAMS_TENANT_ID");
+const msTeamsClientId = defineSecret("MS_TEAMS_CLIENT_ID");
+const msTeamsClientSecret = defineSecret("MS_TEAMS_CLIENT_SECRET");
+
 import { sendSecureLinkEmail } from './utils/email';
 import { generateEmbedding, calculateCosineSimilarity } from './utils/embeddings';
 
@@ -1965,4 +1970,267 @@ function buildDefaultOfferHtml(params: {
 </body>
 </html>`;
 }
+
+// ============================================================
+// 21. CREATE MICROSOFT TEAMS MEETING (Callable)
+// Uses Azure AD client credentials flow + Microsoft Graph API
+// ============================================================
+async function getMsTeamsAccessToken(): Promise<string> {
+    const tenantId = msTeamsTenantId.value();
+    const clientId = msTeamsClientId.value();
+    const clientSecret = msTeamsClientSecret.value();
+
+    if (!tenantId || !clientId || !clientSecret) {
+        throw new Error('Microsoft Teams credentials not configured. Set MS_TEAMS_TENANT_ID, MS_TEAMS_CLIENT_ID, MS_TEAMS_CLIENT_SECRET secrets.');
+    }
+
+    const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+    const params = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: 'https://graph.microsoft.com/.default',
+        grant_type: 'client_credentials',
+    });
+
+    const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get MS Teams token: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.access_token;
+}
+
+exports.createTeamsMeeting = onCall({
+    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret, resendApiKey],
+    memory: '256MiB',
+    timeoutSeconds: 30,
+    maxInstances: 10,
+}, async (request) => {
+    const {
+        candidateName,
+        candidateEmail,
+        date,
+        time,
+        durationMinutes = 30,
+        jobTitle,
+        orgId,
+        interviewerEmail,
+        organizerUserId, // Azure AD Object ID of the meeting organizer
+    } = request.data;
+
+    if (!candidateName || !candidateEmail || !date || !time) {
+        throw new HttpsError('invalid-argument', 'Missing required fields: candidateName, candidateEmail, date, time.');
+    }
+
+    try {
+        const accessToken = await getMsTeamsAccessToken();
+
+        // Build meeting time
+        const startDateTime = `${date}T${time}:00`;
+        const startMoment = new Date(startDateTime);
+        const endMoment = new Date(startMoment.getTime() + durationMinutes * 60 * 1000);
+
+        // Create online meeting via Microsoft Graph API
+        // If organizerUserId is provided, create on behalf of that user
+        // Otherwise, create an application-level meeting
+        const meetingPayload: Record<string, unknown> = {
+            startDateTime: startMoment.toISOString(),
+            endDateTime: endMoment.toISOString(),
+            subject: `Interview: ${candidateName} — ${jobTitle || 'Position'}`,
+            participants: {
+                attendees: [
+                    {
+                        upn: candidateEmail,
+                        role: 'attendee',
+                    },
+                    ...(interviewerEmail ? [{
+                        upn: interviewerEmail,
+                        role: 'presenter',
+                    }] : []),
+                ],
+            },
+            lobbyBypassSettings: {
+                scope: 'everyone',
+                isDialInBypassEnabled: true,
+            },
+            autoAdmittedUsers: 'everyone',
+            isEntryExitAnnounced: false,
+            allowedPresenters: 'organizer',
+            recordAutomatically: true,
+        };
+
+        // Use user-delegated endpoint if organizer specified, otherwise use /communications
+        const graphUrl = organizerUserId
+            ? `https://graph.microsoft.com/v1.0/users/${organizerUserId}/onlineMeetings`
+            : `https://graph.microsoft.com/v1.0/communications/onlineMeetings`;
+
+        const meetingResponse = await fetch(graphUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(meetingPayload),
+        });
+
+        if (!meetingResponse.ok) {
+            const errorText = await meetingResponse.text();
+            logger.error('Teams meeting creation failed:', errorText);
+            throw new HttpsError('internal', `Teams meeting creation failed: ${meetingResponse.status} ${errorText}`);
+        }
+
+        const meeting = await meetingResponse.json();
+        const meetLink = meeting.joinWebUrl || meeting.joinUrl || '';
+        const meetingId = meeting.id || '';
+
+        logger.info(`Teams meeting created: ${meetingId}, link: ${meetLink}`);
+
+        // Send invite emails via Resend
+        if (resendApiKey.value() && orgId) {
+            const templateOverride = await getEmailTemplateOverride(orgId, 'INTERVIEW_INVITE');
+            // Send to candidate
+            await sendSecureLinkEmail({
+                to: candidateEmail,
+                link: meetLink,
+                type: 'INTERVIEW_INVITE',
+                name: candidateName,
+                jobTitle,
+                apiKey: resendApiKey.value(),
+                templateOverride,
+            });
+            logger.info(`Teams invite email sent to candidate: ${candidateEmail}`);
+
+            // Send to interviewer if provided
+            if (interviewerEmail) {
+                await sendSecureLinkEmail({
+                    to: interviewerEmail,
+                    link: meetLink,
+                    type: 'INTERVIEW_INVITE',
+                    name: `Interviewer (re: ${candidateName})`,
+                    jobTitle,
+                    apiKey: resendApiKey.value(),
+                    templateOverride,
+                });
+                logger.info(`Teams invite email sent to interviewer: ${interviewerEmail}`);
+            }
+        }
+
+        return {
+            success: true,
+            meetLink,
+            meetingId,
+            startTime: startMoment.toISOString(),
+            endTime: endMoment.toISOString(),
+        };
+
+    } catch (error: any) {
+        logger.error('Error creating Teams meeting:', error);
+        throw new HttpsError('internal', error.message || 'Failed to create Teams meeting.');
+    }
+});
+
+// ============================================================
+// 22. GET TEAMS MEETING RECORDINGS & TRANSCRIPTS (Callable)
+// Fetches recording URLs and transcript content after interview
+// ============================================================
+exports.getTeamsMeetingArtifacts = onCall({
+    secrets: [msTeamsTenantId, msTeamsClientId, msTeamsClientSecret],
+    memory: '512MiB',
+    timeoutSeconds: 60,
+    maxInstances: 10,
+}, async (request) => {
+    const { meetingId, organizerUserId, orgId, candidateId } = request.data;
+
+    if (!meetingId) {
+        throw new HttpsError('invalid-argument', 'Missing meetingId.');
+    }
+
+    try {
+        const accessToken = await getMsTeamsAccessToken();
+        const userPath = organizerUserId ? `users/${organizerUserId}` : 'communications';
+
+        // 1. Fetch recordings
+        const recordingsRes = await fetch(
+            `https://graph.microsoft.com/v1.0/${userPath}/onlineMeetings/${meetingId}/recordings`,
+            { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+
+        let recordings: any[] = [];
+        if (recordingsRes.ok) {
+            const recordingsData = await recordingsRes.json();
+            recordings = (recordingsData.value || []).map((r: any) => ({
+                id: r.id,
+                createdDateTime: r.createdDateTime,
+                contentUrl: r['content@odata.mediaContentUrl'] || null,
+            }));
+        }
+
+        // 2. Fetch transcripts
+        const transcriptsRes = await fetch(
+            `https://graph.microsoft.com/v1.0/${userPath}/onlineMeetings/${meetingId}/transcripts`,
+            { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+
+        let transcripts: any[] = [];
+        if (transcriptsRes.ok) {
+            const transcriptsData = await transcriptsRes.json();
+            const transcriptItems = transcriptsData.value || [];
+
+            // Fetch actual transcript content for each
+            for (const t of transcriptItems) {
+                try {
+                    const contentRes = await fetch(
+                        `https://graph.microsoft.com/v1.0/${userPath}/onlineMeetings/${meetingId}/transcripts/${t.id}/content?$format=text/vtt`,
+                        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                    );
+                    if (contentRes.ok) {
+                        const vttContent = await contentRes.text();
+                        transcripts.push({
+                            id: t.id,
+                            createdDateTime: t.createdDateTime,
+                            content: vttContent,
+                        });
+                    }
+                } catch (tErr) {
+                    logger.warn(`Failed to fetch transcript ${t.id}:`, tErr);
+                }
+            }
+        }
+
+        // 3. Save artifacts to Firestore if orgId and candidateId are provided
+        if (orgId && candidateId && (recordings.length > 0 || transcripts.length > 0)) {
+            const db = getFirestore();
+            await db.collection('organizations').doc(orgId)
+                .collection('candidates').doc(candidateId)
+                .update({
+                    'teamsMeetingArtifacts': {
+                        meetingId,
+                        recordings: recordings.map(r => ({ id: r.id, createdAt: r.createdDateTime })),
+                        transcriptText: transcripts.map(t => t.content).join('\n\n'),
+                        fetchedAt: new Date().toISOString(),
+                    }
+                });
+            logger.info(`Teams artifacts saved for candidate ${candidateId}`);
+        }
+
+        return {
+            success: true,
+            recordings,
+            transcripts,
+            recordingCount: recordings.length,
+            transcriptCount: transcripts.length,
+        };
+
+    } catch (error: any) {
+        logger.error('Error fetching Teams artifacts:', error);
+        throw new HttpsError('internal', error.message || 'Failed to fetch Teams meeting artifacts.');
+    }
+});
 

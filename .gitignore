@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 .env
 firebase.md
+docusign.md
+msteams.md
