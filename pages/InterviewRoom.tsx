@@ -343,47 +343,29 @@ export const InterviewRoom = () => {
 
       disconnect();
 
-      let videoUrl = '';
       // Reuse the existing Upcoming session ID if available, otherwise generate new
-      const sessionId = existingSessionId || Math.random().toString(36).substr(2, 9);
+      const sessionId = existingSessionId || crypto.randomUUID().substring(0, 9);
       const orgId = isTokenMode ? location.state?.orgId : store.getState().orgId;
 
-      // Stop Recording and Upload — use recorder state (not React state) for reliability
+      // Stop Recording — get blob ready for upload
       const recorder = mediaRecorderRef.current;
       const recorderActive = recorder && (recorder.state === 'recording' || recorder.state === 'paused');
       console.log(`[InterviewRoom] handleEnd — recorder state: ${recorder?.state}, chunks so far: ${chunksRef.current.length}, candidateId: ${candidateId}, orgId: ${orgId}`);
 
+      // Prepare video blob (non-blocking)
+      let videoBlobPromise: Promise<Blob | null> = Promise.resolve(null);
       if (recorderActive && candidateId && orgId) {
-         try {
-            const videoBlob = await new Promise<Blob>((resolve) => {
-               // Timeout fallback: if onstop never fires, use existing chunks after 3s
-               const timeout = setTimeout(() => {
-                  console.warn('[InterviewRoom] recorder.onstop timeout — using existing chunks');
-                  resolve(new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' }));
-               }, 3000);
-
-               recorder.onstop = () => {
-                  clearTimeout(timeout);
-                  resolve(new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' }));
-               };
-               recorder.stop();
-            });
-
-            console.log(`[InterviewRoom] Recording blob size: ${videoBlob.size} bytes, chunks: ${chunksRef.current.length}`);
-            if (videoBlob.size > 0) {
-               const ext = recorder.mimeType?.includes('mp4') ? 'mp4' : 'webm';
-               const storageVideoRef = ref(storage, `${orgId}/candidates/${candidateId}/interviews/${sessionId}/recording.${ext}`);
-               await uploadBytes(storageVideoRef, videoBlob);
-               videoUrl = await getDownloadURL(storageVideoRef);
-               console.log(`[InterviewRoom] Video uploaded: ${videoUrl}`);
-            } else {
-               console.warn('[InterviewRoom] Video blob is empty — no recording saved');
-            }
-         } catch (e) {
-            console.error("[InterviewRoom] Failed to upload recording:", e);
-         }
-      } else {
-         console.warn(`[InterviewRoom] Skipped recording upload — recorderActive: ${recorderActive}, candidateId: ${candidateId}, orgId: ${orgId}`);
+         videoBlobPromise = new Promise<Blob | null>((resolve) => {
+            const timeout = setTimeout(() => {
+               console.warn('[InterviewRoom] recorder.onstop timeout — using existing chunks');
+               resolve(new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' }));
+            }, 3000);
+            recorder.onstop = () => {
+               clearTimeout(timeout);
+               resolve(new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' }));
+            };
+            recorder.stop();
+         });
       }
 
       if (candidateId) {
@@ -394,16 +376,39 @@ export const InterviewRoom = () => {
             timestamp: t.time || '0:00'
          }));
 
-         // Attempt AI analysis, but save session regardless
-         let analysisData: any = {};
-         try {
-            if (transcript.length > 0) {
-               const { analyzeInterview } = await import('../services/ai');
-               analysisData = await analyzeInterview(transcript, candidate?.role || 'Engineer');
+         // Run video upload + AI analysis IN PARALLEL for speed
+         const uploadPromise = (async () => {
+            try {
+               const videoBlob = await videoBlobPromise;
+               if (videoBlob && videoBlob.size > 0 && candidateId && orgId) {
+                  console.log(`[InterviewRoom] Recording blob size: ${videoBlob.size} bytes`);
+                  const ext = recorder?.mimeType?.includes('mp4') ? 'mp4' : 'webm';
+                  const storageVideoRef = ref(storage, `${orgId}/candidates/${candidateId}/interviews/${sessionId}/recording.${ext}`);
+                  await uploadBytes(storageVideoRef, videoBlob);
+                  const url = await getDownloadURL(storageVideoRef);
+                  console.log(`[InterviewRoom] Video uploaded: ${url}`);
+                  return url;
+               }
+            } catch (e) {
+               console.error("[InterviewRoom] Failed to upload recording:", e);
             }
-         } catch (e) {
-            console.error("Interview analysis failed (session will still be saved):", e);
-         }
+            return '';
+         })();
+
+         const analysisPromise = (async () => {
+            try {
+               if (transcript.length > 0) {
+                  const { analyzeInterview } = await import('../services/ai');
+                  return await analyzeInterview(transcript, candidate?.role || 'Engineer');
+               }
+            } catch (e) {
+               console.error("Interview analysis failed (session will still be saved):", e);
+            }
+            return {} as any;
+         })();
+
+         // Wait for both to finish in parallel
+         const [videoUrl, analysisData] = await Promise.all([uploadPromise, analysisPromise]);
 
          const session: InterviewSession = {
             id: sessionId,
