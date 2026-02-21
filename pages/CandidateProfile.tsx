@@ -123,7 +123,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-            <Card className="max-w-md w-full p-0 overflow-hidden shadow-2xl relative animate-scale-in">
+            <Card className="max-w-md w-full p-0 overflow-hidden shadow-2xl relative animate-scale-in max-h-[90vh] overflow-y-auto">
                 <div className="bg-slate-900 p-8 text-white relative">
                     <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 transition-colors"><X className="w-5 h-5" /></button>
                     <div className="flex items-center gap-4 mb-6">
@@ -297,7 +297,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
 const InterviewConfirmationModal = ({ candidate, session, onClose }: { candidate: any, session: InterviewSession, onClose: () => void }) => {
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-fade-in">
-            <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in">
+            <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in max-h-[90vh] overflow-y-auto">
                 <div className="bg-emerald-600 p-8 text-white flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -393,7 +393,7 @@ const InterviewConfirmationModal = ({ candidate, session, onClose }: { candidate
 const OfferConfirmationModal = ({ candidate, offer, onClose }: { candidate: any, offer: OfferDetails, onClose: () => void }) => {
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-fade-in">
-            <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in">
+            <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in max-h-[90vh] overflow-y-auto">
                 <div className="bg-brand-600 p-8 text-white flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -498,7 +498,7 @@ const DocusignModal = ({ candidate, offer, onClose, onComplete }: { candidate: a
 
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in">
-            <Card className="max-w-xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in bg-white">
+            <Card className="max-w-xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in bg-white max-h-[90vh] overflow-y-auto">
                 <div className="bg-[#FF0000] p-6 text-white flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
@@ -1151,7 +1151,7 @@ const FileManager = ({ candidate }: { candidate: any }) => {
             {/* New Folder Modal */}
             {showNewFolderModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewFolderModal(false)}>
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-xl font-bold text-slate-900 mb-4">Create New Folder</h3>
                         <input
                             type="text"
