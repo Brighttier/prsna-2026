@@ -1312,7 +1312,7 @@ ${candidate.email}
 
 Dear ${candidate.name.split(' ')[0]},
 
-We are thrilled to offer you the full-time position of ${candidate.role} at RecruiteAI, reporting to the VP of Engineering. We were impressed by your background and believe your skills will be instrumental to our team's success.
+We are thrilled to offer you the full-time position of ${candidate.role} at Presona Recruit, reporting to the VP of Engineering. We were impressed by your background and believe your skills will be instrumental to our team's success.
 
 Compensation & Benefits:
 ${compensationLines.join('\n')}
@@ -1329,7 +1329,7 @@ Sincerely,
 
 Sarah Connor
 Director of People Operations
-RecruiteAI`;
+Presona Recruit`;
 
             setOfferData(prev => ({
                 ...prev,

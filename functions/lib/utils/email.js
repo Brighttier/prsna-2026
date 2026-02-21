@@ -42,12 +42,12 @@ function getEmailContent(type, { name, role, jobTitle, companyName }) {
     switch (type) {
         case 'INVITATION':
             return {
-                subject: `You've been invited to join ${company} on RecruiteAI`,
+                subject: `You've been invited to join ${company} on Presona Recruit`,
                 preheader: `${company} wants you on the team. Accept your invitation to get started.`,
                 icon: '&#128640;',
                 iconBg: '#ecfdf5',
                 headline: `You're Invited`,
-                message: `Hi ${greeting},<br><br>You've been invited to join the <strong>${role || 'Team'}</strong> workspace on RecruiteAI. Set up your account in just a few clicks.`,
+                message: `Hi ${greeting},<br><br>You've been invited to join the <strong>${role || 'Team'}</strong> workspace on Presona Recruit. Set up your account in just a few clicks.`,
                 detail: `<strong>Organization:</strong> ${company}`,
                 buttonText: 'Accept Invitation',
                 accentColor: '#059669',
@@ -121,12 +121,12 @@ function getEmailContent(type, { name, role, jobTitle, companyName }) {
             };
         default: // RESET_PASSWORD
             return {
-                subject: 'Reset Your Password — RecruiteAI',
-                preheader: 'A password reset was requested for your RecruiteAI account.',
+                subject: 'Reset Your Password — Presona Recruit',
+                preheader: 'A password reset was requested for your Presona Recruit account.',
                 icon: '&#128274;',
                 iconBg: '#f0f9ff',
                 headline: `Reset Your Password`,
-                message: `Hi ${greeting},<br><br>We received a request to reset the password for your RecruiteAI account. Click the button below to choose a new password.`,
+                message: `Hi ${greeting},<br><br>We received a request to reset the password for your Presona Recruit account. Click the button below to choose a new password.`,
                 buttonText: 'Reset Password',
                 accentColor: '#0284c7',
                 accentLight: '#f0f9ff',
@@ -191,7 +191,7 @@ function buildEmailHtml(content, link) {
                                         <span style="font-size:16px; color:#ffffff;">&#10024;</span>
                                     </td>
                                     <td style="padding-left:10px;">
-                                        <span style="font-size:18px; font-weight:700; color:#0f172a; letter-spacing:-0.3px;">Recruite</span><span style="font-size:18px; font-weight:700; color:${accentColor};">AI</span>
+                                        <span style="font-size:18px; font-weight:700; color:#0f172a; letter-spacing:-0.3px;">Presona </span><span style="font-size:18px; font-weight:700; color:${accentColor};">Recruit</span>
                                     </td>
                                 </tr>
                             </table>
@@ -283,9 +283,9 @@ function buildEmailHtml(content, link) {
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td align="center">
-                                        <p style="margin:0 0 4px; font-size:12px; font-weight:600; color:#64748b;">RecruiteAI</p>
+                                        <p style="margin:0 0 4px; font-size:12px; font-weight:600; color:#64748b;">Presona Recruit</p>
                                         <p style="margin:0; font-size:11px; color:#94a3b8; line-height:1.6;">AI-powered recruitment, simplified.</p>
-                                        <p style="margin:12px 0 0; font-size:11px; color:#cbd5e1;">&copy; ${new Date().getFullYear()} RecruiteAI. All rights reserved.</p>
+                                        <p style="margin:12px 0 0; font-size:11px; color:#cbd5e1;">&copy; ${new Date().getFullYear()} Presona Recruit. All rights reserved.</p>
                                     </td>
                                 </tr>
                             </table>
@@ -329,7 +329,7 @@ const sendSecureLinkEmail = async ({ to, link, type, role, name, apiKey, jobTitl
     }
     const html = buildEmailHtml(content, link);
     return resend.emails.send({
-        from: 'RecruiteAI <noreply@updates.personarecruit.ai>',
+        from: 'Presona Recruit <noreply@updates.personarecruit.ai>',
         to: [to],
         subject: content.subject,
         html: html

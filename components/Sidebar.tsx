@@ -36,8 +36,8 @@ export const Sidebar = () => {
     <aside className="w-[240px] bg-white/80 backdrop-blur-xl border-r border-slate-200/50 h-screen fixed left-0 top-0 flex flex-col z-20">
       <div className="px-5 py-5 border-b border-slate-100/60">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-brand-600 rounded-[8px] flex items-center justify-center text-white font-bold text-base">R</div>
-          <span className="font-semibold text-[17px] text-slate-800 tracking-tight">Recruite<span className="text-brand-600">AI</span></span>
+          <div className="w-8 h-8 bg-brand-600 rounded-[8px] flex items-center justify-center text-white font-bold text-base">P</div>
+          <span className="font-semibold text-[15px] text-slate-800 tracking-tight">Presona <span className="text-brand-600">Recruit</span></span>
         </div>
       </div>
 

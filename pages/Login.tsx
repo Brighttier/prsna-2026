@@ -78,7 +78,7 @@ export const Login = () => {
                         <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/30">
                             <Sparkles className="w-6 h-6 text-white" />
                         </div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-white">RecruiteAI</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight text-white">Presona Recruit</h1>
                     </div>
                     <h2 className="text-3xl font-semibold text-white mb-4 leading-tight tracking-tight">
                         Transform Your Hiring<br />with AI Intelligence
@@ -102,7 +102,7 @@ export const Login = () => {
                 {/* Testimonial */}
                 <div className="relative z-10 bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
                     <p className="text-white/90 italic mb-3">
-                        "RecruiteAI reduced our time-to-hire by 60%. The AI screening is incredibly accurate."
+                        "Presona Recruit reduced our time-to-hire by 60%. The AI screening is incredibly accurate."
                     </p>
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white/20 rounded-full"></div>
@@ -122,7 +122,7 @@ export const Login = () => {
                         <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-white" />
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-900">RecruiteAI</h1>
+                        <h1 className="text-2xl font-bold text-slate-900">Presona Recruit</h1>
                     </div>
 
                     {/* Form Container */}

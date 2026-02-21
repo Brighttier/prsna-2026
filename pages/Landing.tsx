@@ -149,7 +149,7 @@ export const Landing = () => {
                             <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
                                 <Sparkles className="w-6 h-6 text-white" />
                             </div>
-                            <span className="text-2xl font-bold text-slate-900 tracking-tight">RecruiteAI</span>
+                            <span className="text-2xl font-bold text-slate-900 tracking-tight">Presona Recruit</span>
                         </div>
 
                         {/* Desktop Menu */}
@@ -356,7 +356,7 @@ export const Landing = () => {
                                 <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
                                     <Sparkles className="w-5 h-5 text-white" />
                                 </div>
-                                <span className="text-xl font-bold text-white">RecruiteAI</span>
+                                <span className="text-xl font-bold text-white">Presona Recruit</span>
                             </div>
                             <p className="text-slate-400 text-sm max-w-xs mb-6">
                                 Empowering the world's best companies to build their dream teams with artificial intelligence.
@@ -401,7 +401,7 @@ export const Landing = () => {
                     </div>
 
                     <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <p className="text-sm text-slate-500">© 2026 RecruiteAI Inc. All rights reserved.</p>
+                        <p className="text-sm text-slate-500">© 2026 Presona Recruit Inc. All rights reserved.</p>
                         <p className="text-sm text-slate-500">Made with ❤️ in San Francisco</p>
                     </div>
                 </div>

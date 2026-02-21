@@ -1404,7 +1404,7 @@ exports.createGoogleMeetEvent = (0, https_1.onCall)(meetFunctionConfig, async (r
         const endMoment = new Date(startMoment.getTime() + durationMinutes * 60 * 1000);
         const event = {
             summary: `Interview: ${candidateName} — ${jobTitle || 'Position'}`,
-            description: `Scheduled interview with ${candidateName} for the ${jobTitle || 'open'} role.\n\nPowered by RecruiteAI`,
+            description: `Scheduled interview with ${candidateName} for the ${jobTitle || 'open'} role.\n\nPowered by Presona Recruit`,
             start: {
                 dateTime: startMoment.toISOString(),
                 timeZone: timezone || 'UTC',
@@ -1415,7 +1415,7 @@ exports.createGoogleMeetEvent = (0, https_1.onCall)(meetFunctionConfig, async (r
             },
             conferenceData: {
                 createRequest: {
-                    requestId: `recruiteai-${Date.now()}`,
+                    requestId: `presona-${Date.now()}`,
                     conferenceSolutionKey: { type: 'hangoutsMeet' },
                 },
             },
@@ -2156,7 +2156,7 @@ exports.resolvePortalToken = (0, https_1.onCall)({ region: 'us-central1' }, asyn
         offer: candidateData.offer || null,
         onboarding: candidateData.onboarding || null,
         branding: {
-            companyName: branding.companyName || 'RecruiteAI',
+            companyName: branding.companyName || 'Presona Recruit',
             primaryColor: branding.primaryColor || '#16a34a',
             logoUrl: branding.logoUrl || '',
         },

@@ -1,8 +1,8 @@
-# CLAUDE.md - RecruiteAI (prsna-2026)
+# CLAUDE.md - Presona Recruit (prsna-2026)
 
 ## Project Overview
 
-AI-powered recruitment SaaS platform (RecruiteAI) that automates hiring workflows: resume screening via AI Gatekeeper, real-time AI video interviews via Lumina (Gemini Live API), candidate pipeline management, offer management, and onboarding.
+AI-powered recruitment SaaS platform (Presona Recruit) that automates hiring workflows: resume screening via AI Gatekeeper, real-time AI video interviews via Lumina (Gemini Live API), candidate pipeline management, offer management, and onboarding.
 
 ## Tech Stack
 

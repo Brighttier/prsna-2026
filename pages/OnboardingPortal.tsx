@@ -9,7 +9,7 @@ export const OnboardingPortal = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [candidate, setCandidate] = useState<any>(null);
-    const [branding, setBranding] = useState<{ companyName: string; primaryColor: string; logoUrl: string }>({ companyName: 'RecruiteAI', primaryColor: '#16a34a', logoUrl: '' });
+    const [branding, setBranding] = useState<{ companyName: string; primaryColor: string; logoUrl: string }>({ companyName: 'Presona Recruit', primaryColor: '#16a34a', logoUrl: '' });
 
     useEffect(() => {
         if (!token) {

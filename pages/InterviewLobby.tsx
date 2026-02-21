@@ -298,7 +298,7 @@ export const InterviewLobby = () => {
 
             <div className="mt-8 flex items-center gap-2 text-xs text-slate-400 font-medium">
                 <ShieldCheck className="w-3 h-3" />
-                Powered by RecruiteAI • SOC2 Compliant
+                Powered by Presona Recruit • SOC2 Compliant
             </div>
         </div>
     );
