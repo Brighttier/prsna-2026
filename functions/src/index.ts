@@ -2490,3 +2490,90 @@ export const aiSearchCandidates = onCall(
     }
 );
 
+// ═══════════════════════════════════════════════════════════
+//  DELETE TENANT — Cascade delete org and all associated data
+// ═══════════════════════════════════════════════════════════
+
+export const deleteTenantData = onCall(
+    { cors: true, region: "us-central1", timeoutSeconds: 120 },
+    async (request) => {
+        const { orgId } = request.data;
+
+        if (!orgId || typeof orgId !== 'string') {
+            throw new HttpsError('invalid-argument', 'Missing orgId.');
+        }
+
+        logger.info(`[Delete Tenant] Starting cascade delete for org: ${orgId}`);
+
+        const firestore = db();
+
+        // Helper: delete all docs in a subcollection using batched writes
+        async function deleteSubcollection(subcollectionPath: string) {
+            const collRef = firestore.collection(subcollectionPath);
+            let deleted = 0;
+            let snapshot = await collRef.limit(500).get();
+
+            while (!snapshot.empty) {
+                const batch = firestore.batch();
+                snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+                await batch.commit();
+                deleted += snapshot.docs.length;
+                snapshot = await collRef.limit(500).get();
+            }
+            return deleted;
+        }
+
+        try {
+            // 1. Delete all subcollections
+            const subcollections = ['candidates', 'jobs', 'assessments', 'invitations'];
+            for (const sub of subcollections) {
+                const count = await deleteSubcollection(`organizations/${orgId}/${sub}`);
+                logger.info(`[Delete Tenant] Deleted ${count} docs from ${sub}`);
+            }
+
+            // 2. Delete the organization root document
+            await firestore.collection('organizations').doc(orgId).delete();
+            logger.info(`[Delete Tenant] Deleted org document: ${orgId}`);
+
+            // 3. Find and delete user profile + Firebase Auth user
+            // orgId format is org_${uid}, extract uid
+            const uid = orgId.startsWith('org_') ? orgId.substring(4) : null;
+            if (uid) {
+                // Delete user profile doc
+                const userDoc = firestore.collection('users').doc(uid);
+                const userSnap = await userDoc.get();
+                if (userSnap.exists) {
+                    await userDoc.delete();
+                    logger.info(`[Delete Tenant] Deleted user profile: ${uid}`);
+                }
+
+                // Delete Firebase Auth user
+                try {
+                    await authAdmin().deleteUser(uid);
+                    logger.info(`[Delete Tenant] Deleted auth user: ${uid}`);
+                } catch (authErr: any) {
+                    if (authErr?.code === 'auth/user-not-found') {
+                        logger.warn(`[Delete Tenant] Auth user not found: ${uid}`);
+                    } else {
+                        throw authErr;
+                    }
+                }
+            }
+
+            // 4. Delete all Storage files for this org
+            try {
+                await storage().bucket().deleteFiles({ prefix: `${orgId}/` });
+                logger.info(`[Delete Tenant] Deleted storage files for: ${orgId}`);
+            } catch (storageErr: any) {
+                logger.warn(`[Delete Tenant] Storage cleanup failed (may be empty):`, storageErr?.message);
+            }
+
+            logger.info(`[Delete Tenant] Cascade delete complete for org: ${orgId}`);
+            return { success: true };
+        } catch (error) {
+            logger.error(`[Delete Tenant] Failed:`, error);
+            throw new HttpsError('internal', 'Failed to delete tenant data.');
+        }
+    }
+);
+

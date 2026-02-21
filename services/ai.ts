@@ -127,6 +127,17 @@ export const aiSearchCandidates = async (query: string, orgId: string) => {
     }
 };
 
+export const deleteTenantData = async (orgId: string) => {
+    try {
+        const deleteFn = httpsCallable<any, any>(functions, 'deleteTenantData');
+        const result = await deleteFn({ orgId });
+        return result.data;
+    } catch (error) {
+        console.error("Tenant Deletion Failed:", error);
+        throw error;
+    }
+};
+
 export const generateJobDescription = async (title: string, department?: string, location?: string) => {
     try {
         const genFn = httpsCallable<any, { description: string }>(functions, 'generateJobDescription');

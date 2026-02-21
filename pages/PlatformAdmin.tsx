@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
-import { Activity, Server, ShieldAlert, Zap, DollarSign, Users, Power, RefreshCw, AlertTriangle, Search, Lock, Unlock, BarChart2, Globe, Cpu, Key, X, Settings, ChevronDown } from 'lucide-react';
+import { Activity, Server, ShieldAlert, Zap, DollarSign, Users, Power, RefreshCw, AlertTriangle, Search, Lock, Unlock, BarChart2, Globe, Cpu, Key, X, Settings, ChevronDown, Trash2, Loader2 } from 'lucide-react';
 import { store } from '../services/store';
 import {
    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -38,6 +38,9 @@ export const PlatformAdmin = () => {
    const [selectedTenant, setSelectedTenant] = useState<any | null>(null);
    const [showTenantModal, setShowTenantModal] = useState(false);
    const [expandedSection, setExpandedSection] = useState<'limits' | 'billing' | null>(null);
+   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+   const [deleting, setDeleting] = useState(false);
 
    useEffect(() => {
       const unsub = store.subscribe(() => {
@@ -72,6 +75,22 @@ export const PlatformAdmin = () => {
    const handleManageTenant = (tenant: any) => {
       setSelectedTenant(tenant);
       setShowTenantModal(true);
+   };
+
+   const handleDeleteTenant = async () => {
+      if (!selectedTenant || deleteConfirmText !== selectedTenant.name) return;
+      setDeleting(true);
+      try {
+         await store.deleteTenant(selectedTenant.id);
+         setShowTenantModal(false);
+         setShowDeleteConfirm(false);
+         setDeleteConfirmText('');
+         setSelectedTenant(null);
+      } catch (e) {
+         console.error('Failed to delete tenant:', e);
+      } finally {
+         setDeleting(false);
+      }
    };
 
    const handleToggleStatus = async (tenantId: string, currentStatus: string) => {
@@ -696,9 +715,60 @@ export const PlatformAdmin = () => {
                      </div>
                   </div>
 
+                  {/* Danger Zone */}
+                  <div className="px-6 pb-6">
+                     <div className="border border-red-200 rounded-xl overflow-hidden">
+                        <div className="px-4 py-3 bg-red-50 flex items-center gap-2">
+                           <Trash2 className="w-4 h-4 text-red-600" />
+                           <span className="text-sm font-bold text-red-700">Danger Zone</span>
+                        </div>
+                        <div className="p-4 space-y-3">
+                           <p className="text-[13px] text-slate-600">
+                              Permanently delete this organization and all its data including candidates, jobs, assessments, files, and the owner's account. <strong className="text-red-600">This action cannot be undone.</strong>
+                           </p>
+                           {!showDeleteConfirm ? (
+                              <button
+                                 onClick={() => setShowDeleteConfirm(true)}
+                                 className="px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg text-[13px] font-semibold hover:bg-red-50 transition-colors"
+                              >
+                                 Delete Organization...
+                              </button>
+                           ) : (
+                              <div className="space-y-3 p-3 bg-red-50/50 rounded-lg border border-red-100">
+                                 <p className="text-[13px] text-red-700 font-medium">
+                                    Type <strong>{selectedTenant?.name}</strong> to confirm:
+                                 </p>
+                                 <input
+                                    type="text"
+                                    value={deleteConfirmText}
+                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    placeholder={selectedTenant?.name}
+                                    className="w-full p-2.5 border border-red-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                 />
+                                 <div className="flex gap-2">
+                                    <button
+                                       onClick={handleDeleteTenant}
+                                       disabled={deleting || deleteConfirmText !== selectedTenant?.name}
+                                       className="flex-1 py-2 bg-red-600 text-white rounded-lg text-[13px] font-bold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                                    >
+                                       {deleting ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting...</> : 'Permanently Delete'}
+                                    </button>
+                                    <button
+                                       onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
+                                       className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-[13px] font-semibold hover:bg-slate-50 transition-colors"
+                                    >
+                                       Cancel
+                                    </button>
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+
                   <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
                      <button
-                        onClick={() => setShowTenantModal(false)}
+                        onClick={() => { setShowTenantModal(false); setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
                         className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-bold hover:bg-slate-200 transition-colors"
                      >
                         Close

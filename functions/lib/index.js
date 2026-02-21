@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aiSearchCandidates = exports.resolvePortalToken = exports.docuSignWebhook = exports.checkDocuSignStatus = exports.createDocuSignEnvelope = exports.createGoogleMeetEvent = exports.saveInterviewSession = exports.resolveInterviewToken = exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
+exports.deleteTenantData = exports.aiSearchCandidates = exports.resolvePortalToken = exports.docuSignWebhook = exports.checkDocuSignStatus = exports.createDocuSignEnvelope = exports.createGoogleMeetEvent = exports.saveInterviewSession = exports.resolveInterviewToken = exports.sendOnboardingInvite = exports.sendRejectionEmail = exports.sendApplicationReceipt = exports.sendAiInterviewInvite = exports.sendOfferLetter = exports.requestPasswordReset = exports.inviteTeamMember = exports.generateJobDescription = exports.startInterviewSession = exports.analyzeInterview = exports.generateInterviewQuestions = exports.generateCandidateReport = exports.onNewResumeUpload = exports.screenResume = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-functions/v2/storage");
 const logger = __importStar(require("firebase-functions/logger"));
@@ -2226,5 +2226,80 @@ exports.aiSearchCandidates = (0, https_1.onCall)({ secrets: [geminiApiKey], cors
         summary = `Found ${topResults.length} candidates matching "${query}".`;
     }
     return { results: topResults, summary };
+});
+// ═══════════════════════════════════════════════════════════
+//  DELETE TENANT — Cascade delete org and all associated data
+// ═══════════════════════════════════════════════════════════
+exports.deleteTenantData = (0, https_1.onCall)({ cors: true, region: "us-central1", timeoutSeconds: 120 }, async (request) => {
+    const { orgId } = request.data;
+    if (!orgId || typeof orgId !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'Missing orgId.');
+    }
+    logger.info(`[Delete Tenant] Starting cascade delete for org: ${orgId}`);
+    const firestore = db();
+    // Helper: delete all docs in a subcollection using batched writes
+    async function deleteSubcollection(subcollectionPath) {
+        const collRef = firestore.collection(subcollectionPath);
+        let deleted = 0;
+        let snapshot = await collRef.limit(500).get();
+        while (!snapshot.empty) {
+            const batch = firestore.batch();
+            snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+            await batch.commit();
+            deleted += snapshot.docs.length;
+            snapshot = await collRef.limit(500).get();
+        }
+        return deleted;
+    }
+    try {
+        // 1. Delete all subcollections
+        const subcollections = ['candidates', 'jobs', 'assessments', 'invitations'];
+        for (const sub of subcollections) {
+            const count = await deleteSubcollection(`organizations/${orgId}/${sub}`);
+            logger.info(`[Delete Tenant] Deleted ${count} docs from ${sub}`);
+        }
+        // 2. Delete the organization root document
+        await firestore.collection('organizations').doc(orgId).delete();
+        logger.info(`[Delete Tenant] Deleted org document: ${orgId}`);
+        // 3. Find and delete user profile + Firebase Auth user
+        // orgId format is org_${uid}, extract uid
+        const uid = orgId.startsWith('org_') ? orgId.substring(4) : null;
+        if (uid) {
+            // Delete user profile doc
+            const userDoc = firestore.collection('users').doc(uid);
+            const userSnap = await userDoc.get();
+            if (userSnap.exists) {
+                await userDoc.delete();
+                logger.info(`[Delete Tenant] Deleted user profile: ${uid}`);
+            }
+            // Delete Firebase Auth user
+            try {
+                await authAdmin().deleteUser(uid);
+                logger.info(`[Delete Tenant] Deleted auth user: ${uid}`);
+            }
+            catch (authErr) {
+                if (authErr?.code === 'auth/user-not-found') {
+                    logger.warn(`[Delete Tenant] Auth user not found: ${uid}`);
+                }
+                else {
+                    throw authErr;
+                }
+            }
+        }
+        // 4. Delete all Storage files for this org
+        try {
+            await storage().bucket().deleteFiles({ prefix: `${orgId}/` });
+            logger.info(`[Delete Tenant] Deleted storage files for: ${orgId}`);
+        }
+        catch (storageErr) {
+            logger.warn(`[Delete Tenant] Storage cleanup failed (may be empty):`, storageErr?.message);
+        }
+        logger.info(`[Delete Tenant] Cascade delete complete for org: ${orgId}`);
+        return { success: true };
+    }
+    catch (error) {
+        logger.error(`[Delete Tenant] Failed:`, error);
+        throw new https_1.HttpsError('internal', 'Failed to delete tenant data.');
+    }
 });
 //# sourceMappingURL=index.js.map

@@ -1052,6 +1052,16 @@ class Store {
         }
     }
 
+    async deleteTenant(tenantId: string) {
+        try {
+            const { deleteTenantData } = await import('./ai');
+            await deleteTenantData(tenantId);
+        } catch (e) {
+            console.error("Error deleting tenant: ", e);
+            throw e;
+        }
+    }
+
     async updateTenantPlan(tenantId: string, plan: string) {
         try {
             await updateDoc(doc(db, 'organizations', tenantId), { plan });
