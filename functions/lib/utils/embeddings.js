@@ -39,7 +39,7 @@ const genai_1 = require("@google/genai");
 const logger = __importStar(require("firebase-functions/logger"));
 /**
  * Generates a vector embedding for the provided text using Gemini.
- * Uses the 'text-embedding-004' model by default.
+ * Uses the 'gemini-embedding-001' model.
  */
 async function generateEmbedding(apiKey, text) {
     if (!text || text.length < 5) {
@@ -49,10 +49,9 @@ async function generateEmbedding(apiKey, text) {
     try {
         const genAI = new genai_1.GoogleGenAI({ apiKey });
         // Clean text to avoid token limits or noise
-        // Truncate if necessary (text-embedding-004 has a 2048 token limit, roughly 8000 chars)
         const cleanText = text.replace(/\s+/g, ' ').substring(0, 8000);
         const result = await genAI.models.embedContent({
-            model: "text-embedding-004",
+            model: "gemini-embedding-001",
             contents: [{
                     parts: [{ text: cleanText }]
                 }]
