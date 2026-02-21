@@ -11,15 +11,15 @@ import { Candidate, Job } from '../types';
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const Stat = ({ label, value, subtext, icon: Icon, color }: any) => (
-    <Card className="p-6">
+    <Card className="p-5">
         <div className="flex justify-between items-start">
             <div>
-                <p className="text-slate-500 text-sm font-medium">{label}</p>
-                <h3 className="text-3xl font-bold text-slate-900 mt-2">{value}</h3>
-                <p className="text-xs text-slate-400 mt-1">{subtext}</p>
+                <p className="text-[13px] font-medium text-slate-500">{label}</p>
+                <h3 className="text-[22px] font-semibold text-slate-900 mt-0.5 tracking-tight">{value}</h3>
+                <p className="text-[12px] text-slate-400 mt-1">{subtext}</p>
             </div>
-            <div className={`p-3 rounded-lg ${color} bg-opacity-10`}>
-                <Icon className={`w-6 h-6 ${color.replace('bg-', 'text-')}`} />
+            <div className={`p-2 rounded-[8px] ${color} bg-opacity-10`}>
+                <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
             </div>
         </div>
     </Card>
@@ -127,8 +127,8 @@ export const Analytics = () => {
     return (
         <div className="space-y-8 animate-fade-in-up">
             <header>
-                <h1 className="text-3xl font-bold text-slate-900">Recruitment Intelligence</h1>
-                <p className="text-slate-500 mt-1">Real-time insights based on your {candidates.length} candidates.</p>
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Recruitment Intelligence</h1>
+                <p className="text-[15px] text-slate-500 mt-1">Real-time insights based on your {candidates.length} candidates.</p>
             </header>
 
             {/* KPI Cards */}
@@ -142,7 +142,7 @@ export const Analytics = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Funnel Chart */}
                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Conversion Pipeline</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 mb-6">Conversion Pipeline</h3>
                     <div className="h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart
@@ -165,7 +165,7 @@ export const Analytics = () => {
 
                 {/* Score Distribution */}
                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-slate-900 mb-2">Score Distribution</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 mb-2">Score Distribution</h3>
                     <p className="text-sm text-slate-500 mb-6">AI evaluation scores across all candidates.</p>
                     <div className="h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -184,7 +184,7 @@ export const Analytics = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Missing Skills */}
                 <Card className="col-span-2 p-6">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Common Skill Gaps</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 mb-6">Common Skill Gaps</h3>
                     <div className="h-72 w-full">
                         {missingSkillsData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
@@ -206,7 +206,7 @@ export const Analytics = () => {
 
                 {/* Sourcing Channel */}
                 <Card className="p-6">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Candidate Sources</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 mb-6">Candidate Sources</h3>
                     <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>

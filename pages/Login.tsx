@@ -78,12 +78,12 @@ export const Login = () => {
                         <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/30">
                             <Sparkles className="w-6 h-6 text-white" />
                         </div>
-                        <h1 className="text-3xl font-bold text-white">RecruiteAI</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight text-white">RecruiteAI</h1>
                     </div>
-                    <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
+                    <h2 className="text-3xl font-semibold text-white mb-4 leading-tight tracking-tight">
                         Transform Your Hiring<br />with AI Intelligence
                     </h2>
-                    <p className="text-white/80 text-lg">
+                    <p className="text-white/80 text-[17px]">
                         Join thousands of companies using AI to find the perfect candidates faster than ever.
                     </p>
                 </div>
@@ -126,13 +126,13 @@ export const Login = () => {
                     </div>
 
                     {/* Form Container */}
-                    <div className="bg-white rounded-3xl shadow-2xl shadow-emerald-100 p-8 border border-slate-100">
+                    <div className="bg-white rounded-[20px] shadow-apple-lg p-8 border border-slate-200/60">
                         {/* Header */}
                         <div className="mb-8">
-                            <h2 className="text-3xl font-bold text-slate-900 mb-2">
+                            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">
                                 {isForgotPassword ? 'Reset Password' : (isSignUp ? 'Create Account' : 'Welcome Back')}
                             </h2>
-                            <p className="text-slate-500">
+                            <p className="text-[15px] text-slate-500">
                                 {isForgotPassword ? 'Enter your email to receive recovery instructions' : (isSignUp ? 'Start your free trial today' : 'Sign in to continue to your dashboard')}
                             </p>
                         </div>
@@ -154,23 +154,23 @@ export const Login = () => {
                             {isSignUp && !isForgotPassword && (
                                 <>
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                                        <label className="block text-[13px] font-semibold text-slate-600 mb-2">Full Name</label>
                                         <input
                                             type="text"
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                            className="w-full px-4 py-3 bg-slate-50/80 border border-slate-200/60 rounded-[12px] focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 outline-none transition-all text-[15px]"
                                             placeholder="John Doe"
                                             required={isSignUp}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Company Name</label>
+                                        <label className="block text-[13px] font-semibold text-slate-600 mb-2">Company Name</label>
                                         <input
                                             type="text"
                                             value={formData.company}
                                             onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                            className="w-full px-4 py-3 bg-slate-50/80 border border-slate-200/60 rounded-[12px] focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 outline-none transition-all text-[15px]"
                                             placeholder="Acme Corp"
                                             required={isSignUp}
                                         />
@@ -179,14 +179,14 @@ export const Login = () => {
                             )}
 
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                                <label className="block text-[13px] font-semibold text-slate-600 mb-2">Email Address</label>
                                 <div className="relative">
                                     <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                                     <input
                                         type="email"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                        className="w-full pl-12 pr-4 py-3 bg-slate-50/80 border border-slate-200/60 rounded-[12px] focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 outline-none transition-all text-[15px]"
                                         placeholder="you@company.com"
                                         required
                                     />
@@ -195,14 +195,14 @@ export const Login = () => {
 
                             {!isForgotPassword && (
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                                    <label className="block text-[13px] font-semibold text-slate-600 mb-2">Password</label>
                                     <div className="relative">
                                         <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                                         <input
                                             type={showPassword ? 'text' : 'password'}
                                             value={formData.password}
                                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                            className="w-full pl-12 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                            className="w-full pl-12 pr-12 py-3 bg-slate-50/80 border border-slate-200/60 rounded-[12px] focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 outline-none transition-all text-[15px]"
                                             placeholder="••••••••"
                                             required={!isForgotPassword}
                                         />
@@ -241,7 +241,7 @@ export const Login = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+                                className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-[12px] hover:bg-brand-700 transition-all duration-200 shadow-sm flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed text-[15px]"
                             >
                                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                                 {isForgotPassword ? 'Send Reset Link' : (isSignUp ? 'Create Account' : 'Sign In')}

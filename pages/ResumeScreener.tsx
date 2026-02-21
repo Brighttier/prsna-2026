@@ -71,17 +71,17 @@ export const ResumeScreener = () => {
    return (
       <div className="max-w-6xl mx-auto space-y-8">
          <header>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-               <Sparkles className="text-brand-500 fill-brand-500 w-8 h-8" />
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
+               <Sparkles className="text-brand-500 fill-brand-500 w-6 h-6" />
                The AI Gatekeeper
             </h1>
-            <p className="text-slate-500 mt-1">Automated resume screening with bias masking and contextual matching.</p>
+            <p className="text-[15px] text-slate-500 mt-1">Automated resume screening with bias masking and contextual matching.</p>
          </header>
 
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
                <Card className="p-6">
-                  <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <h2 className="text-[17px] font-semibold text-slate-900 mb-4 flex items-center gap-2">
                      <Upload className="w-5 h-5 text-brand-600" />
                      1. Job Context
                   </h2>
@@ -99,7 +99,7 @@ export const ResumeScreener = () => {
                </Card>
 
                <Card className="p-6">
-                  <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <h2 className="text-[17px] font-semibold text-slate-900 mb-4 flex items-center gap-2">
                      <FileText className="w-5 h-5 text-brand-600" />
                      2. Candidate Profile
                   </h2>

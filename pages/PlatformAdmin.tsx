@@ -21,8 +21,8 @@ const API_USAGE_DATA = [
 ];
 
 const SERVICE_STATUS = [
-   { name: 'Resume Parser (Gemini 2.0 Flash)', status: 'Operational', latency: '450ms', errorRate: '0.01%' },
-   { name: 'Lumina Live (Gemini Live API)', status: 'High Load', latency: '120ms', errorRate: '0.5%' },
+   { name: 'Resume Parser (AI Engine)', status: 'Operational', latency: '450ms', errorRate: '0.01%' },
+   { name: 'Lumina Live (Real-time AI)', status: 'High Load', latency: '120ms', errorRate: '0.5%' },
    { name: 'Vector DB (Pinecone)', status: 'Operational', latency: '20ms', errorRate: '0.00%' },
    { name: 'Sage HR Sync', status: 'Operational', latency: '800ms', errorRate: '0.1%' },
 ];
@@ -85,11 +85,11 @@ export const PlatformAdmin = () => {
          {/* Header */}
          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-               <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-                  <ShieldAlert className="w-8 h-8 text-indigo-600" />
+               <h1 className="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
+                  <ShieldAlert className="w-6 h-6 text-indigo-600" />
                   Platform Admin
                </h1>
-               <p className="text-slate-500 mt-1">Monitor infrastructure, manage tenants, and control API limits.</p>
+               <p className="text-[15px] text-slate-500 mt-1">Monitor infrastructure, manage tenants, and control API limits.</p>
             </div>
             <div className="flex items-center gap-3">
                <span className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
@@ -127,10 +127,10 @@ export const PlatformAdmin = () => {
                <Card className={`p-6 border-l-4 ${killSwitches.global ? 'border-l-red-600 bg-red-50' : 'border-l-slate-300'}`}>
                   <div className="flex justify-between items-start mb-4">
                      <div>
-                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <h3 className="text-[17px] font-semibold text-slate-900 flex items-center gap-2">
                            <Power className="w-5 h-5 text-red-600" /> Global API Kill Switch
                         </h3>
-                        <p className="text-sm text-slate-500 mt-1">Immediately cuts connection to Google Gemini for ALL tenants.</p>
+                        <p className="text-sm text-slate-500 mt-1">Immediately disables all AI services for ALL tenants.</p>
                      </div>
                      <div className="relative inline-flex items-center cursor-pointer" onClick={() => toggleKillSwitch('global')}>
                         <input type="checkbox" className="sr-only peer" checked={killSwitches.global} readOnly />
@@ -146,11 +146,11 @@ export const PlatformAdmin = () => {
 
                {/* Feature Specific Switches */}
                <Card className="p-6 col-span-2">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4">Feature Circuit Breakers</h3>
+                  <h3 className="text-[17px] font-semibold text-slate-900 mb-4">Feature Circuit Breakers</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div className={`p-4 border rounded-xl flex justify-between items-center transition-colors ${killSwitches.resume ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'}`}>
                         <div>
-                           <div className="font-bold text-slate-900 flex items-center gap-2">Resume Screener <span className="text-[10px] font-mono bg-slate-200 px-1 rounded">Gemini 2.0 Flash</span></div>
+                           <div className="font-bold text-slate-900 flex items-center gap-2">Resume Screener <span className="text-[10px] font-mono bg-slate-200 px-1 rounded">AI Engine</span></div>
                            <div className="text-xs text-slate-500">Parsing & Vectorization</div>
                         </div>
                         <button
@@ -184,7 +184,7 @@ export const PlatformAdmin = () => {
                <Card className="p-6 border-l-4 border-l-slate-800">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                      <div>
-                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <h3 className="text-[17px] font-semibold text-slate-900 flex items-center gap-2">
                            <Key className="w-5 h-5 text-slate-700" /> Platform OAuth Credentials
                         </h3>
                         <p className="text-sm text-slate-500 mt-1">Configure your application's Client IDs and Secrets. Tenants will use these keys to authenticate their users.</p>
@@ -355,7 +355,7 @@ export const PlatformAdmin = () => {
                   <Card className="p-6">
                      <div className="flex justify-between items-center mb-6">
                         <div>
-                           <h3 className="text-lg font-bold text-slate-900">Token Consumption</h3>
+                           <h3 className="text-[17px] font-semibold text-slate-900">Token Consumption</h3>
                            <p className="text-sm text-slate-500">Real-time usage across all tenants (Last 24h).</p>
                         </div>
                         <div className="text-right">
@@ -428,7 +428,7 @@ export const PlatformAdmin = () => {
             <Card className="overflow-hidden">
                <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                     <h3 className="text-lg font-bold text-slate-900">Tenant Directory</h3>
+                     <h3 className="text-[17px] font-semibold text-slate-900">Tenant Directory</h3>
                      <p className="text-slate-500 text-sm">Manage companies and subscription tiers.</p>
                   </div>
                   <div className="relative">
@@ -564,19 +564,19 @@ export const PlatformAdmin = () => {
                      <div className="grid grid-cols-2 gap-4">
                         <div>
                            <label className="text-xs font-bold text-slate-400 uppercase">Plan Tier</label>
-                           <p className="text-lg font-bold text-slate-900 mt-1">{selectedTenant.plan}</p>
+                           <p className="text-[17px] font-semibold text-slate-900 mt-1">{selectedTenant.plan}</p>
                         </div>
                         <div>
                            <label className="text-xs font-bold text-slate-400 uppercase">Users</label>
-                           <p className="text-lg font-bold text-slate-900 mt-1">{selectedTenant.usersCount}</p>
+                           <p className="text-[17px] font-semibold text-slate-900 mt-1">{selectedTenant.usersCount}</p>
                         </div>
                         <div>
                            <label className="text-xs font-bold text-slate-400 uppercase">API Usage</label>
-                           <p className="text-lg font-bold text-slate-900 mt-1">{selectedTenant.apiUsage}</p>
+                           <p className="text-[17px] font-semibold text-slate-900 mt-1">{selectedTenant.apiUsage}</p>
                         </div>
                         <div>
                            <label className="text-xs font-bold text-slate-400 uppercase">Monthly Spend</label>
-                           <p className="text-lg font-bold text-slate-900 mt-1">${selectedTenant.spend.toLocaleString()}</p>
+                           <p className="text-[17px] font-semibold text-slate-900 mt-1">${selectedTenant.spend.toLocaleString()}</p>
                         </div>
                      </div>
 

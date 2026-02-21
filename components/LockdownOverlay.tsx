@@ -28,7 +28,7 @@ export const LockdownOverlay = () => {
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-200">
                         <Cpu className="w-5 h-5 text-slate-400" />
-                        <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Connection Severed to Gemini API</span>
+                        <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">AI Services Disconnected</span>
                     </div>
                     <p className="text-xs text-slate-400">Please contact your infrastructure team for more information.</p>
                 </div>

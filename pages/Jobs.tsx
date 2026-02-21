@@ -153,8 +153,8 @@ export const Jobs = () => {
          {/* Header */}
          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-               <h1 className="text-3xl font-bold text-slate-900">Jobs</h1>
-               <p className="text-slate-500 mt-1">Manage your open positions and track hiring progress.</p>
+               <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Jobs</h1>
+               <p className="text-[15px] text-slate-500 mt-1">Manage your open positions and track hiring progress.</p>
             </div>
             <button
                onClick={() => {
@@ -166,7 +166,7 @@ export const Jobs = () => {
                   setShowJobCreator(true);
                   setCreatorStep(1);
                }}
-               className="flex items-center justify-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 transition-colors shadow-sm shadow-brand-500/20"
+               className="flex items-center justify-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-[10px] font-medium text-[14px] hover:bg-brand-700 transition-colors shadow-sm shadow-brand-500/20"
             >
                <Plus className="w-5 h-5" />
                Create New Job
@@ -180,9 +180,9 @@ export const Jobs = () => {
                   <button
                      key={f}
                      onClick={() => setFilter(f as any)}
-                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${filter === f
-                        ? 'bg-slate-900 text-white shadow-md'
-                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'
+                     className={`px-4 py-2 rounded-[10px] text-[13px] font-medium transition-all duration-200 whitespace-nowrap ${filter === f
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300'
                         }`}
                   >
                      {f}
@@ -195,7 +195,7 @@ export const Jobs = () => {
                <input
                   type="text"
                   placeholder="Search by title or department..."
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200/60 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 text-[14px] transition-all"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                />
@@ -210,7 +210,7 @@ export const Jobs = () => {
 
                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
-                           <h3 className="text-lg font-bold text-slate-900 truncate group-hover:text-brand-600 transition-colors">{job.title}</h3>
+                           <h3 className="text-[17px] font-semibold text-slate-900 truncate group-hover:text-brand-600 transition-colors">{job.title}</h3>
                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(job.status)}`}>
                               {job.status}
                            </span>
@@ -240,8 +240,8 @@ export const Jobs = () => {
 
                      <div className="flex items-center gap-6 md:border-l md:border-slate-100 md:pl-6">
                         <div className="text-center min-w-[80px]">
-                           <div className="text-2xl font-bold text-slate-900">{getCandidateCount(job.id)}</div>
-                           <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Applicants</div>
+                           <div className="text-[22px] font-semibold tracking-tight text-slate-900">{getCandidateCount(job.id)}</div>
+                           <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Applicants</div>
                         </div>
 
                         <div className="flex items-center gap-2 relative">
@@ -359,7 +359,7 @@ export const Jobs = () => {
                      <div className="flex-1 p-8 overflow-y-auto">
                         {creatorStep === 1 && (
                            <div className="space-y-6 max-w-3xl">
-                              <h3 className="text-lg font-bold text-slate-900 mb-4">Role Basics</h3>
+                              <h3 className="text-[17px] font-semibold text-slate-900 mb-4">Role Basics</h3>
                               <div>
                                  <label className="block text-sm font-medium text-slate-700 mb-2">Job Title</label>
                                  <input

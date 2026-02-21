@@ -297,8 +297,8 @@ export const Onboarding = () => {
                     <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
                         <div className="max-w-xl mx-auto w-full">
                             <div className="mb-8">
-                                <h2 className="text-3xl font-bold text-slate-900 mb-2">{steps[currentStep].title}</h2>
-                                <p className="text-slate-500 text-lg">{steps[currentStep].desc}</p>
+                                <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">{steps[currentStep].title}</h2>
+                                <p className="text-[15px] text-slate-500">{steps[currentStep].desc}</p>
                             </div>
 
                             <div className="min-h-[320px]">

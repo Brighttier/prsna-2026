@@ -189,7 +189,7 @@ export const OfferPortal = () => {
 
                                 <div className="space-y-8 text-slate-800 leading-relaxed font-serif">
                                     <div className="border-b border-slate-100 pb-8 mb-8">
-                                        <h1 className="text-3xl font-bold text-slate-900 mb-2">Employment Offer Letter</h1>
+                                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">Employment Offer Letter</h1>
                                         <p className="text-slate-500 font-sans">{candidate?.offer?.sentAt ? new Date(candidate.offer.sentAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date pending'}</p>
                                     </div>
 

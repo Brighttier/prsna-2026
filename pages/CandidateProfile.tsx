@@ -434,11 +434,11 @@ const OfferConfirmationModal = ({ candidate, offer, onClose }: { candidate: any,
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-brand-600 uppercase">Sign-on Bonus</p>
-                                        <p className="text-lg font-bold text-slate-900">{offer.signOnBonus || 'None'}</p>
+                                        <p className="text-[17px] font-semibold text-slate-900">{offer.signOnBonus || 'None'}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-brand-600 uppercase">Target Start Date</p>
-                                        <p className="text-lg font-bold text-slate-900">{offer.startDate || 'TBD'}</p>
+                                        <p className="text-[17px] font-semibold text-slate-900">{offer.startDate || 'TBD'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -513,7 +513,7 @@ const DocusignModal = ({ candidate, offer, onClose, onComplete }: { candidate: a
                     {step === 1 ? (
                         <div className="space-y-6">
                             <div className="text-center">
-                                <h3 className="text-lg font-bold text-slate-900">Prepare Signing Envelope</h3>
+                                <h3 className="text-[17px] font-semibold text-slate-900">Prepare Signing Envelope</h3>
                                 <p className="text-sm text-slate-500 mt-1 text-balance">We are mapping fields from your generated offer letter to a DocuSign template.</p>
                             </div>
 
@@ -551,7 +551,7 @@ const DocusignModal = ({ candidate, offer, onClose, onComplete }: { candidate: a
                     ) : (
                         <div className="space-y-6 animate-fade-in">
                             <div className="text-center">
-                                <h3 className="text-lg font-bold text-slate-900 italic">Signature Fields Mapped</h3>
+                                <h3 className="text-[17px] font-semibold text-slate-900 italic">Signature Fields Mapped</h3>
                                 <p className="text-sm text-slate-500 mt-1">Ready to dispatch via DocuSign Connect.</p>
                             </div>
 
@@ -1517,7 +1517,7 @@ RecruiteAI`;
                             )}
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900">{candidate.name}</h1>
+                            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{candidate.name}</h1>
                             <div className="flex items-center gap-3 mt-2 text-slate-500 font-medium">
                                 <span>{candidate.role}</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
@@ -1759,7 +1759,7 @@ RecruiteAI`;
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-900 mb-2">AI Intelligence Report Not Generated</h3>
                                     <p className="text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
-                                        Generate a comprehensive deep-dive analysis based on the candidate's resume and job description using our Gemini 2.0 model.
+                                        Generate a comprehensive deep-dive analysis based on the candidate's resume and job description using our AI engine.
                                     </p>
                                     <button
                                         onClick={handleGenerateReport}
@@ -1814,7 +1814,7 @@ RecruiteAI`;
                                             </div>
                                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
                                                 <Cpu className="w-3.5 h-3.5" />
-                                                <span>Model: Gemini 2.0</span>
+                                                <span>AI-Powered Analysis</span>
                                             </div>
                                         </div>
                                     </Card>

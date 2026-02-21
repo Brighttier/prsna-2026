@@ -8,21 +8,21 @@ import { auth } from '../services/firebase';
 import { LogoutButton } from '../components/LogoutButton';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
-  <Card className="p-6">
+  <Card className="p-5">
     <div className="flex items-start justify-between">
       <div>
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <h3 className="text-2xl font-bold text-slate-900 mt-1">{value}</h3>
+        <p className="text-[13px] font-medium text-slate-500">{label}</p>
+        <h3 className="text-[22px] font-semibold text-slate-900 mt-0.5 tracking-tight">{value}</h3>
       </div>
-      <div className={`p-2 rounded-lg ${color}`}>
-        <Icon className="w-6 h-6 text-white" />
+      <div className={`p-2 rounded-[8px] ${color}`}>
+        <Icon className="w-5 h-5 text-white" strokeWidth={2} />
       </div>
     </div>
-    <div className="mt-4 flex items-center text-sm">
+    <div className="mt-3 flex items-center text-[13px]">
       {trend ? (
         <>
           <span className={`font-medium flex items-center ${trend.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}>
-            <TrendingUp className="w-4 h-4 mr-1" />
+            <TrendingUp className="w-3.5 h-3.5 mr-1" />
             {trend}
           </span>
           <span className="text-slate-400 ml-2">vs last month</span>
@@ -127,8 +127,8 @@ export const Dashboard = () => {
     <div className="space-y-8">
       <header className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1">Welcome back, {auth.currentUser?.displayName?.split(' ')[0] || 'Admin'}. Here's what's happening today.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="text-[15px] text-slate-500 mt-1">Welcome back, {auth.currentUser?.displayName?.split(' ')[0] || 'Admin'}. Here's what's happening today.</p>
         </div>
         <LogoutButton variant="ghost" className="mt-2" />
       </header>
@@ -145,8 +145,8 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="col-span-2 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Application Volume</h2>
-            <select className="text-sm border-none bg-slate-50 text-slate-600 rounded-md p-2">
+            <h2 className="text-[17px] font-semibold text-slate-900">Application Volume</h2>
+            <select className="text-[13px] border-none bg-slate-50/80 text-slate-500 rounded-[8px] p-2 font-medium">
               <option>Last 7 Days</option>
               <option>Last 30 Days</option>
             </select>
@@ -170,7 +170,7 @@ export const Dashboard = () => {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-6">Pipeline Status</h2>
+          <h2 className="text-[17px] font-semibold text-slate-900 mb-6">Pipeline Status</h2>
           <div className="space-y-6">
             {[
               { label: 'Applied', stages: ['Applied', 'New'], color: 'bg-slate-400' },
@@ -183,11 +183,11 @@ export const Dashboard = () => {
               const width = candidates.length > 0 ? `${(count / candidates.length) * 100}%` : '0%';
               return (
                 <div key={idx}>
-                  <div className="flex justify-between text-sm mb-2">
+                  <div className="flex justify-between text-[13px] mb-2">
                     <span className="font-medium text-slate-700">{item.label}</span>
-                    <span className="text-slate-500">{count} candidates</span>
+                    <span className="text-slate-400">{count} candidates</span>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width }}></div>
                   </div>
                 </div>
@@ -200,7 +200,7 @@ export const Dashboard = () => {
       {/* DocuSign Tracking Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <h2 className="text-[17px] font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-red-500" />
             Document Tracking Radar
           </h2>
@@ -275,15 +275,15 @@ export const Dashboard = () => {
         </div>
 
         <div>
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Recent HRIS Syncs</h2>
+          <h2 className="text-[17px] font-semibold text-slate-900 mb-4">Recent HRIS Syncs</h2>
           <Card className="overflow-hidden h-[335px] flex flex-col">
             <div className="flex-1 overflow-y-auto">
               <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
+                <thead className="bg-slate-50/60 border-b border-slate-100 sticky top-0 z-10">
                   <tr>
-                    <th className="px-6 py-4 font-semibold uppercase tracking-widest text-[10px]">Candidate</th>
-                    <th className="px-6 py-4 font-semibold uppercase tracking-widest text-[10px]">Status</th>
-                    <th className="px-6 py-4 font-semibold uppercase tracking-widest text-[10px] text-right">HRIS ID</th>
+                    <th className="px-6 py-3 font-semibold uppercase tracking-wider text-[11px] text-slate-400">Candidate</th>
+                    <th className="px-6 py-3 font-semibold uppercase tracking-wider text-[11px] text-slate-400">Status</th>
+                    <th className="px-6 py-3 font-semibold uppercase tracking-wider text-[11px] text-slate-400 text-right">HRIS ID</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

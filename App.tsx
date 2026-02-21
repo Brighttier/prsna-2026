@@ -139,9 +139,9 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f3f4f6]">
+    <div className="flex min-h-screen bg-[#f8f9fa]">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 ml-[240px] p-8">
         {children}
       </main>
     </div>

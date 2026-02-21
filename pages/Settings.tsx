@@ -27,17 +27,17 @@ const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => v
     ];
 
     return (
-        <div className="flex overflow-x-auto border-b border-slate-200 mb-8 no-scrollbar">
+        <div className="flex overflow-x-auto border-b border-slate-200/60 mb-8 no-scrollbar">
             {tabs.map((tab) => (
                 <button
                     key={tab.id}
                     onClick={() => onChange(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-4 font-medium text-sm transition-colors whitespace-nowrap border-b-2 ${active === tab.id
-                        ? 'border-brand-600 text-brand-600 bg-brand-50/50'
-                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    className={`flex items-center gap-2 px-5 py-3.5 font-medium text-[13px] transition-all duration-200 whitespace-nowrap border-b-2 ${active === tab.id
+                        ? 'border-brand-600 text-brand-600'
+                        : 'border-transparent text-slate-400 hover:text-slate-600'
                         }`}
                 >
-                    <tab.icon className="w-4 h-4" />
+                    <tab.icon className="w-4 h-4" strokeWidth={1.75} />
                     {tab.label}
                 </button>
             ))}
@@ -393,7 +393,7 @@ export const Settings = () => {
         <div className="max-w-[1600px] mx-auto animate-fade-in-up">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Settings</h1>
                     <p className="text-slate-500 mt-1">Configure your recruitment ecosystem.</p>
                 </div>
                 <button
@@ -837,7 +837,7 @@ export const Settings = () => {
                                 <Video className="w-6 h-6 text-indigo-600" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">Meeting Connectivity</h2>
+                                <h2 className="text-[17px] font-semibold text-slate-900">Meeting Connectivity</h2>
                                 <p className="text-slate-500 text-sm mt-1">Connect your calendar accounts to automatically generate interview links.</p>
                             </div>
                         </div>
@@ -912,7 +912,7 @@ export const Settings = () => {
                                     <span className="font-bold text-emerald-700 text-lg">Sage</span>
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <h2 className="text-[17px] font-semibold text-slate-900 flex items-center gap-2">
                                         Sage HR Integration
                                         <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">Active</span>
                                     </h2>
@@ -945,7 +945,7 @@ export const Settings = () => {
                                 <Code className="w-6 h-6 text-blue-600" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">Embeddable Widget</h2>
+                                <h2 className="text-[17px] font-semibold text-slate-900">Embeddable Widget</h2>
                                 <p className="text-slate-500 text-sm mt-1">Add your job board to any website (WordPress, Webflow, React) with one line of code.</p>
                             </div>
                         </div>
@@ -966,7 +966,7 @@ export const Settings = () => {
             {activeTab === 'persona' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Card className="p-6">
-                        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <h2 className="text-[17px] font-semibold text-slate-900 mb-6 flex items-center gap-2">
                             <Zap className="w-5 h-5 text-brand-600" /> Interview Dynamics
                         </h2>
 
@@ -1009,7 +1009,7 @@ export const Settings = () => {
                     </Card>
 
                     <Card className="p-6">
-                        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <h2 className="text-[17px] font-semibold text-slate-900 mb-6 flex items-center gap-2">
                             <Shield className="w-5 h-5 text-brand-600" /> Compliance & Safety
                         </h2>
                         <div className="space-y-4">
@@ -1039,7 +1039,7 @@ export const Settings = () => {
 
                     {/* Lumina Scripting Card */}
                     <Card className="col-span-1 md:col-span-2 p-6 border-l-4 border-l-brand-500">
-                        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <h2 className="text-[17px] font-semibold text-slate-900 mb-6 flex items-center gap-2">
                             <Sparkles className="w-5 h-5 text-brand-600" /> Lumina Interview Scripting
                         </h2>
 
@@ -1132,7 +1132,7 @@ export const Settings = () => {
                     </Card>
 
                     <Card className="col-span-1 md:col-span-2 p-6 border-l-4 border-l-purple-500">
-                        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <h2 className="text-[17px] font-semibold text-slate-900 mb-4 flex items-center gap-2">
                             <FileText className="w-5 h-5 text-purple-600" /> Automated Analysis Reporting
                         </h2>
                         <div className="flex items-center justify-between mb-6">
@@ -1353,7 +1353,7 @@ export const Settings = () => {
             {activeTab === 'team' && (
                 <Card>
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h2 className="text-lg font-bold text-slate-900">Team Members</h2>
+                        <h2 className="text-[17px] font-semibold text-slate-900">Team Members</h2>
                         <button
                             onClick={() => setShowInviteModal(true)}
                             className="text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
@@ -1448,7 +1448,7 @@ export const Settings = () => {
                                     {auth.currentUser?.displayName?.charAt(0) || 'U'}
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-900">{auth.currentUser?.displayName || 'User'}</h3>
+                                    <h3 className="text-[17px] font-semibold text-slate-900">{auth.currentUser?.displayName || 'User'}</h3>
                                     <p className="text-slate-500">{auth.currentUser?.email}</p>
                                     <span className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700">
                                         Owner
