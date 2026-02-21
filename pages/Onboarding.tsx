@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Check, ChevronRight, Building2, Users,
-    Palette, ArrowRight, Upload, Globe, Sparkles
+    Palette, ArrowRight, Upload, Globe, Sparkles, Copy, ExternalLink
 } from 'lucide-react';
 import { store } from '../services/store';
 
@@ -221,18 +221,29 @@ export const Onboarding = () => {
 
                         <div className="bg-slate-50 rounded-2xl p-6 text-left max-w-sm mx-auto border border-slate-100 mb-8">
                             <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <Globe className="w-4 h-4 text-emerald-600" /> Career Site Preview
+                                <Globe className="w-4 h-4 text-emerald-600" /> Your Career Page
                             </h4>
-                            <div className="space-y-3">
-                                <div className="h-2 w-1/3 bg-slate-200 rounded"></div>
-                                <div className="h-32 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div className="h-4 w-4 bg-emerald-500 rounded-full"></div>
-                                        <div className="h-2 w-12 bg-slate-100 rounded"></div>
-                                    </div>
-                                    <div className="h-4 w-3/4 bg-slate-100 rounded mb-2"></div>
-                                    <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
-                                </div>
+                            <p className="text-xs text-slate-500 mb-3">Share this link with candidates to view open positions.</p>
+                            <div className="bg-white rounded-lg border border-slate-200 p-3 flex items-center gap-2">
+                                <code className="flex-1 text-xs text-slate-600 font-mono truncate">
+                                    {window.location.origin}/#/career/{store.getState().orgId}
+                                </code>
+                                <button
+                                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/#/career/${store.getState().orgId}`)}
+                                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                    title="Copy link"
+                                >
+                                    <Copy className="w-3.5 h-3.5" />
+                                </button>
+                                <a
+                                    href={`${window.location.origin}/#/career/${store.getState().orgId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                    title="Preview"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
                             </div>
                         </div>
 
