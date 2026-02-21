@@ -3,12 +3,20 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
 import * as logger from "firebase-functions/logger";
 import { defineSecret } from "firebase-functions/params";
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { getAuth } from "firebase-admin/auth";
 
-initializeApp();
+// Lazy-init Firebase Admin to avoid blocking module load during deployment introspection
+let _app: App | null = null;
+function ensureApp(): App {
+    if (!_app) _app = initializeApp();
+    return _app;
+}
+function db() { ensureApp(); return getFirestore(); }
+function storage() { ensureApp(); return getStorage(); }
+function authAdmin() { ensureApp(); return getAuth(); }
 
 // Define Secrets (Best Practice: Use Google Secret Manager)
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
@@ -36,8 +44,7 @@ import { generateEmbedding, calculateCosineSimilarity } from './utils/embeddings
 async function getEmailTemplateOverride(orgId: string | undefined, emailType: string) {
     if (!orgId) return undefined;
     try {
-        const db = getFirestore();
-        const orgDoc = await db.collection('organizations').doc(orgId).get();
+                const orgDoc = await db().collection('organizations').doc(orgId).get();
         const data = orgDoc.data();
         return data?.settings?.emailTemplates?.[emailType] || undefined;
     } catch (e) {
@@ -192,7 +199,7 @@ export const screenResume = onCall(functionConfig as any, async (request) => {
         try {
             const urlObj = new URL(resumeText);
             const bucketName = urlObj.pathname.split('/b/')[1]?.split('/o/')[0];
-            const bucket = bucketName ? getStorage().bucket(bucketName) : getStorage().bucket();
+            const bucket = bucketName ? storage().bucket(bucketName) : storage().bucket();
             const pathWithMedia = urlObj.pathname.split('/o/')[1];
 
             if (pathWithMedia) {
@@ -268,14 +275,13 @@ export const onNewResumeUpload = onObjectFinalized({
     logger.info(`Processing Resume: Org=${orgId}, Candidate=${candidateId}`);
 
     try {
-        const db = getFirestore();
-
+        
         // 2. Fetch Org Settings for Auto-Reporting
-        const orgSnap = await db.collection('organizations').doc(orgId).get();
+        const orgSnap = await db().collection('organizations').doc(orgId).get();
         const settings = orgSnap.data()?.settings?.persona || { autoReportThreshold: 80, autoReportEnabled: true };
 
         // 3. Download File to Memory
-        const bucket = getStorage().bucket(fileBucket);
+        const bucket = storage().bucket(fileBucket);
         const [fileBuffer] = await bucket.file(filePath).download();
         logger.info(`Downloaded ${fileBuffer.length} bytes`);
 
@@ -288,14 +294,14 @@ export const onNewResumeUpload = onObjectFinalized({
 
         if (!resumeText || resumeText.length < 50) {
             logger.warn(`Insufficient text: ${resumeText.length} chars.`);
-            await db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId).update({
+            await db().collection('organizations').doc(orgId).collection('candidates').doc(candidateId).update({
                 resumeText: 'FAILED_TO_PARSE: Unreadable file.',
                 parsedAt: new Date().toISOString()
             });
             return;
         }
 
-        const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+        const candidateRef = db().collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
         const candidateSnap = await candidateRef.get();
         const candidateData = candidateSnap.data();
 
@@ -307,11 +313,11 @@ export const onNewResumeUpload = onObjectFinalized({
         // 5. Fetch Job Description
         let jobData = null;
         if (candidateData.jobId) {
-            const jobSnap = await db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId).get();
+            const jobSnap = await db().collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId).get();
             jobData = jobSnap.data();
         }
         if (!jobData && candidateData.role) {
-            const jobsSnap = await db.collection('organizations').doc(orgId).collection('jobs').where('title', '==', candidateData.role).limit(1).get();
+            const jobsSnap = await db().collection('organizations').doc(orgId).collection('jobs').where('title', '==', candidateData.role).limit(1).get();
             if (!jobsSnap.empty) jobData = jobsSnap.docs[0].data();
         }
 
@@ -361,7 +367,7 @@ export const onNewResumeUpload = onObjectFinalized({
 
                     if (jobEmbedding.length > 0 && candidateData.jobId) {
                         // Update Job Doc - do this in background to not block too long, but await for this flow
-                        await db.collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId).update({
+                        await db().collection('organizations').doc(orgId).collection('jobs').doc(candidateData.jobId).update({
                             embedding: jobEmbedding
                         });
                         jobData.embedding = jobEmbedding;
@@ -446,8 +452,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
     logger.info(`Generating report for candidate ${candidate.id}`);
 
     try {
-        const db = getFirestore();
-        let orgId = request.data.orgId;
+                let orgId = request.data.orgId;
 
         logger.info(`Report Request for Candidate: ${candidate.id}, Org: ${orgId}`);
 
@@ -475,7 +480,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
         // 1. If resumeText is missing, try to fetch the latest from DB
         if (!resumeText && orgId) {
             try {
-                const candidateSnap = await db.collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).get();
+                const candidateSnap = await db().collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).get();
                 const freshData = candidateSnap.data();
                 resumeText = freshData?.resumeText;
 
@@ -496,7 +501,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
 
                 // Extract bucket name (Handles: firebasestorage.googleapis.com/v0/b/BUCKET_NAME/o/...)
                 const bucketName = urlObj.pathname.split('/b/')[1]?.split('/o/')[0];
-                const bucket = bucketName ? getStorage().bucket(bucketName) : getStorage().bucket();
+                const bucket = bucketName ? storage().bucket(bucketName) : storage().bucket();
 
                 const pathWithMedia = urlObj.pathname.split('/o/')[1];
 
@@ -509,7 +514,7 @@ export const generateCandidateReport = onCall(functionConfig as any, async (requ
 
                     if (resumeText && orgId) {
                         logger.info(`Success! Parsed ${resumeText.length} chars. Caching to DB...`);
-                        await db.collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).update({
+                        await db().collection('organizations').doc(orgId).collection('candidates').doc(candidate.id).update({
                             resumeText: resumeText,
                             parsedAt: new Date().toISOString()
                         });
@@ -732,8 +737,7 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
     }
 
     try {
-        const db = getFirestore();
-        const genAI = await getGenAIClient();
+                const genAI = await getGenAIClient();
 
         let knowledgeBaseContent = "";
         let manualQuestions: any[] = [];
@@ -747,7 +751,7 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
                 : [job.screening, job.technical].filter(Boolean);
 
             for (const id of assessmentIds) {
-                const assessSnap = await db.collection('organizations').doc(orgId).collection('assessments').doc(id).get();
+                const assessSnap = await db().collection('organizations').doc(orgId).collection('assessments').doc(id).get();
                 if (assessSnap.exists) {
                     const data = assessSnap.data();
                     if (data?.sourceMode === 'knowledgeBase' && data?.knowledgeBase?.content) {
@@ -994,9 +998,8 @@ export const inviteTeamMember = onCall(functionConfig as any, async (request) =>
         throw new HttpsError('invalid-argument', 'Missing email, role, or orgId.');
     }
 
-    const auth = getAuth();
-    const db = getFirestore();
-    let uid;
+    const auth = authAdmin();
+        let uid;
     let isNewUser = false;
 
     try {
@@ -1026,7 +1029,7 @@ export const inviteTeamMember = onCall(functionConfig as any, async (request) =>
         // 4. Create/Update Invitation Record in Firestore
         // Use set with merge to avoiding duplicates if re-inviting
         const inviteId = btoa(email).replace(/=/g, ''); // Simple deterministic ID
-        await db.collection('organizations').doc(orgId).collection('invitations').doc(inviteId).set({
+        await db().collection('organizations').doc(orgId).collection('invitations').doc(inviteId).set({
             email,
             role,
             status: isNewUser ? 'pending_signup' : 'active',
@@ -1035,7 +1038,7 @@ export const inviteTeamMember = onCall(functionConfig as any, async (request) =>
         }, { merge: true });
 
         // 5. Add to Users collection for easier querying
-        await db.collection('users').doc(uid).set({
+        await db().collection('users').doc(uid).set({
             email,
             role,
             orgId,
@@ -1085,7 +1088,7 @@ export const requestPasswordReset = onCall(functionConfig as any, async (request
     }
 
     try {
-        const auth = getAuth();
+        const auth = authAdmin();
         const link = await auth.generatePasswordResetLink(email);
 
         if (resendApiKey.value()) {
@@ -1156,8 +1159,7 @@ export const sendAiInterviewInvite = onCall(functionConfig as any, async (reques
     try {
         // Save interview invite mapping doc for token-based access (Admin SDK bypasses rules)
         if (token && orgId && candidateId) {
-            const db = getFirestore();
-            await db.collection('interviewInvites').doc(token).set({
+                        await db().collection('interviewInvites').doc(token).set({
                 orgId,
                 candidateId,
                 assessmentId: assessmentId || null,
@@ -1306,8 +1308,7 @@ export const resolveInterviewToken = onCall(functionConfig as any, async (reques
     }
 
     try {
-        const db = getFirestore();
-        const inviteDoc = await db.collection('interviewInvites').doc(token).get();
+                const inviteDoc = await db().collection('interviewInvites').doc(token).get();
 
         if (!inviteDoc.exists) {
             throw new HttpsError('not-found', 'Invalid or expired interview link.');
@@ -1316,7 +1317,7 @@ export const resolveInterviewToken = onCall(functionConfig as any, async (reques
         const invite = inviteDoc.data()!;
 
         // Fetch the candidate doc to get the upcoming AI interview session
-        const candidateDoc = await db
+        const candidateDoc = await db()
             .collection('organizations')
             .doc(invite.orgId)
             .collection('candidates')
@@ -1332,14 +1333,14 @@ export const resolveInterviewToken = onCall(functionConfig as any, async (reques
         const session = interviews.find((i: any) => i.token === token && i.status === 'Upcoming');
 
         // Fetch org settings (persona, branding) for the interview room
-        const orgDoc = await db.collection('organizations').doc(invite.orgId).get();
+        const orgDoc = await db().collection('organizations').doc(invite.orgId).get();
         const orgData = orgDoc.exists ? orgDoc.data()! : {};
         const settings = orgData.settings || {};
 
         // Fetch job details if candidate has jobId
         let jobDetails = null;
         if (candidateData.jobId) {
-            const jobDoc = await db
+            const jobDoc = await db()
                 .collection('organizations')
                 .doc(invite.orgId)
                 .collection('jobs')
@@ -1382,8 +1383,7 @@ export const saveInterviewSession = onCall(functionConfig as any, async (request
     }
 
     try {
-        const db = getFirestore();
-        const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+                const candidateRef = db().collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
         const candidateDoc = await candidateRef.get();
 
         if (!candidateDoc.exists) {
@@ -1775,8 +1775,7 @@ export const createDocuSignEnvelope = onCall(docusignFunctionConfig as any, asyn
 
         // Update candidate offer in Firestore with DocuSign envelope ID
         if (orgId && candidateId && envelopeId) {
-            const db = getFirestore();
-            const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+                        const candidateRef = db().collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
             const candidateDoc = await candidateRef.get();
 
             if (candidateDoc.exists) {
@@ -1871,8 +1870,7 @@ export const checkDocuSignStatus = onCall(docusignFunctionConfig as any, async (
 
         // Update Firestore if orgId and candidateId provided
         if (orgId && candidateId) {
-            const db = getFirestore();
-            const candidateRef = db.collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
+                        const candidateRef = db().collection('organizations').doc(orgId).collection('candidates').doc(candidateId);
             const candidateDoc = await candidateRef.get();
 
             if (candidateDoc.exists) {
@@ -1897,8 +1895,7 @@ export const checkDocuSignStatus = onCall(docusignFunctionConfig as any, async (
                             // Download the combined (signed) PDF
                             const pdfBytes = await envelopesApi.getDocument(accountId, envelopeId, 'combined');
                             // Upload to Firebase Storage
-                            const storage = getStorage();
-                            const bucket = storage.bucket();
+                            const bucket = storage().bucket();
                             const filePath = `${orgId}/candidates/${candidateId}/signed_offer_${envelopeId}.pdf`;
                             const file = bucket.file(filePath);
                             await file.save(Buffer.from(pdfBytes as any), { contentType: 'application/pdf' });
@@ -1967,8 +1964,7 @@ export const docuSignWebhook = onRequest({
         logger.info(`DocuSign webhook received: envelope=${envelopeId}, status=${status}`);
 
         // Look up which candidate has this envelope
-        const db = getFirestore();
-        const orgsSnapshot = await db.collectionGroup('candidates')
+                const orgsSnapshot = await db().collectionGroup('candidates')
             .where('offer.docusignEnvelopeId', '==', envelopeId)
             .limit(1)
             .get();
@@ -2327,8 +2323,7 @@ exports.getTeamsMeetingArtifacts = onCall({
 
         // 3. Save artifacts to Firestore if orgId and candidateId are provided
         if (orgId && candidateId && (recordings.length > 0 || transcripts.length > 0)) {
-            const db = getFirestore();
-            await db.collection('organizations').doc(orgId)
+                        await db().collection('organizations').doc(orgId)
                 .collection('candidates').doc(candidateId)
                 .update({
                     'teamsMeetingArtifacts': {
@@ -2363,10 +2358,9 @@ export const resolvePortalToken = onCall({ region: 'us-central1' }, async (reque
         throw new HttpsError('invalid-argument', 'Token is required.');
     }
 
-    const db = getFirestore();
-
+    
     // Search across all orgs for a candidate with this offer token
-    const snapshot = await db.collectionGroup('candidates')
+    const snapshot = await db().collectionGroup('candidates')
         .where('offer.token', '==', token)
         .limit(1)
         .get();
@@ -2385,7 +2379,7 @@ export const resolvePortalToken = onCall({ region: 'us-central1' }, async (reque
     // Fetch org branding
     let branding: any = {};
     if (orgId) {
-        const orgDoc = await db.collection('organizations').doc(orgId).get();
+        const orgDoc = await db().collection('organizations').doc(orgId).get();
         if (orgDoc.exists) {
             const orgData = orgDoc.data();
             branding = orgData?.branding || {};
