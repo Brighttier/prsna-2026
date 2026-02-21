@@ -17,7 +17,6 @@ const Tabs = ({ active, onChange }: { active: string, onChange: (t: string) => v
     const tabs = [
         { id: 'general', label: 'General', icon: SettingsIcon },
         { id: 'branding', label: 'Career Site', icon: LayoutTemplate },
-        { id: 'integrations', label: 'Integrations', icon: Code },
         { id: 'persona', label: 'AI Persona', icon: Zap },
         { id: 'library', label: 'Assessments', icon: Library },
         { id: 'onboarding', label: 'Onboarding', icon: ClipboardList },
@@ -100,37 +99,6 @@ export const Settings = () => {
     const [heroSubhead, setHeroSubhead] = useState(branding.heroSubhead || 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.');
     const [coverStyle, setCoverStyle] = useState<'gradient' | 'minimal'>(branding.coverStyle || 'gradient');
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
-
-    // --- INTEGRATION STATE ---
-    const [sageToken, setSageToken] = useState('sage_live_89234789234...');
-    const [googleConnected, setGoogleConnected] = useState(false);
-    const [microsoftConnected, setMicrosoftConnected] = useState(false);
-    const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-    const [isConnectingMicrosoft, setIsConnectingMicrosoft] = useState(false);
-    const [configOpen, setConfigOpen] = useState<'google' | 'microsoft' | null>(null);
-
-    const handleConnectGoogle = () => {
-        setIsConnectingGoogle(true);
-        // Simulate OAuth Flow
-        setTimeout(() => {
-            setGoogleConnected(true);
-            setIsConnectingGoogle(false);
-        }, 1500);
-    };
-
-    const handleConnectMicrosoft = () => {
-        setIsConnectingMicrosoft(true);
-        // Simulate OAuth Flow
-        setTimeout(() => {
-            setMicrosoftConnected(true);
-            setIsConnectingMicrosoft(false);
-        }, 1500);
-    };
-
-    const handleDisconnect = (platform: 'google' | 'microsoft') => {
-        if (platform === 'google') setGoogleConnected(false);
-        if (platform === 'microsoft') setMicrosoftConnected(false);
-    };
 
     // --- PERSONA STATE ---
     const [intensity, setIntensity] = useState(persona?.intensity || 30);
@@ -600,6 +568,26 @@ export const Settings = () => {
                             </div>
                         </Card>
 
+                        {/* Embeddable Widget */}
+                        <Card className="p-5">
+                            <div className="flex items-center gap-2 mb-3 text-slate-900 font-bold">
+                                <Code className="w-4 h-4 text-slate-400" /> Embeddable Widget
+                            </div>
+                            <p className="text-xs text-slate-500 mb-3">Add your career page to any website with one line of code.</p>
+                            <div className="bg-slate-900 rounded-xl p-4 relative group">
+                                <code className="text-green-400 text-xs font-mono break-all">
+                                    &lt;iframe src="{window.location.origin}/#/career/{orgId || auth.currentUser?.uid}" width="100%" height="800" frameBorder="0"&gt;&lt;/iframe&gt;
+                                </code>
+                                <button
+                                    onClick={() => navigator.clipboard.writeText(`<iframe src="${window.location.origin}/#/career/${orgId || auth.currentUser?.uid}" width="100%" height="800" frameBorder="0"></iframe>`)}
+                                    className="absolute top-2 right-2 p-2 bg-slate-800 text-slate-400 rounded hover:text-white hover:bg-slate-700 transition-colors"
+                                    title="Copy Code"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </Card>
+
                         {/* Visual Style */}
                         <Card className="p-5">
                             <div className="flex items-center gap-2 mb-4 text-slate-900 font-bold">
@@ -828,140 +816,6 @@ export const Settings = () => {
                 </div>
             )}
 
-            {/* --- INTEGRATIONS TAB --- */}
-            {activeTab === 'integrations' && (
-                <div className="space-y-6">
-                    <Card className="p-6">
-                        <div className="flex gap-4 mb-6">
-                            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                <Video className="w-6 h-6 text-indigo-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-[17px] font-semibold text-slate-900">Meeting Connectivity</h2>
-                                <p className="text-slate-500 text-sm mt-1">Connect your calendar accounts to automatically generate interview links.</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {/* Google Meet */}
-                            <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-white">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
-                                        <Globe className="w-5 h-5 text-red-500" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-slate-900 text-sm">Google Workspace</h3>
-                                            {googleConnected && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200">Connected</span>}
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-0.5">Google Meet, Calendar & Gmail API (OAuth 2.0)</p>
-                                    </div>
-                                </div>
-                                {googleConnected ? (
-                                    <button onClick={() => handleDisconnect('google')} className="text-sm text-red-600 font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
-                                        Disconnect
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleConnectGoogle}
-                                        disabled={isConnectingGoogle}
-                                        className="text-sm bg-white border border-slate-200 text-slate-900 font-medium px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
-                                    >
-                                        {isConnectingGoogle ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                                        Connect Account
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Microsoft Teams */}
-                            <div className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-white">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center">
-                                        <div className="text-blue-600 font-black text-sm">T</div>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-slate-900 text-sm">Microsoft 365 (Teams & Outlook)</h3>
-                                            {microsoftConnected && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold border border-emerald-200">Connected</span>}
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-0.5">Outlook Calendar, Mail & Teams API (Graph OAuth 2.0)</p>
-                                    </div>
-                                </div>
-                                {microsoftConnected ? (
-                                    <button onClick={() => handleDisconnect('microsoft')} className="text-sm text-red-600 font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
-                                        Disconnect
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleConnectMicrosoft}
-                                        disabled={isConnectingMicrosoft}
-                                        className="text-sm bg-white border border-slate-200 text-slate-900 font-medium px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
-                                    >
-                                        {isConnectingMicrosoft ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                                        Connect Account
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6 border-l-4 border-l-emerald-500">
-                        <div className="flex items-start justify-between">
-                            <div className="flex gap-4">
-                                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <span className="font-bold text-emerald-700 text-lg">Sage</span>
-                                </div>
-                                <div>
-                                    <h2 className="text-[17px] font-semibold text-slate-900 flex items-center gap-2">
-                                        Sage HR Integration
-                                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">Active</span>
-                                    </h2>
-                                    <p className="text-slate-500 text-sm mt-1">Automatically sync "Hired" candidates and export interview transcripts.</p>
-                                </div>
-                            </div>
-                            <button className="text-sm text-red-600 font-medium hover:underline">Disconnect</button>
-                        </div>
-
-                        <div className="mt-6 pt-6 border-t border-slate-100">
-                            <label className="block text-sm font-medium text-slate-700 mb-2">API Token</label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                                    <input
-                                        type="password"
-                                        value={sageToken}
-                                        onChange={(e) => setSageToken(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-mono text-sm"
-                                    />
-                                </div>
-                                <button className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-50">Test</button>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6">
-                        <div className="flex gap-4 mb-6">
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <Code className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-[17px] font-semibold text-slate-900">Embeddable Widget</h2>
-                                <p className="text-slate-500 text-sm mt-1">Add your job board to any website (WordPress, Webflow, React) with one line of code.</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-900 rounded-xl p-4 relative group">
-                            <code className="text-green-400 text-sm font-mono break-all">
-                                &lt;script src="https://cdn.recruite.ai/widget/v2/loader.js" data-company-id="acme-corp-829"&gt;&lt;/script&gt;
-                            </code>
-                            <button className="absolute top-2 right-2 p-2 bg-slate-800 text-slate-400 rounded hover:text-white hover:bg-slate-700 transition-colors" title="Copy Code">
-                                <Copy className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </Card>
-                </div>
-            )}
-
             {/* --- AI PERSONA TAB --- */}
             {activeTab === 'persona' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1004,35 +858,6 @@ export const Settings = () => {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-6">
-                        <h2 className="text-[17px] font-semibold text-slate-900 mb-6 flex items-center gap-2">
-                            <Shield className="w-5 h-5 text-brand-600" /> Compliance & Safety
-                        </h2>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
-                                <div>
-                                    <div className="font-medium text-slate-900 text-sm">Bias Masking</div>
-                                    <div className="text-xs text-slate-500">Hide names/photos during initial screening</div>
-                                </div>
-                                <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
-                            </div>
-                            <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
-                                <div>
-                                    <div className="font-medium text-slate-900 text-sm">GDPR Data Retention</div>
-                                    <div className="text-xs text-slate-500">Auto-delete video after 90 days</div>
-                                </div>
-                                <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
-                            </div>
-                            <div className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
-                                <div>
-                                    <div className="font-medium text-slate-900 text-sm">Transcript Logging</div>
-                                    <div className="text-xs text-slate-500">Store text logs for audit trails</div>
-                                </div>
-                                <div className="w-11 h-6 bg-brand-600 rounded-full relative cursor-pointer"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
                             </div>
                         </div>
                     </Card>

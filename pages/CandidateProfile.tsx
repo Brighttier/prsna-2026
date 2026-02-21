@@ -18,7 +18,7 @@ import { generateCandidateReport } from '../services/ai';
 // --- MODALS (Copied for functionality in full page) ---
 
 const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, onClose: () => void, onScheduled: (session: InterviewSession) => void }) => {
-    const [mode, setMode] = useState<'AI' | 'Face-to-Face'>('AI');
+    const [mode, setMode] = useState<'AI' | 'Schedule External'>('AI');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [time, setTime] = useState('10:00');
     const [timezone, setTimezone] = useState('Asia/Kolkata');
@@ -44,7 +44,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
         try {
             let meetLink: string | undefined;
 
-            if (mode === 'Face-to-Face' && includeMeet) {
+            if (mode === 'Schedule External' && includeMeet) {
                 if (platform === 'Google Meet') {
                     // Use real Google Meet Cloud Function
                     try {
@@ -94,7 +94,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                 id: crypto.randomUUID().substring(0, 9),
                 date: mode === 'AI' ? 'Immediate' : new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 time: mode === 'AI' ? 'Anytime' : time,
-                timezone: mode === 'Face-to-Face' ? timezone : undefined,
+                timezone: mode === 'Schedule External' ? timezone : undefined,
                 expiryDate: mode === 'AI' ? expiryDate.toLocaleDateString() : undefined,
                 assessmentId: mode === 'AI' ? selectedAssessmentId : undefined,
                 token: interviewToken,
@@ -102,7 +102,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                 type: mode === 'AI' ? 'Lumina AI Interview' : type,
                 status: 'Upcoming',
                 meetLink: meetLink,
-                platform: mode === 'Face-to-Face' && includeMeet ? platform : undefined
+                platform: mode === 'Schedule External' && includeMeet ? platform : undefined
             };
 
             if (mode === 'AI' && interviewToken) {
@@ -144,10 +144,10 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                             <BrainCircuit className="w-4 h-4" /> Lumina AI
                         </button>
                         <button
-                            onClick={() => setMode('Face-to-Face')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'Face-to-Face' ? 'bg-brand-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            onClick={() => setMode('Schedule External')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'Schedule External' ? 'bg-brand-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                         >
-                            <Users className="w-4 h-4" /> Face-to-Face
+                            <Users className="w-4 h-4" /> Schedule External
                         </button>
                     </div>
                 </div>
@@ -284,7 +284,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
                         ) : (
                             <>
                                 <Send className="w-6 h-6" />
-                                <span>{mode === 'AI' ? 'Send AI Interview Link' : 'Confirm Face-to-Face'}</span>
+                                <span>{mode === 'AI' ? 'Send AI Interview Link' : 'Schedule & Send Invite'}</span>
                             </>
                         )}
                     </button>
@@ -2009,7 +2009,7 @@ Presona Recruit`;
                                         <div className="absolute top-0 right-0 p-4 flex gap-2">
                                             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${interview.mode === 'AI' ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                                                 {interview.mode === 'AI' ? <BrainCircuit className="w-3 h-3" /> : <Users className="w-3 h-3" />}
-                                                {interview.mode === 'AI' ? 'AI Assistant' : 'Face-to-Face'}
+                                                {interview.mode === 'AI' ? 'AI Assistant' : 'Schedule External'}
                                             </div>
                                             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${interview.status === 'Upcoming' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                                                 interview.sentiment === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :

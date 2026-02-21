@@ -119,9 +119,6 @@ export const ResumeScreener = () => {
                   <div className="mb-4">
                      <div className="flex items-center justify-between mb-2">
                         <label className="block text-sm font-medium text-slate-700">Resume Content</label>
-                        <div className="flex items-center gap-2">
-                           <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">Bias Masking: ON</span>
-                        </div>
                      </div>
                      <textarea
                         className="w-full h-64 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none resize-none text-sm font-mono"

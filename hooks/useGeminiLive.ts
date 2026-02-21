@@ -2,14 +2,22 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveServerMessage } from "@google/genai";
 import { createPcmBlob, convertBlobToBase64, decodeAudioData } from '../services/geminiService';
 
+const VOICE_MAP: Record<string, string> = {
+  'Kore (Neutral)': 'Kore',
+  'Fenrir (Deep)': 'Fenrir',
+  'Puck (Energetic)': 'Puck',
+  'Aoede (Soft)': 'Aoede',
+};
+
 interface UseGeminiLiveProps {
   systemInstruction?: string;
+  voice?: string;
   onModelAudio?: () => void;
   onTurnComplete?: () => void;
   existingStream?: MediaStream | null;
 }
 
-export const useGeminiLive = ({ systemInstruction, onModelAudio, onTurnComplete, existingStream }: UseGeminiLiveProps) => {
+export const useGeminiLive = ({ systemInstruction, voice, onModelAudio, onTurnComplete, existingStream }: UseGeminiLiveProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,11 +67,13 @@ export const useGeminiLive = ({ systemInstruction, onModelAudio, onTurnComplete,
       const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
+      const voiceName = voice ? VOICE_MAP[voice] || voice : undefined;
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: systemInstruction || "You are a helpful assistant.",
+          ...(voiceName && { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } }),
         },
         callbacks: {
           onopen: () => {

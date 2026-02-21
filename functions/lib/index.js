@@ -802,6 +802,7 @@ exports.startInterviewSession = (0, https_1.onCall)(functionConfig, async (reque
         const introduction = persona?.introduction || `Welcome ${candidate.name} and asking them to introduce themselves.`;
         const outro = persona?.outro || "Thank you for your time today. Our team will review the session and get back to you soon!";
         const timeLimit = persona?.interviewTimeLimit || 30;
+        const voice = persona?.voice || 'Kore (Neutral)';
         const hasManualQuestions = manualQuestions.length > 0;
         const systemInstruction = `
         You are Lumina, a professional recruiter for ${job.department || 'the team'} at ${job.company || 'the company'}.
@@ -878,7 +879,8 @@ exports.startInterviewSession = (0, https_1.onCall)(functionConfig, async (reque
         return {
             sessionId: `sess_${Date.now()}`,
             systemInstruction: systemInstruction.trim(),
-            questions: questions
+            questions: questions,
+            voice: voice
         };
     }
     catch (error) {

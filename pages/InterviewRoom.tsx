@@ -63,6 +63,7 @@ export const InterviewRoom = () => {
    });
 
    const [systemInstruction, setSystemInstruction] = useState<string>('');
+   const [personaVoice, setPersonaVoice] = useState<string>('');
    const [sessionReady, setSessionReady] = useState(false);
    const [sessionError, setSessionError] = useState<string | null>(null);
    const [isProcessing, setIsProcessing] = useState(false);
@@ -106,6 +107,7 @@ export const InterviewRoom = () => {
 
             startInterviewSession(candidate, jobDetails as any, persona, orgId, assessmentId).then(data => {
                setSystemInstruction(data.systemInstruction);
+               setPersonaVoice(data.voice || persona?.voice || '');
                setSessionReady(true);
             }).catch(err => {
                console.error("Failed to init Lumina session:", err);
@@ -142,6 +144,7 @@ export const InterviewRoom = () => {
 
    const { isConnected, isConnecting, error, connect, disconnect, sendVideoFrame, sendContent } = useGeminiLive({
       systemInstruction: systemInstruction || "You are a helpful assistant.",
+      voice: personaVoice,
       existingStream: mediaStream,
       onModelAudio: () => {
          setIsAiSpeaking(true);

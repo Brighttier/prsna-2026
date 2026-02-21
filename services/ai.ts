@@ -103,6 +103,7 @@ export const analyzeInterview = async (transcript: any[], jobTitle: string): Pro
 
 interface StartSessionResponse {
     systemInstruction: string;
+    voice?: string;
 }
 
 export const startInterviewSession = async (candidate: ExtendedCandidate, job: Job, persona?: any, orgId?: string, assessmentId?: string): Promise<StartSessionResponse> => {
