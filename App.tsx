@@ -17,6 +17,7 @@ import { Landing } from './pages/Landing';
 import { Onboarding } from './pages/Onboarding';
 import { OnboardingPortal } from './pages/OnboardingPortal';
 import { PublicCareerPage } from './pages/PublicCareerPage';
+import { AISearch } from './pages/AISearch';
 import { DynamicBranding } from './components/DynamicBranding';
 import { LockdownOverlay } from './components/LockdownOverlay';
 import { detectSubdomain, resolveSubdomainToOrgId } from './services/subdomain';
@@ -170,6 +171,7 @@ export default function App() {
           <Route path="/candidates" element={<Candidates />} />
           <Route path="/candidates/:id" element={<CandidateProfile />} />
           <Route path="/resume-screener" element={<ResumeScreener />} />
+          <Route path="/ai-search" element={<AISearch />} />
           <Route path="/interview-lobby" element={<InterviewLobby />} />
           <Route path="/interview-invite/:token" element={<InterviewLobby />} />
           <Route path="/interview/room" element={<InterviewRoom />} />

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Briefcase, Users, FileText, Video, BarChart2, Settings, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, FileText, Video, BarChart2, Settings, ShieldAlert, Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { store } from '../services/store';
@@ -52,6 +52,7 @@ export const Sidebar = () => {
 
         <div className="px-3 mt-6 mb-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tools</div>
         <NavItem to="/resume-screener" icon={FileText} label="AI Gatekeeper" active={p === '/resume-screener'} />
+        <NavItem to="/ai-search" icon={Sparkles} label="AI Search" active={p === '/ai-search'} />
         <NavItem to="/interview-lobby" icon={Video} label="Lumina Interview" active={p.startsWith('/interview')} />
 
         <div className="px-3 mt-6 mb-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Admin</div>

@@ -2402,3 +2402,91 @@ export const resolvePortalToken = onCall({ region: 'us-central1' }, async (reque
     };
 });
 
+// ═══════════════════════════════════════════════════════════
+//  AI SEARCH — Semantic RAG search across candidate profiles
+// ═══════════════════════════════════════════════════════════
+
+export const aiSearchCandidates = onCall(
+    { secrets: [geminiApiKey], cors: true, region: "us-central1", memory: "512MiB" as const, timeoutSeconds: 120 },
+    async (request) => {
+        const { query, orgId } = request.data;
+
+        if (!query || typeof query !== 'string' || query.trim().length < 2) {
+            throw new HttpsError('invalid-argument', 'Search query must be at least 2 characters.');
+        }
+        if (!orgId) {
+            throw new HttpsError('invalid-argument', 'Missing orgId.');
+        }
+
+        logger.info(`[AI Search] Query: "${query}" for org: ${orgId}`);
+
+        const apiKey = geminiApiKey.value();
+
+        // 1. Embed the search query
+        const queryEmbedding = await generateEmbedding(apiKey, query);
+        if (!queryEmbedding || queryEmbedding.length === 0) {
+            throw new HttpsError('internal', 'Failed to generate embedding for search query.');
+        }
+
+        // 2. Fetch all candidates with embeddings for this org
+        const candidatesSnap = await db()
+            .collection('organizations').doc(orgId)
+            .collection('candidates')
+            .get();
+
+        const scoredCandidates: any[] = [];
+
+        for (const doc of candidatesSnap.docs) {
+            const data = doc.data();
+            if (!data.embedding || data.embedding.length === 0) continue;
+
+            const similarity = calculateCosineSimilarity(queryEmbedding, data.embedding);
+            scoredCandidates.push({
+                id: doc.id,
+                name: data.name || '',
+                email: data.email || '',
+                role: data.role || '',
+                score: data.score || 0,
+                matchScore: Math.round(similarity * 100),
+                skills: data.skills || [],
+                location: data.location || '',
+                stage: data.stage || 'Applied',
+                summary: data.summary || '',
+                jobId: data.jobId || '',
+                experience: (data.experience || []).slice(0, 2).map((e: any) => `${e.role} at ${e.company}`),
+            });
+        }
+
+        // 3. Sort by similarity and take top 20
+        scoredCandidates.sort((a, b) => b.matchScore - a.matchScore);
+        const topResults = scoredCandidates.slice(0, 20);
+
+        if (topResults.length === 0) {
+            return { results: [], summary: 'No candidates with processed profiles found. Upload and screen resumes first to enable AI Search.' };
+        }
+
+        // 4. Use Gemini to generate a natural language summary
+        let summary = '';
+        try {
+            const genAI = await getGenAIClient();
+            const candidateContext = topResults.slice(0, 10).map((c, i) =>
+                `${i + 1}. ${c.name} — ${c.role} | Skills: ${c.skills.join(', ')} | Location: ${c.location} | Match: ${c.matchScore}% | Summary: ${c.summary?.substring(0, 200) || 'N/A'}`
+            ).join('\n');
+
+            const result = await genAI.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: [{
+                    parts: [{ text: `You are a recruitment AI assistant. A recruiter searched for: "${query}"\n\nHere are the top matching candidates from their database:\n${candidateContext}\n\nProvide a brief 2-3 sentence summary of the search results. Highlight which candidates are the strongest matches and why. Be specific about skills and experience that match the query. Keep it concise and actionable.` }]
+                }],
+            });
+
+            summary = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } catch (err) {
+            logger.warn('[AI Search] Summary generation failed, returning results without summary', err);
+            summary = `Found ${topResults.length} candidates matching "${query}".`;
+        }
+
+        return { results: topResults, summary };
+    }
+);
+

@@ -116,6 +116,17 @@ export const startInterviewSession = async (candidate: ExtendedCandidate, job: J
     }
 };
 
+export const aiSearchCandidates = async (query: string, orgId: string) => {
+    try {
+        const searchFn = httpsCallable<any, any>(functions, 'aiSearchCandidates');
+        const result = await searchFn({ query, orgId });
+        return result.data;
+    } catch (error) {
+        console.error("AI Search Failed:", error);
+        throw error;
+    }
+};
+
 export const generateJobDescription = async (title: string, department?: string, location?: string) => {
     try {
         const genFn = httpsCallable<any, { description: string }>(functions, 'generateJobDescription');
