@@ -1,6 +1,7 @@
 
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp, App } from "firebase-admin/app";
@@ -74,6 +75,44 @@ const getGenAIClient = async () => {
     const { GoogleGenAI } = await import("@google/genai");
     return new GoogleGenAI({ apiKey });
 };
+
+/**
+ * SET ORG CUSTOM CLAIM
+ *
+ * Sets the orgId as a custom claim on the user's Firebase Auth token.
+ * This enables Firestore/Storage rules to enforce org-level data isolation.
+ * Called after signup (org creation) and after team invite acceptance.
+ */
+export const setOrgClaim = onCall({ cors: true, region: "us-central1" }, async (request) => {
+    const { orgId } = request.data;
+    const uid = request.auth?.uid;
+
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'Must be authenticated.');
+    }
+    if (!orgId) {
+        throw new HttpsError('invalid-argument', 'Missing orgId.');
+    }
+
+    // Verify the user actually belongs to this org (check user doc or org ownership)
+    const userDoc = await db().collection('users').doc(uid).get();
+    const userData = userDoc.data();
+
+    if (!userData) {
+        throw new HttpsError('not-found', 'User profile not found.');
+    }
+
+    // Allow if: user's orgId matches, OR user is the org owner
+    if (userData.orgId !== orgId) {
+        const orgDoc = await db().collection('organizations').doc(orgId).get();
+        if (!orgDoc.exists || orgDoc.data()?.ownerId !== uid) {
+            throw new HttpsError('permission-denied', 'User does not belong to this organization.');
+        }
+    }
+
+    await authAdmin().setCustomUserClaims(uid, { orgId });
+    return { success: true };
+});
 
 // --- HELPER: Extract text from any document using Gemini multimodal ---
 const MIME_MAP: Record<string, string> = {
@@ -645,9 +684,8 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
 
         PART 1 — PERFORMANCE ANALYSIS:
         1. Calculate an overall score (0-10) based on quality of answers, depth, relevance, and communication.
-        2. Determine sentiment (Positive/Neutral/Negative).
-        3. Write a concise executive summary.
-        4. Extract key highlights (positive signals, red flags, insights) with approximate timestamps.
+        2. Write a concise executive summary.
+        3. Extract key highlights (positive signals, red flags, insights) with approximate timestamps.
 
         PART 2 — PROCTORING ANALYSIS (CRITICAL):
         Combine evidence from ALL sources to build a comprehensive integrity report:
@@ -656,7 +694,6 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
 
         SOURCE B — TRANSCRIPT ANALYSIS: Independently analyze the transcript for:
         - eye_gaze: Interviewer mentioning candidate looking away, seeming distracted, not making eye contact
-        - language: Any non-English text in candidate responses (Hindi, Spanish, etc.), language switching, code-mixing
         - environment: Any mention of background issues, other people, noise, unprofessional setting
         - behavior: Suspicious pauses followed by unusually polished answers, sudden vocabulary shifts, signs of reading/typing
         - third_party: Other voices, whispering, someone coaching the candidate
@@ -676,7 +713,6 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
         OUTPUT JSON (strict schema):
         {
             "score": 7.5,
-            "sentiment": "Positive",
             "summary": "Executive summary...",
             "highlights": [
                 { "timestamp": "2:30", "type": "Positive", "text": "Strong answer about system design" },
@@ -690,12 +726,6 @@ export const analyzeInterview = onCall(functionConfig as any, async (request) =>
                         "category": "eye_gaze",
                         "severity": "high",
                         "description": "Candidate repeatedly looked to the right of the screen for ~10 seconds, eyes appeared to scan text"
-                    },
-                    {
-                        "timestamp": "5:15",
-                        "category": "language",
-                        "severity": "medium",
-                        "description": "Candidate switched to Hindi mid-sentence for approximately 30 seconds"
                     },
                     {
                         "timestamp": "0:30",
@@ -880,11 +910,6 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
         - Candidate looking at their phone or a secondary device
         - Prolonged gaze away from camera
 
-        CATEGORY: language
-        - Candidate switching to a language other than English (e.g. Hindi, Spanish, etc.)
-        - Candidate using mixed languages (code-switching)
-        - Note the non-English language used
-
         CATEGORY: environment
         - Unprofessional background (bedroom, bed, messy room, public place)
         - Other people visible in frame at any point
@@ -909,10 +934,10 @@ export const startInterviewSession = onCall(functionConfig as any, async (reques
         3. IMMEDIATELY AFTER your outro message, you MUST send one final message that is EXACTLY a JSON block wrapped in [PROCTOR_LOG] tags. This is MANDATORY even if everything was clean.
 
         Format:
-        [PROCTOR_LOG]{"observations":[{"minute":3,"category":"eye_gaze","severity":"high","description":"Candidate looked away from screen to the right for ~10 seconds, eyes appeared to be reading something"},{"minute":5,"category":"language","severity":"medium","description":"Candidate switched to Hindi for approximately 30 seconds before returning to English"}]}[/PROCTOR_LOG]
+        [PROCTOR_LOG]{"observations":[{"minute":3,"category":"eye_gaze","severity":"high","description":"Candidate looked away from screen to the right for ~10 seconds, eyes appeared to be reading something"}]}[/PROCTOR_LOG]
 
         - "minute" = approximate minute mark in the interview when it happened
-        - "category" = one of: eye_gaze, language, environment, behavior, third_party
+        - "category" = one of: eye_gaze, environment, behavior, third_party
         - "severity" = "low" (minor/brief), "medium" (notable), "high" (serious concern)
         - "description" = specific factual description of what you observed
 
@@ -1938,7 +1963,6 @@ export const checkDocuSignStatus = onCall(docusignFunctionConfig as any, async (
  *   URL: https://us-central1-{PROJECT_ID}.cloudfunctions.net/docuSignWebhook
  *   Events: Envelope Sent, Delivered, Completed, Declined, Voided
  */
-import { onRequest } from "firebase-functions/v2/https";
 
 export const docuSignWebhook = onRequest({
     cors: true,
@@ -2399,6 +2423,7 @@ export const resolvePortalToken = onCall({ region: 'us-central1' }, async (reque
             companyName: branding.companyName || 'Presona Recruit',
             primaryColor: branding.primaryColor || '#16a34a',
             logoUrl: branding.logoUrl || '',
+            contactEmail: branding.contactEmail || '',
         },
         orgId,
     };
@@ -2578,4 +2603,62 @@ export const deleteTenantData = onCall(
         }
     }
 );
+
+/**
+ * SCHEDULED: AUTO-DELETE EXPIRED REJECTED CANDIDATES
+ *
+ * Runs daily. For each org with a data retention policy, deletes rejected candidates
+ * whose data has exceeded the retention period. Cascading delete: Storage files + Firestore doc.
+ */
+export const scheduledCandidateCleanup = onSchedule({
+    schedule: "every 24 hours",
+    region: "us-central1",
+    timeoutSeconds: 540,
+    memory: "512MiB" as const,
+}, async () => {
+    const firestore = db();
+    const bucket = storage().bucket();
+
+    // Get all organizations
+    const orgsSnap = await firestore.collection('organizations').get();
+
+    for (const orgDoc of orgsSnap.docs) {
+        const orgData = orgDoc.data();
+        const retentionMonths = orgData?.settings?.dataRetention?.rejectedMonths;
+
+        // Skip orgs without a retention policy (0 or undefined = never)
+        if (!retentionMonths || retentionMonths <= 0) continue;
+
+        const cutoffDate = new Date();
+        cutoffDate.setMonth(cutoffDate.getMonth() - retentionMonths);
+        const cutoffISO = cutoffDate.toISOString();
+
+        // Query rejected candidates older than cutoff
+        const candidatesSnap = await firestore
+            .collection('organizations').doc(orgDoc.id)
+            .collection('candidates')
+            .where('stage', '==', 'Rejected')
+            .get();
+
+        for (const candidateDoc of candidatesSnap.docs) {
+            const candidate = candidateDoc.data();
+            const appliedAt = candidate.appliedAt || candidate.createdAt || '';
+
+            if (appliedAt && appliedAt < cutoffISO) {
+                // Delete Storage files
+                try {
+                    await bucket.deleteFiles({ prefix: `${orgDoc.id}/candidates/${candidateDoc.id}/` });
+                } catch (e: any) {
+                    logger.warn(`[Retention] Storage cleanup failed for ${candidateDoc.id}:`, e?.message);
+                }
+
+                // Delete Firestore doc
+                await candidateDoc.ref.delete();
+                logger.info(`[Retention] Auto-deleted candidate ${candidateDoc.id} from org ${orgDoc.id} (retention: ${retentionMonths}mo)`);
+            }
+        }
+    }
+
+    logger.info("[Retention] Scheduled cleanup complete.");
+});
 

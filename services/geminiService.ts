@@ -118,7 +118,6 @@ export const summarizeInterview = async (transcript: string): Promise<string> =>
       Output JSON structure:
       {
         "score": number(0-10),
-        "sentiment": "Positive" | "Neutral" | "Negative",
         "summary": "Key takeaways from the interview.",
         "technicalSkills": ["skill1", "skill2"],
         "softSkills": ["skill1", "skill2"],

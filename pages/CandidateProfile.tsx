@@ -1564,6 +1564,14 @@ Presona Recruit`;
                         )}
 
                         <button
+                            onClick={() => { if (id) store.exportCandidateData(id); }}
+                            className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+                            title="Export candidate data (GDPR)"
+                        >
+                            <Download className="w-4 h-4 text-slate-500" /> Export Data
+                        </button>
+
+                        <button
                             onClick={() => {
                                 const stages: Candidate['stage'][] = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'];
                                 const currentIndex = stages.indexOf(candidate.stage);
@@ -2012,12 +2020,12 @@ Presona Recruit`;
                                                 {interview.mode === 'AI' ? 'AI Assistant' : 'Schedule External'}
                                             </div>
                                             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${interview.status === 'Upcoming' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
-                                                interview.sentiment === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                    interview.sentiment === 'Negative' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                                (interview.score || 0) >= 7 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    (interview.score || 0) < 4 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'
                                                 }`}>
                                                 {interview.status === 'Upcoming' ? <Clock className="w-3 h-3" /> :
-                                                    interview.sentiment === 'Positive' ? <Sparkles className="w-3 h-3" /> : interview.sentiment === 'Negative' ? <AlertCircle className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
-                                                {interview.status === 'Upcoming' ? 'Upcoming' : `${interview.sentiment} Sentiment`}
+                                                    (interview.score || 0) >= 7 ? <Sparkles className="w-3 h-3" /> : (interview.score || 0) < 4 ? <AlertCircle className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                                                {interview.status === 'Upcoming' ? 'Upcoming' : `Score: ${interview.score || 0}/10`}
                                             </div>
                                         </div>
 

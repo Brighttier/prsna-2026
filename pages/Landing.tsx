@@ -392,10 +392,10 @@ export const Landing = () => {
                         <div>
                             <h4 className="text-white font-bold mb-4">Legal</h4>
                             <ul className="space-y-2 text-sm">
-                                <li><a href="#" className="hover:text-emerald-400 transition-colors">Privacy Policy</a></li>
-                                <li><a href="#" className="hover:text-emerald-400 transition-colors">Terms of Service</a></li>
-                                <li><a href="#" className="hover:text-emerald-400 transition-colors">Cookie Policy</a></li>
-                                <li><a href="#" className="hover:text-emerald-400 transition-colors">Security</a></li>
+                                <li><a href="/#/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</a></li>
+                                <li><a href="/#/privacy" className="hover:text-emerald-400 transition-colors">Terms of Service</a></li>
+                                <li><a href="/#/privacy" className="hover:text-emerald-400 transition-colors">Cookie Policy</a></li>
+                                <li><a href="/#/privacy" className="hover:text-emerald-400 transition-colors">Security</a></li>
                             </ul>
                         </div>
                     </div>

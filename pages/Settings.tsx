@@ -91,6 +91,7 @@ export const Settings = () => {
         setHeroHeadline(branding.heroHeadline || 'Build the future with us.');
         setHeroSubhead(branding.heroSubhead || 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.');
         setCoverStyle(branding.coverStyle || 'gradient');
+        setContactEmail(branding.contactEmail || '');
     }, [branding]);
 
     // Other UI-only state
@@ -99,6 +100,10 @@ export const Settings = () => {
     const [heroSubhead, setHeroSubhead] = useState(branding.heroSubhead || 'Join a team of visionaries, builders, and dreamers. We are looking for exceptional talent to solve the world\'s hardest problems.');
     const [coverStyle, setCoverStyle] = useState<'gradient' | 'minimal'>(branding.coverStyle || 'gradient');
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+
+    // --- DATA RETENTION STATE ---
+    const [contactEmail, setContactEmail] = useState(branding.contactEmail || '');
+    const [dataRetentionMonths, setDataRetentionMonths] = useState<number>(0); // 0 = never
 
     // --- PERSONA STATE ---
     const [intensity, setIntensity] = useState(persona?.intensity || 30);
@@ -199,7 +204,8 @@ export const Settings = () => {
             domain,
             heroHeadline,
             heroSubhead,
-            coverStyle
+            coverStyle,
+            contactEmail: contactEmail || undefined,
         });
         store.updatePersona({
             intensity,
@@ -212,6 +218,7 @@ export const Settings = () => {
         });
         store.updateOnboardingTemplate(onboardingTasks);
         store.updateEmailTemplates(emailTemplates);
+        store.updateDataRetention(dataRetentionMonths);
         setTimeout(() => {
             setLoading(false);
             setSaved(true);
@@ -516,6 +523,48 @@ export const Settings = () => {
                                             <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Data & Privacy */}
+                    <Card className="p-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+                            <Shield className="w-6 h-6 text-slate-400" />
+                            Data &amp; Privacy
+                        </h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">GDPR Contact Email</label>
+                                <input
+                                    type="email"
+                                    value={contactEmail}
+                                    onChange={(e) => setContactEmail(e.target.value)}
+                                    placeholder="privacy@yourcompany.com"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                />
+                                <p className="text-xs text-slate-500 mt-2">Candidates will see this email on interview, offer, and onboarding pages to exercise their data rights (access, deletion, portability).</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Auto-Delete Rejected Candidate Data</label>
+                                <select
+                                    value={dataRetentionMonths}
+                                    onChange={(e) => setDataRetentionMonths(Number(e.target.value))}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none font-medium"
+                                >
+                                    <option value={0}>Never (manual deletion only)</option>
+                                    <option value={6}>After 6 months</option>
+                                    <option value={12}>After 12 months</option>
+                                    <option value={24}>After 24 months</option>
+                                </select>
+                                <p className="text-xs text-slate-500 mt-2">Candidates with "Rejected" status will be automatically deleted (including all files) after this period. GDPR recommends 6 months for unsuccessful applicants.</p>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
+                                <Shield className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-bold text-slate-900">Privacy Policy</p>
+                                    <p className="text-xs text-slate-500 mt-1">Your candidates see our <a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline font-medium">Privacy Policy</a> during application and interview consent flows.</p>
                                 </div>
                             </div>
                         </div>

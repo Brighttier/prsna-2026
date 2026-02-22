@@ -52,6 +52,16 @@ export const signUp = async (email: string, password: string, name: string, comp
             createdAt: new Date().toISOString()
         });
 
+        // 5. Set org custom claim for Firestore/Storage rule enforcement
+        try {
+            const setOrgClaim = httpsCallable(functions, 'setOrgClaim');
+            await setOrgClaim({ orgId });
+            // Force token refresh so new claim is available immediately
+            await user.getIdToken(true);
+        } catch (claimErr) {
+            console.warn("Failed to set org claim (non-blocking):", claimErr);
+        }
+
         return { user, error: null };
     } catch (error: any) {
         console.error("Sign Up Error:", error);
@@ -62,6 +72,8 @@ export const signUp = async (email: string, password: string, name: string, comp
 export const signIn = async (email: string, password: string): Promise<AuthResponse> => {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // Force token refresh to pick up latest custom claims (orgId)
+        await userCredential.user.getIdToken(true);
         return { user: userCredential.user, error: null };
     } catch (error: any) {
         console.error("Sign In Error:", error);

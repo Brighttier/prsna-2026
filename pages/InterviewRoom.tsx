@@ -67,6 +67,7 @@ export const InterviewRoom = () => {
    const [sessionReady, setSessionReady] = useState(false);
    const [sessionError, setSessionError] = useState<string | null>(null);
    const [isProcessing, setIsProcessing] = useState(false);
+   const [interviewConsent, setInterviewConsent] = useState(false);
    const interviewTimeLimitRef = useRef<number>(30); // minutes
    const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
    const handleEndRef = useRef<(() => void) | null>(null);
@@ -420,7 +421,6 @@ export const InterviewRoom = () => {
             type: 'Lumina Live Interview',
             status: 'Completed',
             score: analysisData.score || 0,
-            sentiment: analysisData.sentiment || 'Neutral',
             summary: analysisData.summary || 'Interview session completed.',
             transcript: transcriptEntries,
             videoHighlights: analysisData.highlights || [],
@@ -433,9 +433,19 @@ export const InterviewRoom = () => {
             if (isTokenMode) {
                const { httpsCallable, functions } = await import('../services/firebase');
                const saveFn = httpsCallable(functions, 'saveInterviewSession');
-               await saveFn({ orgId, candidateId, session, existingSessionId: sessionId });
+               await saveFn({
+                  orgId, candidateId, session, existingSessionId: sessionId,
+                  interviewConsent: { timestamp: new Date().toISOString(), version: '1.0' }
+               });
             } else {
                store.addInterviewSession(candidateId, session);
+               // Save interview consent on candidate doc
+               store.updateCandidate(candidateId, {
+                  consent: {
+                     ...store.getState().candidates.find(c => c.id === candidateId)?.consent,
+                     interviewConsent: { timestamp: new Date().toISOString(), version: '1.0' }
+                  }
+               } as any);
             }
          } catch (e) {
             console.error("Failed to save session:", e);
@@ -444,7 +454,13 @@ export const InterviewRoom = () => {
 
       // Token-mode candidates see a completion page, not admin dashboard
       if (isTokenMode) {
-         navigate('/interview-complete');
+         navigate('/interview-complete', {
+            state: {
+               branding: location.state?.branding,
+               companyName: location.state?.branding?.companyName,
+               contactEmail: location.state?.branding?.contactEmail,
+            }
+         });
       } else {
          navigate('/dashboard');
       }
@@ -537,8 +553,29 @@ export const InterviewRoom = () => {
                         </p>
                      </div>
 
-                     {/* Start button — only shown before connection */}
-                     {!isConnected && (
+                     {/* Consent + Start — only shown before connection */}
+                     {!isConnected && !isConnecting && sessionReady && !interviewConsent && (
+                        <div className="mt-6 bg-white/[0.06] border border-white/[0.1] rounded-2xl p-5 max-w-md text-left backdrop-blur-sm">
+                           <h3 className="text-sm font-semibold text-white/90 mb-3 flex items-center gap-2">
+                              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Before We Begin
+                           </h3>
+                           <ul className="space-y-2 text-xs text-white/50 mb-4">
+                              <li className="flex items-start gap-2"><Video className="w-3.5 h-3.5 mt-0.5 shrink-0 text-white/40" /> This interview will be video &amp; audio recorded</li>
+                              <li className="flex items-start gap-2"><Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0 text-white/40" /> Your responses will be analyzed by AI</li>
+                              <li className="flex items-start gap-2"><ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-white/40" /> Session monitored for: eye gaze, environment, behavior, third-party presence</li>
+                           </ul>
+                           <a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="text-[11px] text-emerald-400 hover:underline mb-4 inline-block">View Privacy Policy</a>
+                           <button
+                              onClick={() => setInterviewConsent(true)}
+                              className="w-full bg-emerald-500 hover:bg-emerald-400 text-white px-6 py-3 rounded-xl font-semibold text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+                           >
+                              <ShieldCheck className="w-4 h-4" /> I Agree &amp; Continue
+                           </button>
+                        </div>
+                     )}
+
+                     {/* Start button — shown after consent */}
+                     {!isConnected && interviewConsent && (
                         <button
                            onClick={handleStart}
                            disabled={isConnecting || !sessionReady}
@@ -551,6 +588,16 @@ export const InterviewRoom = () => {
                            ) : (
                               <><Sparkles className="w-4 h-4" /> Start Session</>
                            )}
+                        </button>
+                     )}
+
+                     {/* Loading states before session is ready */}
+                     {!isConnected && !sessionReady && (
+                        <button
+                           disabled
+                           className="mt-8 bg-emerald-500/60 text-white px-8 py-3.5 rounded-full font-semibold text-sm opacity-60 cursor-wait flex items-center gap-2.5"
+                        >
+                           <Loader2 className="w-4 h-4 animate-spin" /> Preparing...
                         </button>
                      )}
                   </div>

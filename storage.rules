@@ -1,26 +1,30 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Interview video uploads — allow unauthenticated writes for token-mode candidates
+    // Read restricted to org members via custom claim
     match /{orgId}/candidates/{candidateId}/interviews/{sessionId}/{fileName} {
-      // Allow unauthenticated interview uploads for token-mode candidates
-      // Path security: orgId + candidateId + sessionId are hard to guess
       allow write: if true;
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.token.orgId == orgId;
     }
 
+    // Candidate files (resumes, thumbnails, intro videos)
+    // Write: any authenticated user (for job applicants using anonymous auth)
+    // Read: org members only
     match /{orgId}/candidates/{candidateId}/{allPaths=**} {
-      // Allow candidates to upload their own resumes/files
-      // They are authenticated (either Firebase Auth or token mode)
       allow write: if request.auth != null;
-
-      // Allow organization members to read candidate files
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.token.orgId == orgId;
     }
-    
-    // Fallback for other files (branding, etc)
-    match /{allPaths=**} {
+
+    // Org-level files (branding assets, logos) — public read, org write
+    match /{orgId}/branding/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.orgId == orgId;
+    }
+
+    // Deny everything else by default
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

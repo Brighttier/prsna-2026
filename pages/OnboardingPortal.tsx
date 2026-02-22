@@ -9,7 +9,7 @@ export const OnboardingPortal = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [candidate, setCandidate] = useState<any>(null);
-    const [branding, setBranding] = useState<{ companyName: string; primaryColor: string; logoUrl: string }>({ companyName: 'Presona Recruit', primaryColor: '#16a34a', logoUrl: '' });
+    const [branding, setBranding] = useState<{ companyName: string; primaryColor: string; logoUrl: string; contactEmail?: string }>({ companyName: 'Presona Recruit', primaryColor: '#16a34a', logoUrl: '' });
 
     useEffect(() => {
         if (!token) {
@@ -130,6 +130,19 @@ export const OnboardingPortal = () => {
                         Start Onboarding <ArrowRight className="w-5 h-5" />
                     </button>
                 </div>
+            {/* GDPR Data Rights Footer */}
+            <footer className="mt-12 mb-8 text-center text-xs text-slate-400 max-w-lg mx-auto space-y-1">
+                <p>Your data is processed by <strong className="text-slate-500">{branding.companyName || 'the hiring organization'}</strong> in accordance with GDPR.</p>
+                <p>
+                    You have the right to access, correct, or delete your personal data.
+                    {branding.contactEmail ? (
+                        <> Contact <a href={`mailto:${branding.contactEmail}`} className="text-brand-600 hover:underline font-medium">{branding.contactEmail}</a> to exercise your rights.</>
+                    ) : (
+                        <> Contact the hiring organization directly to exercise your rights.</>
+                    )}
+                </p>
+                <p><a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline font-medium">Privacy Policy</a></p>
+            </footer>
             </main>
         </div>
     );

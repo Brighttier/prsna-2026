@@ -215,8 +215,8 @@ export const PublicCareerPage = ({ subdomainOrgId }: { subdomainOrgId?: string }
                         © {new Date().getFullYear()} {branding.companyName}. All rights reserved.
                     </div>
                     <div className="flex gap-6">
-                        <span className="hover:text-slate-900 cursor-pointer">Privacy Policy</span>
-                        <span className="hover:text-slate-900 cursor-pointer">Terms</span>
+                        <a href="/#/privacy" className="hover:text-slate-900 transition-colors">Privacy Policy</a>
+                        <a href="/#/privacy" className="hover:text-slate-900 transition-colors">Terms</a>
                     </div>
                 </div>
             </div>

@@ -85,7 +85,6 @@ export const generateInterviewQuestions = async (candidate: ExtendedCandidate, j
 
 interface InterviewAnalysisResponse {
     score: number;
-    sentiment: 'Positive' | 'Neutral' | 'Negative';
     summary: string;
     highlights: VideoHighlight[];
 }

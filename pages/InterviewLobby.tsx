@@ -196,7 +196,8 @@ export const InterviewLobby = () => {
                             <ShieldCheck className="w-8 h-8 text-brand-600" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">Selfie Verification</h2>
-                        <p className="text-slate-500 mb-8 max-w-md mx-auto">Please look at the camera for a quick face scan. This will be matched during the interview.</p>
+                        <p className="text-slate-500 mb-4 max-w-md mx-auto">Please look at the camera for a quick face scan. This will be matched during the interview.</p>
+                        <p className="text-xs text-slate-400 mb-8 max-w-sm mx-auto">Your photo is used solely for identity verification during this interview session.</p>
 
                         {/* Camera / Image Preview Area */}
                         <div className="relative w-full max-w-md mx-auto aspect-video bg-slate-100 rounded-2xl overflow-hidden mb-8 ring-4 ring-white shadow-lg">
@@ -300,6 +301,19 @@ export const InterviewLobby = () => {
                 <ShieldCheck className="w-3 h-3" />
                 Powered by Presona Recruit • SOC2 Compliant
             </div>
+
+            {/* GDPR Data Rights Footer */}
+            <footer className="mt-4 text-center text-xs text-slate-400 max-w-lg mx-auto space-y-1">
+                <p>
+                    You have the right to access, correct, or delete your personal data.
+                    {inviteData?.branding?.contactEmail ? (
+                        <> Contact <a href={`mailto:${inviteData.branding.contactEmail}`} className="text-brand-600 hover:underline font-medium">{inviteData.branding.contactEmail}</a> to exercise your rights.</>
+                    ) : (
+                        <> Contact the hiring organization directly to exercise your rights.</>
+                    )}
+                </p>
+                <p><a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline font-medium">Privacy Policy</a></p>
+            </footer>
         </div>
     );
 };

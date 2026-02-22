@@ -34,7 +34,7 @@ export interface UserProfile {
 
 export interface ProctoringObservation {
     timestamp: string;
-    category: 'eye_gaze' | 'language' | 'environment' | 'behavior' | 'third_party' | 'other';
+    category: 'eye_gaze' | 'environment' | 'behavior' | 'third_party' | 'other';
     severity: 'low' | 'medium' | 'high';
     description: string;
 }
@@ -53,7 +53,6 @@ export interface InterviewSession {
     meetLink?: string;
     platform?: 'Google Meet' | 'Microsoft Teams';
     score?: number;
-    sentiment?: 'Positive' | 'Neutral' | 'Negative';
     summary?: string;
     transcript?: TranscriptEntry[];
     videoHighlights?: VideoHighlight[];
@@ -107,7 +106,6 @@ export interface ExtendedCandidate extends Candidate {
         verdict?: string;
         metrics?: any;
         missingSkills?: string[];
-        sentimentScore?: number;
     };
     interviews?: InterviewSession[];
 }
@@ -151,6 +149,7 @@ export interface BrandingSettings {
     heroHeadline?: string;
     heroSubhead?: string;
     coverStyle?: 'gradient' | 'minimal';
+    contactEmail?: string;
 }
 
 export interface Tenant {
@@ -591,11 +590,80 @@ class Store {
     async deleteCandidate(id: string) {
         if (!this.orgId) return;
         try {
+            // 1. Delete all Storage files for this candidate (resume, video, thumbnail, interviews)
+            const { ref, listAll, deleteObject } = await import('./firebase');
+            const { storage } = await import('./firebase');
+            const candidateStorageRef = ref(storage, `${this.orgId}/candidates/${id}`);
+            try {
+                const fileList = await listAll(candidateStorageRef);
+                // Delete all files in root
+                await Promise.all(fileList.items.map(item => deleteObject(item)));
+                // Recursively delete files in subdirectories (e.g. interviews/)
+                for (const prefix of fileList.prefixes) {
+                    const subList = await listAll(prefix);
+                    await Promise.all(subList.items.map(item => deleteObject(item)));
+                    // One more level deep for interviews/{sessionId}/recording.webm
+                    for (const subPrefix of subList.prefixes) {
+                        const deepList = await listAll(subPrefix);
+                        await Promise.all(deepList.items.map(item => deleteObject(item)));
+                    }
+                }
+            } catch (storageErr) {
+                console.warn("Storage cleanup partial/failed (continuing with doc delete):", storageErr);
+            }
+
+            // 2. Delete the Firestore document
             const { deleteDoc } = await import('firebase/firestore');
             await deleteDoc(doc(db, 'organizations', this.orgId, 'candidates', id));
         } catch (e) {
             console.error("Error deleting candidate: ", e);
         }
+    }
+
+    async exportCandidateData(id: string) {
+        if (!this.orgId) return;
+        const { getDoc } = await import('firebase/firestore');
+        const snap = await getDoc(doc(db, 'organizations', this.orgId, 'candidates', id));
+        if (!snap.exists()) return;
+
+        const data = snap.data();
+        // Strip internal fields, keep only PII-relevant data
+        const exportData = {
+            exportedAt: new Date().toISOString(),
+            organizationId: this.orgId,
+            candidate: {
+                id: data.id,
+                name: data.name,
+                email: data.email,
+                role: data.role,
+                stage: data.stage,
+                appliedAt: data.appliedAt,
+                availability: data.availability,
+                source: data.source,
+                consent: data.consent,
+                analysis: data.analysis,
+                interviews: (data.interviews || []).map((i: any) => ({
+                    id: i.id,
+                    date: i.date,
+                    mode: i.mode,
+                    status: i.status,
+                    score: i.score,
+                    summary: i.summary,
+                    transcript: i.transcript,
+                    proctoring: i.proctoring,
+                })),
+            }
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `candidate-data-${data.name?.replace(/\s+/g, '-') || id}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     async addInterviewSession(candidateId: string, session: InterviewSession) {
@@ -674,6 +742,17 @@ class Store {
             });
         } catch (e) {
             console.error("Error updating persona: ", e);
+        }
+    }
+
+    async updateDataRetention(rejectedMonths: number) {
+        if (!this.orgId) return;
+        try {
+            await updateDoc(doc(db, 'organizations', this.orgId), {
+                'settings.dataRetention': { rejectedMonths }
+            });
+        } catch (e) {
+            console.error("Error updating data retention: ", e);
         }
     }
 

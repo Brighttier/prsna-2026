@@ -49,6 +49,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
     const [availability, setAvailability] = useState('Immediate');
     const [source, setSource] = useState('LinkedIn');
     const [resumeFile, setResumeFile] = useState<File | null>(null);
+    const [consentChecked, setConsentChecked] = useState(false);
 
     // Video State
     const [isRecording, setIsRecording] = useState(false);
@@ -240,6 +241,12 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                 status: 'New',
                 metrics: {
                     introVideoDuration: 10 - timeLeft
+                },
+                consent: {
+                    applicationConsent: {
+                        timestamp: new Date().toISOString(),
+                        version: '1.0'
+                    }
                 }
             });
 
@@ -621,6 +628,21 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                                 </div>
                             </div>
 
+                            {/* GDPR Consent */}
+                            <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                <input
+                                    type="checkbox"
+                                    id="gdpr-consent"
+                                    checked={consentChecked}
+                                    onChange={e => setConsentChecked(e.target.checked)}
+                                    className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 shrink-0 cursor-pointer"
+                                />
+                                <label htmlFor="gdpr-consent" className="text-xs text-slate-600 leading-relaxed cursor-pointer">
+                                    I consent to my resume, video, and personal data being processed by AI for screening and recruitment purposes.
+                                    My data will be shared with the recruiting organization. <a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline font-medium">View Privacy Policy</a>
+                                </label>
+                            </div>
+
                             {showManualPaste && (
                                 <div className="p-6 bg-amber-50 rounded-xl border border-amber-200 animate-fade-in-up">
                                     <div className="flex items-center gap-3 text-amber-800 mb-4 transition-all">
@@ -700,8 +722,8 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                         <button
                             type="button"
                             onClick={(e) => handleSubmit(e as any)}
-                            disabled={isSubmitting || !resumeFile}
-                            className={`px-8 py-2.5 font-extrabold text-white rounded-xl shadow-lg shadow-brand-500/30 transition-all transform active:scale-95 flex items-center gap-2 ${isSubmitting || !resumeFile ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105'}`}
+                            disabled={isSubmitting || !resumeFile || !consentChecked}
+                            className={`px-8 py-2.5 font-extrabold text-white rounded-xl shadow-lg shadow-brand-500/30 transition-all transform active:scale-95 flex items-center gap-2 ${isSubmitting || !resumeFile || !consentChecked ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105'}`}
                             style={{ backgroundColor: brandingColor }}
                         >
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

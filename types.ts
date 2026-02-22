@@ -98,7 +98,10 @@ export interface Candidate {
     verdict?: string;
     metrics?: any;
     missingSkills?: string[];
-    sentimentScore?: number; // New
+  };
+  consent?: {
+    applicationConsent?: { timestamp: string; version: string };
+    interviewConsent?: { timestamp: string; version: string };
   };
   // New Fields
   offer?: OfferDetails;

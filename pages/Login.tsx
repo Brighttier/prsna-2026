@@ -319,9 +319,9 @@ export const Login = () => {
                     {/* Footer */}
                     <p className="text-center text-sm text-slate-500 mt-6">
                         By continuing, you agree to our{' '}
-                        <a href="#" className="text-emerald-600 hover:text-emerald-700 font-medium">Terms of Service</a>
+                        <a href="/#/privacy" className="text-emerald-600 hover:text-emerald-700 font-medium">Terms of Service</a>
                         {' '}and{' '}
-                        <a href="#" className="text-emerald-600 hover:text-emerald-700 font-medium">Privacy Policy</a>
+                        <a href="/#/privacy" className="text-emerald-600 hover:text-emerald-700 font-medium">Privacy Policy</a>
                     </p>
                 </div>
             </div>

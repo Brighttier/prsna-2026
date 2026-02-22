@@ -18,6 +18,7 @@ import { Onboarding } from './pages/Onboarding';
 import { OnboardingPortal } from './pages/OnboardingPortal';
 import { PublicCareerPage } from './pages/PublicCareerPage';
 import { AISearch } from './pages/AISearch';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { DynamicBranding } from './components/DynamicBranding';
 import { LockdownOverlay } from './components/LockdownOverlay';
 import { detectSubdomain, resolveSubdomainToOrgId } from './services/subdomain';
@@ -72,6 +73,39 @@ const SubdomainCareerPage = ({ subdomain }: { subdomain: string }) => {
   return <PublicCareerPage subdomainOrgId={orgId!} />;
 };
 
+const InterviewComplete = () => {
+  const location = useLocation();
+  const companyName = location.state?.companyName || '';
+  const contactEmail = location.state?.contactEmail || '';
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 text-center">
+      <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg className="w-10 h-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+      </div>
+      <h1 className="text-3xl font-black text-slate-900 mb-2">Interview Complete</h1>
+      <p className="text-slate-500 max-w-md mb-8">Thank you for completing your AI interview. The hiring team will review your session and get back to you shortly.</p>
+      <div className="flex items-center gap-2 text-xs text-slate-400 font-medium mb-8">
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+        Powered by Presona Recruit
+      </div>
+      <footer className="text-xs text-slate-400 max-w-lg mx-auto space-y-1">
+        <p>
+          You have the right to access, correct, or delete your personal data.
+          {contactEmail ? (
+            <> Contact <a href={`mailto:${contactEmail}`} className="text-emerald-600 hover:underline font-medium">{contactEmail}</a> to exercise your rights.</>
+          ) : companyName ? (
+            <> Contact <strong className="text-slate-500">{companyName}</strong> directly to exercise your rights.</>
+          ) : (
+            <> Contact the hiring organization directly to exercise your rights.</>
+          )}
+        </p>
+        <p><a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline font-medium">Privacy Policy</a></p>
+      </footer>
+    </div>
+  );
+};
+
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -85,7 +119,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
         setIsLoaded(true);
         // If we are on a protected page and user logs out, go to login
         // Public routes: login, landing, onboarding, career pages, interview flows, offer portal, onboarding portal
-        const isPublic = ['/login', '/', '/onboarding'].includes(location.pathname) ||
+        const isPublic = ['/login', '/', '/onboarding', '/privacy'].includes(location.pathname) ||
           location.pathname.startsWith('/career/') ||
           location.pathname.includes('/interview') ||
           location.pathname.includes('/offer') ||
@@ -117,6 +151,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
     location.pathname === '/login' ||
     location.pathname === '/' ||
     location.pathname === '/onboarding' ||
+    location.pathname === '/privacy' ||
     location.pathname.startsWith('/onboarding-portal/') ||
     location.pathname.startsWith('/career/');
 
@@ -175,19 +210,7 @@ export default function App() {
           <Route path="/interview-lobby" element={<InterviewLobby />} />
           <Route path="/interview-invite/:token" element={<InterviewLobby />} />
           <Route path="/interview/room" element={<InterviewRoom />} />
-          <Route path="/interview-complete" element={
-            <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 text-center">
-              <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-10 h-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </div>
-              <h1 className="text-3xl font-black text-slate-900 mb-2">Interview Complete</h1>
-              <p className="text-slate-500 max-w-md mb-8">Thank you for completing your AI interview. The hiring team will review your session and get back to you shortly.</p>
-              <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
-                Powered by Presona Recruit
-              </div>
-            </div>
-          } />
+          <Route path="/interview-complete" element={<InterviewComplete />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/platform-admin" element={<PlatformAdmin />} />
           <Route path="/offer/:token" element={<OfferPortal />} />
@@ -195,6 +218,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/career/:orgId" element={<PublicCareerPage />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
