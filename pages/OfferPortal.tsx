@@ -284,8 +284,9 @@ export const OfferPortal = () => {
                 )}
 
                 {viewMode === 'signing' && (
-                    <div className="fixed inset-0 z-50 bg-slate-900/90 flex items-center justify-center p-4 animate-fade-in">
-                        <Card className="max-w-2xl w-full p-8 relative overflow-hidden max-h-[90vh] overflow-y-auto">
+                    <div className="fixed inset-0 z-50 bg-slate-900/90 overflow-y-auto animate-fade-in">
+                        <div className="min-h-full flex items-center justify-center p-4">
+                        <Card className="max-w-2xl w-full p-8 relative overflow-hidden">
                             {isSigning ? (
                                 <div className="flex flex-col items-center justify-center py-12 gap-6">
                                     <div className="relative">
@@ -332,12 +333,14 @@ export const OfferPortal = () => {
                                 </div>
                             )}
                         </Card>
+                        </div>
                     </div>
                 )}
 
                 {viewMode === 'reject' && (
-                    <div className="fixed inset-0 z-50 bg-slate-900/90 flex items-center justify-center p-4 animate-fade-in">
-                        <Card className="max-w-lg w-full p-8 max-h-[90vh] overflow-y-auto">
+                    <div className="fixed inset-0 z-50 bg-slate-900/90 overflow-y-auto animate-fade-in">
+                        <div className="min-h-full flex items-center justify-center p-4">
+                        <Card className="max-w-lg w-full p-8">
                             <div className="mb-6">
                                 <h2 className="text-xl font-bold text-red-600 flex items-center gap-2">
                                     <AlertCircle className="w-6 h-6" /> Decline Offer
@@ -363,6 +366,7 @@ export const OfferPortal = () => {
                                 </button>
                             </div>
                         </Card>
+                        </div>
                     </div>
                 )}
 

@@ -340,7 +340,8 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
     if (step === 3) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm">
+              <div className="min-h-full flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-md p-8 text-center animate-scale-in">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Check className="w-8 h-8 text-green-600" />
@@ -357,12 +358,14 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                         Back to Careers
                     </button>
                 </div>
+              </div>
             </div>
         );
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm">
+          <div className="min-h-full flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in-up">
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
@@ -732,6 +735,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
                     )}
                 </div>
             </div>
+          </div>
         </div>
     );
 };

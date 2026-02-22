@@ -690,8 +690,9 @@ export const InterviewRoom = () => {
 
          {/* Processing overlay */}
          {isProcessing && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center text-center">
-               <div className="bg-[#111827] border border-white/[0.08] rounded-2xl p-10 shadow-2xl max-w-md mx-4">
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md overflow-y-auto">
+               <div className="min-h-full flex flex-col items-center justify-center text-center p-4">
+               <div className="bg-[#111827] border border-white/[0.08] rounded-2xl p-10 shadow-2xl max-w-md">
                   <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                      <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
                   </div>
@@ -700,6 +701,7 @@ export const InterviewRoom = () => {
                   <div className="bg-amber-500/10 border border-amber-500/15 rounded-lg px-4 py-2.5">
                      <p className="text-amber-400/80 text-xs font-medium">Do not close this browser.</p>
                   </div>
+               </div>
                </div>
             </div>
          )}

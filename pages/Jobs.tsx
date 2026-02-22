@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card } from '../components/Card';
-import { Plus, Search, MapPin, Users, Clock, MoreHorizontal, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle, FileText, Code as CodeIcon, Sparkles, Calendar as CalendarIcon, DollarSign, RefreshCw, Trash2, Archive } from 'lucide-react';
+import { Plus, Search, MapPin, Users, Clock, Filter, Briefcase, ChevronRight, X, LayoutTemplate, Zap, Terminal, CheckCircle, FileText, Code as CodeIcon, Sparkles, Calendar as CalendarIcon, DollarSign, RefreshCw, Trash2, Archive, XCircle, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Job, JobStatus } from '../types';
 import { store } from '../services/store';
@@ -31,7 +31,6 @@ export const Jobs = () => {
    // Removed technicalType as we only have QuestionBank now
    const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
    const [editingJobId, setEditingJobId] = useState<string | null>(null);
-   const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
 
    // Sync with store
    const [jobs, setJobs] = useState(store.getState().jobs);
@@ -111,6 +110,7 @@ export const Jobs = () => {
          case JobStatus.OPEN: return 'bg-emerald-100 text-emerald-700 border-emerald-200';
          case JobStatus.CLOSED: return 'bg-slate-100 text-slate-600 border-slate-200';
          case JobStatus.DRAFT: return 'bg-amber-100 text-amber-700 border-amber-200';
+         case JobStatus.ARCHIVED: return 'bg-violet-100 text-violet-700 border-violet-200';
          default: return 'bg-slate-100 text-slate-600 border-slate-200';
       }
    };
@@ -118,14 +118,18 @@ export const Jobs = () => {
    const handleDelete = (id: string) => {
       if (window.confirm('Are you sure you want to delete this job posting?')) {
          store.deleteJob(id);
-         setActiveActionMenu(null);
       }
    };
 
    const handleStatusToggle = (job: Job) => {
       const nextStatus = job.status === JobStatus.OPEN ? JobStatus.CLOSED : JobStatus.OPEN;
       store.updateJob(job.id, { status: nextStatus });
-      setActiveActionMenu(null);
+   };
+
+   const handleArchive = (job: Job) => {
+      if (window.confirm('Are you sure you want to archive this job posting?')) {
+         store.updateJob(job.id, { status: JobStatus.ARCHIVED });
+      }
    };
 
    const [generationError, setGenerationError] = useState<string | null>(null);
@@ -176,7 +180,7 @@ export const Jobs = () => {
          {/* Filters & Search */}
          <Card className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto no-scrollbar">
-               {['All', JobStatus.OPEN, JobStatus.DRAFT, JobStatus.CLOSED].map((f) => (
+               {['All', JobStatus.OPEN, JobStatus.DRAFT, JobStatus.CLOSED, JobStatus.ARCHIVED].map((f) => (
                   <button
                      key={f}
                      onClick={() => setFilter(f as any)}
@@ -244,49 +248,47 @@ export const Jobs = () => {
                            <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Applicants</div>
                         </div>
 
-                        <div className="flex items-center gap-2 relative">
+                        <div className="flex items-center gap-1.5">
                            <button
                               onClick={() => handleEdit(job)}
-                              className="hidden md:block px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-white hover:text-brand-600 hover:shadow-sm border border-transparent hover:border-slate-200 rounded-lg transition-all"
+                              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-white hover:text-brand-600 hover:shadow-sm border border-transparent hover:border-slate-200 rounded-lg transition-all"
+                              title="Edit"
                            >
                               Edit
                            </button>
-                           <button
-                              onClick={() => setActiveActionMenu(activeActionMenu === job.id ? null : job.id)}
-                              className={`p-2 rounded-lg transition-colors ${activeActionMenu === job.id ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'}`}
-                           >
-                              <MoreHorizontal className="w-5 h-5" />
-                           </button>
-
-                           {/* Action Menu Dropdown */}
-                           {activeActionMenu === job.id && (
-                              <>
-                                 <div className="fixed inset-0 z-10" onClick={() => setActiveActionMenu(null)} />
-                                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-20 animate-scale-in origin-top-right">
-                                    <button
-                                       onClick={() => { handleEdit(job); setActiveActionMenu(null); }}
-                                       className="w-full px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 md:hidden"
-                                    >
-                                       Edit Role
-                                    </button>
-                                    <button
-                                       onClick={() => handleStatusToggle(job)}
-                                       className="w-full px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
-                                    >
-                                       <Archive className="w-4 h-4 text-slate-400" />
-                                       {job.status === JobStatus.OPEN ? 'Close Posting' : 'Reopen Posting'}
-                                    </button>
-                                    <div className="h-px bg-slate-100 my-1.5" />
-                                    <button
-                                       onClick={() => handleDelete(job.id)}
-                                       className="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                    >
-                                       <Trash2 className="w-4 h-4" />
-                                       Delete Posting
-                                    </button>
-                                 </div>
-                              </>
+                           {job.status === JobStatus.OPEN ? (
+                              <button
+                                 onClick={() => handleStatusToggle(job)}
+                                 className="p-2 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                                 title="Close Posting"
+                              >
+                                 <XCircle className="w-4.5 h-4.5" />
+                              </button>
+                           ) : (
+                              <button
+                                 onClick={() => handleStatusToggle(job)}
+                                 className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                 title="Reopen Posting"
+                              >
+                                 <RotateCcw className="w-4.5 h-4.5" />
+                              </button>
                            )}
+                           {job.status !== JobStatus.ARCHIVED && (
+                              <button
+                                 onClick={() => handleArchive(job)}
+                                 className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                                 title="Archive"
+                              >
+                                 <Archive className="w-4.5 h-4.5" />
+                              </button>
+                           )}
+                           <button
+                              onClick={() => handleDelete(job.id)}
+                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="Delete"
+                           >
+                              <Trash2 className="w-4.5 h-4.5" />
+                           </button>
                         </div>
                      </div>
 
@@ -325,7 +327,8 @@ export const Jobs = () => {
 
          {/* --- JOB WORKFLOW BUILDER MODAL --- */}
          {showJobCreator && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+               <div className="min-h-full flex items-center justify-center p-4">
                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
                   {/* Modal Header */}
                   <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -532,6 +535,7 @@ export const Jobs = () => {
                         {creatorStep === 2 ? 'Publish Job' : 'Continue'}
                      </button>
                   </div>
+               </div>
                </div>
             </div>
          )}

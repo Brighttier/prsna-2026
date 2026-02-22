@@ -2,7 +2,8 @@
 export enum JobStatus {
   OPEN = 'Open',
   CLOSED = 'Closed',
-  DRAFT = 'Draft'
+  DRAFT = 'Draft',
+  ARCHIVED = 'Archived'
 }
 
 export interface Job {

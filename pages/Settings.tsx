@@ -1423,7 +1423,8 @@ export const Settings = () => {
 
             {/* --- CREATE MODULE MODAL --- */}
             {showCreateModule && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                  <div className="min-h-full flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
                         {/* Modal Header */}
                         <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -1706,14 +1707,16 @@ export const Settings = () => {
                             </button>
                         </div>
                     </div>
+                  </div>
                 </div >
             )}
 
             {/* --- INVITE MODAL --- */}
             {
                 showInviteModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto animate-fade-in-up border border-slate-200">
+                    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                      <div className="min-h-full flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
                             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                                 <h3 className="font-bold text-lg text-slate-900">Invite Team Member</h3>
                                 <button
@@ -1780,6 +1783,7 @@ export const Settings = () => {
                                 </div>
                             </form>
                         </div>
+                      </div>
                     </div>
                 )
             }
