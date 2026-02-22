@@ -242,16 +242,16 @@ export const AISearch = () => {
                                     </div>
 
                                     {/* Skills */}
-                                    {candidate.skills.length > 0 && (
+                                    {(candidate.skills || []).length > 0 && (
                                         <div className="flex flex-wrap gap-1.5 mb-2.5">
-                                            {candidate.skills.slice(0, 6).map((skill) => (
+                                            {(candidate.skills || []).slice(0, 6).map((skill) => (
                                                 <span key={skill} className="px-2 py-0.5 rounded-md bg-slate-50 text-[11px] text-slate-600 font-medium border border-slate-100">
                                                     {skill}
                                                 </span>
                                             ))}
-                                            {candidate.skills.length > 6 && (
+                                            {(candidate.skills || []).length > 6 && (
                                                 <span className="px-2 py-0.5 text-[11px] text-slate-400">
-                                                    +{candidate.skills.length - 6} more
+                                                    +{(candidate.skills || []).length - 6} more
                                                 </span>
                                             )}
                                         </div>

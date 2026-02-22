@@ -163,7 +163,7 @@ export const ResumeScreener = () => {
                               </p>
                            </div>
 
-                           {result.missingSkills.length > 0 && (
+                           {(result.missingSkills || []).length > 0 && (
                               <div>
                                  <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
                                     <AlertTriangle className="w-4 h-4 text-orange-500" />

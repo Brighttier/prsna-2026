@@ -2229,9 +2229,9 @@ Presona Recruit`;
                                                                                 Integrity: {interview.proctoring.integrity}
                                                                             </div>
                                                                         </div>
-                                                                        {interview.proctoring.observations.length > 0 ? (
+                                                                        {(interview.proctoring.observations || []).length > 0 ? (
                                                                             <div className="space-y-2">
-                                                                                {interview.proctoring.observations.map((obs, idx) => {
+                                                                                {(interview.proctoring.observations || []).map((obs, idx) => {
                                                                                     const isStructured = typeof obs === 'object' && obs !== null && 'category' in obs;
                                                                                     const category = isStructured ? (obs as any).category : 'other';
                                                                                     const severity = isStructured ? (obs as any).severity : 'medium';
