@@ -1423,7 +1423,7 @@ export const Settings = () => {
 
             {/* --- CREATE MODULE MODAL --- */}
             {showCreateModule && (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-50 overflow-y-auto animate-fade-in">
                   <div className="min-h-full flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-fade-in-up">
                         {/* Modal Header */}
@@ -1714,7 +1714,7 @@ export const Settings = () => {
             {/* --- INVITE MODAL --- */}
             {
                 showInviteModal && (
-                    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                    <div className="fixed inset-0 z-50 overflow-y-auto animate-fade-in">
                       <div className="min-h-full flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up border border-slate-200">
                             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">

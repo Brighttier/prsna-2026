@@ -327,7 +327,7 @@ export const Jobs = () => {
 
          {/* --- JOB WORKFLOW BUILDER MODAL --- */}
          {showJobCreator && (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="fixed inset-0 z-50 overflow-y-auto animate-fade-in">
                <div className="min-h-full flex items-center justify-center p-4">
                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
                   {/* Modal Header */}

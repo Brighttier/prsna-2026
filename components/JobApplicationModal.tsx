@@ -340,7 +340,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
 
     if (step === 3) {
         return (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 overflow-y-auto">
               <div className="min-h-full flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-md p-8 text-center animate-scale-in">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -364,7 +364,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({ job, o
     }
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="min-h-full flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in-up">
                 {/* Header */}

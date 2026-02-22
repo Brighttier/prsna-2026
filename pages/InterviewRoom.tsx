@@ -690,7 +690,7 @@ export const InterviewRoom = () => {
 
          {/* Processing overlay */}
          {isProcessing && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md overflow-y-auto">
+            <div className="fixed inset-0 z-50 overflow-y-auto">
                <div className="min-h-full flex flex-col items-center justify-center text-center p-4">
                <div className="bg-[#111827] border border-white/[0.08] rounded-2xl p-10 shadow-2xl max-w-md">
                   <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">

@@ -284,7 +284,7 @@ export const OfferPortal = () => {
                 )}
 
                 {viewMode === 'signing' && (
-                    <div className="fixed inset-0 z-50 bg-slate-900/90 overflow-y-auto animate-fade-in">
+                    <div className="fixed inset-0 z-50 overflow-y-auto animate-fade-in">
                         <div className="min-h-full flex items-center justify-center p-4">
                         <Card className="max-w-2xl w-full p-8 relative overflow-hidden">
                             {isSigning ? (
@@ -338,7 +338,7 @@ export const OfferPortal = () => {
                 )}
 
                 {viewMode === 'reject' && (
-                    <div className="fixed inset-0 z-50 bg-slate-900/90 overflow-y-auto animate-fade-in">
+                    <div className="fixed inset-0 z-50 overflow-y-auto animate-fade-in">
                         <div className="min-h-full flex items-center justify-center p-4">
                         <Card className="max-w-lg w-full p-8">
                             <div className="mb-6">

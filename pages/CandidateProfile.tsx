@@ -122,7 +122,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
     };
 
     return (
-        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div className="min-h-full flex items-center justify-center p-4">
             <Card className="max-w-md w-full p-0 overflow-hidden shadow-2xl relative animate-scale-in">
                 <div className="bg-slate-900 p-8 text-white relative">
@@ -298,7 +298,7 @@ const ScheduleModal = ({ candidate, onClose, onScheduled }: { candidate: any, on
 
 const InterviewConfirmationModal = ({ candidate, session, onClose }: { candidate: any, session: InterviewSession, onClose: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[110] overflow-y-auto bg-slate-900/80 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[110] overflow-y-auto animate-fade-in">
             <div className="min-h-full flex items-center justify-center p-4">
             <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in">
                 <div className="bg-emerald-600 p-8 text-white flex items-center justify-between">
@@ -396,7 +396,7 @@ const InterviewConfirmationModal = ({ candidate, session, onClose }: { candidate
 };
 const OfferConfirmationModal = ({ candidate, offer, onClose }: { candidate: any, offer: OfferDetails, onClose: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[110] overflow-y-auto bg-slate-900/80 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[110] overflow-y-auto animate-fade-in">
             <div className="min-h-full flex items-center justify-center p-4">
             <Card className="max-w-2xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in">
                 <div className="bg-brand-600 p-8 text-white flex items-center justify-between">
@@ -503,7 +503,7 @@ const DocusignModal = ({ candidate, offer, onClose, onComplete }: { candidate: a
     };
 
     return (
-        <div className="fixed inset-0 z-[120] overflow-y-auto bg-slate-900/90 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[120] overflow-y-auto animate-fade-in">
             <div className="min-h-full flex items-center justify-center p-4">
             <Card className="max-w-xl w-full p-0 overflow-hidden shadow-2xl border-none animate-scale-in bg-white">
                 <div className="bg-[#FF0000] p-6 text-white flex items-center justify-between">
@@ -709,7 +709,7 @@ const DocusignPulse = ({ envelopeId, candidateId }: { envelopeId: string; candid
 
 const TranscriptModal = ({ session, onClose }: { session: InterviewSession, onClose: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[60] overflow-y-auto animate-fade-in">
             <div className="min-h-full flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden animate-fade-in-up">
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -820,7 +820,7 @@ const RecordingModal = ({ session, onClose }: { session: InterviewSession, onClo
     };
 
     return (
-        <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/90 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[60] overflow-y-auto animate-fade-in">
             <div className="min-h-full flex items-center justify-center p-4">
             <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl h-[85vh] flex overflow-hidden animate-fade-in-up border border-slate-800">
                 <div className="flex-1 relative flex flex-col bg-black group"
@@ -1162,7 +1162,7 @@ const FileManager = ({ candidate }: { candidate: any }) => {
 
             {/* New Folder Modal */}
             {showNewFolderModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto" onClick={() => setShowNewFolderModal(false)}>
+                <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowNewFolderModal(false)}>
                     <div className="min-h-full flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-xl font-bold text-slate-900 mb-4">Create New Folder</h3>
