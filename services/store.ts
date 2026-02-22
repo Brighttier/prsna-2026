@@ -347,8 +347,25 @@ class Store {
         });
     }
 
-    private initOrgListeners(orgId: string) {
+    private async ensureOrgClaim(orgId: string) {
+        try {
+            const user = auth.currentUser;
+            if (!user) return;
+            const tokenResult = await user.getIdTokenResult();
+            if (tokenResult.claims.orgId === orgId) return; // Claim already set
+            console.warn(`[Store] orgId claim missing or mismatched. Attempting to set claim...`);
+            const setOrgClaim = httpsCallable(functions, 'setOrgClaim');
+            await setOrgClaim({ orgId });
+            await user.getIdToken(true); // Force refresh
+            console.log(`[Store] orgId claim set and token refreshed.`);
+        } catch (e) {
+            console.error(`[Store] Failed to ensure org claim:`, e);
+        }
+    }
+
+    private async initOrgListeners(orgId: string) {
         console.log(`[Store] Initializing Org Listeners for: ${orgId}`);
+        await this.ensureOrgClaim(orgId);
         // Jobs Listener
         const jobsUnsub = onSnapshot(collection(db, 'organizations', orgId, 'jobs'), (snapshot) => {
             console.log(`[Store] Jobs snapshot received: ${snapshot.size} docs`);
@@ -372,6 +389,10 @@ class Store {
                 console.log(`[Store] Candidates empty, seeding...`);
                 this.seedCandidates(orgId);
             }
+            this.notifyListeners();
+        }, (error) => {
+            console.error("[Store] Candidates listener error:", error);
+            this.state.candidates = this.state.candidates || [];
             this.notifyListeners();
         });
         this.unsubscribeListeners.push(candidatesUnsub);
@@ -406,6 +427,10 @@ class Store {
             console.log(`[Store] Invitations snapshot received: ${snapshot.size} docs`);
             this.state.invitations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invitation));
             this.notifyListeners();
+        }, (error) => {
+            console.error("[Store] Invitations listener error:", error);
+            this.state.invitations = this.state.invitations || [];
+            this.notifyListeners();
         });
         this.unsubscribeListeners.push(invitesUnsub);
 
@@ -413,6 +438,10 @@ class Store {
         const assessmentsUnsub = onSnapshot(collection(db, 'organizations', orgId, 'assessments'), (snapshot) => {
             console.log(`[Store] Assessments snapshot received: ${snapshot.size} docs`);
             this.state.assessments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentModule));
+            this.notifyListeners();
+        }, (error) => {
+            console.error("[Store] Assessments listener error:", error);
+            this.state.assessments = this.state.assessments || [];
             this.notifyListeners();
         });
         this.unsubscribeListeners.push(assessmentsUnsub);
@@ -431,6 +460,10 @@ class Store {
                     joinedAt: data.createdAt
                 } as OrgMember;
             });
+            this.notifyListeners();
+        }, (error) => {
+            console.error("[Store] Members listener error:", error);
+            this.state.members = this.state.members || [];
             this.notifyListeners();
         });
         this.unsubscribeListeners.push(membersUnsub);
